@@ -640,6 +640,7 @@ if (error) return <ErrorMessage message={error.message} />
 | 15 | Fornecedores agrupados + Cadastro de Fornecedores | OCs | Média | ✅ Feito |
 | 16 | Solicitações (tela própria) + Resumo Diário | OCs | Média | ✅ Feito |
 | 17 | Importação PDF (Acompanhamento de Compras) | OCs | Média | ✅ Feito — únicos parsers de PDF portados; ver nota abaixo |
-| 18 | Backup (exportar/importar JSON) | OCs | Baixa | Pendente |
+| 18 | Backup (exportar/importar JSON) | OCs | — | ❌ Não necessário — só existia pra migrar dados antes de o app usar o Supabase, já feito manualmente |
 | 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Pendente |
 | 13 | Autenticação real (3 usuários) | Base | Baixa (a não ser que a 12 suba a prioridade) | Pendente |
+| 19 | **Grandes melhorias visuais/UX no frontend** — Everton achou o visual atual muito básico (28/08/2026). Escopo ainda a definir com ele: candidatos incluem hierarquia visual mais forte nos cards/tabelas, mais identidade visual (não só Tailwind default), microinterações, densidade de informação melhor pensada por tela. Fazer antes do deploy público, já que é a cara do sistema pro dia a dia do setor. | Base/Todos módulos | Alta | Pendente — registrado, não iniciado |

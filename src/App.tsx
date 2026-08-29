@@ -24,12 +24,10 @@ const OCS_ITEMS: NavItem[] = [
   { to: '/ocs/importar', label: 'Importar' },
 ]
 
-const OCS_EM_BREVE = [{ title: 'Sistema', items: ['Backup (exportar/importar JSON)'] }]
-
 function OCsLayout() {
   return (
     <div className="flex flex-1">
-      <Sidebar title="Controle de OCs" items={OCS_ITEMS} emBreve={OCS_EM_BREVE} />
+      <Sidebar title="Controle de OCs" items={OCS_ITEMS} />
       <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
