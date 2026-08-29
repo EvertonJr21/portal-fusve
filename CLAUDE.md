@@ -79,31 +79,40 @@ fusve-portal/
     ├── hooks/
     │   ├── useHospital.ts           ← contexto de hospital ativo [pronto]
     │   ├── useToast.ts              ← contexto de toast [pronto]
-    │   ├── useOCs.ts                ← CRUD de OCs [a fazer]
-    │   ├── useSols.ts               ← CRUD de Solicitações [a fazer]
-    │   ├── useFornecedores.ts       ← CRUD de Fornecedores [a fazer]
-    │   ├── useHistOC.ts             ← histórico de cobranças [a fazer]
+    │   ├── useOCs.ts                ← useOCs, useSalvarOC, useAtualizarSituacaoOC, useExcluirOC [pronto — cobrança/vínculo/histórico ficam em hooks próprios na Fase 3]
+    │   ├── useSols.ts               ← useSols (só leitura nesta fase) [pronto]
+    │   ├── useFornecedores.ts       ← useFornecedores (só leitura nesta fase) [pronto]
+    │   ├── useHistOC.ts             ← histórico de cobranças [a fazer — Fase 3]
     │   ├── usePareceres.ts          ← CRUD de Pareceres Técnicos [a fazer]
     │   └── useContratos.ts          ← CRUD de Contratos [a fazer]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
     │   ├── ui/                      ← componentes genéricos reutilizáveis
-    │   │   ├── Sidebar.tsx          [pronto]
+    │   │   ├── Sidebar.tsx          ← navegação agrupada, itens "em breve" para o que falta [pronto]
     │   │   ├── Topbar.tsx           [pronto]
     │   │   ├── HospitalSwitch.tsx   [pronto]
     │   │   ├── Toast.tsx            [pronto]
     │   │   ├── Badge.tsx            [pronto]
     │   │   ├── Button.tsx           [pronto]
-    │   │   ├── Table.tsx            [a fazer]
-    │   │   ├── Modal.tsx            [a fazer]
-    │   │   ├── KpiCard.tsx          [a fazer]
-    │   │   └── DropZone.tsx         ← importação CSV/PDF [a fazer]
-    │   ├── ocs/                     [a fazer: OCTable, OCFilters, OCForm, OCHistorico, OCCobrar, Dashboard]
+    │   │   ├── Table.tsx            ← wrapper + SortableTh genérico [pronto]
+    │   │   ├── Modal.tsx            [pronto]
+    │   │   ├── KpiCard.tsx          [pronto]
+    │   │   └── DropZone.tsx         ← importação CSV/PDF [a fazer — Fase 3]
+    │   ├── ocs/
+    │   │   ├── Dashboard.tsx        ← Central de Pendências: KPIs, banner, cards por risco [pronto]
+    │   │   ├── KpisOC.tsx           ← 5 KPIs da tabela [pronto]
+    │   │   ├── OCFilters.tsx        ← dropdowns + busca + chips rápidos [pronto]
+    │   │   ├── OCTable.tsx          ← tabela com sort/paginação/semáforo/risco [pronto]
+    │   │   ├── OCForm.tsx           ← modal criar/editar OC [pronto]
+    │   │   ├── filters.ts           ← estado e lógica pura de filtro (usada por OCFilters/OCTable/página) [pronto]
+    │   │   └── (a fazer — Fase 3: OCHistorico, OCCobrar, OCVincular, FornecedorGroup, Resumo, Metricas)
     │   ├── pareceres/                [a fazer: ParecerConsulta, ParecerForm, ParecerBionexo, MarcasBadge]
     │   └── contratos/                [a fazer: ContratoTable, ContratoForm, ContratoAlertas]
     ├── pages/
     │   ├── ocs/
-    │   │   └── Dashboard.tsx        ← placeholder [demais páginas a fazer: OrdensDeCompra, Solicitacoes, Fornecedores, Metricas, Importar]
+    │   │   ├── Dashboard.tsx        [pronto]
+    │   │   ├── OrdensDeCompra.tsx   [pronto]
+    │   │   └── (a fazer — Fase 3: Solicitacoes, Fornecedores, Metricas, Importar)
     │   ├── pareceres/
     │   │   └── Consultar.tsx        ← placeholder [demais páginas a fazer: Cadastrar, Bionexo, Base, Historico]
     │   └── contratos/
@@ -621,9 +630,9 @@ if (error) return <ErrorMessage message={error.message} />
 | 2 | Tipos gerados do banco (`supabase gen types`) | Base | Alta | Pendente |
 | 3 | Layout base: sidebar, topbar, troca de hospital, toast | Base | Alta | ✅ Feito |
 | 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | Pendente |
-| 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | Pendente |
-| 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | Pendente |
-| 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | Pendente |
+| 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | ✅ Feito (leitura + CRUD básico; cobrança/vínculo/histórico pendentes) |
+| 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | KPIs e cards por risco feitos; fila de cobrança pendente (Fase 3) |
+| 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | Filtros/ordenação/paginação feitos; importação CSV pendente (Fase 3) |
 | 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | Pendente |
 | 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | Pendente |
 | 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente |

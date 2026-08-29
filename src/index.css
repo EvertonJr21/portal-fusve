@@ -4,6 +4,21 @@
   --color-huv: #1a4a80;
   --color-hmk: #196030;
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Paleta semântica portada de _legacy/controle-ocs/.../src/css/variables.css
+     — preservada em hex exato para manter fidelidade visual ao app anterior. */
+  --color-status-red: #c0392b;
+  --color-status-red-bg: #fef2f2;
+  --color-status-amber: #b45309;
+  --color-status-amber-bg: #fffbeb;
+  --color-status-green: #166534;
+  --color-status-green-bg: #f0fdf4;
+  --color-status-gray: #4b5563;
+  --color-status-gray-bg: #f9fafb;
+  --color-status-blue: #1e40af;
+  --color-status-blue-bg: #eff6ff;
+  --color-status-purple: #6d28d9;
+  --color-status-purple-bg: #f5f3ff;
 }
 
 body {

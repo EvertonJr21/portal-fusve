@@ -1,5 +1,7 @@
 import type { HospitalId, SituacaoOC } from '@/constants'
 
+export type { SituacaoOC } from '@/constants'
+
 /**
  * Tipos de domínio, em camelCase, derivados das tabelas do Supabase
  * (ver `src/types/database.ts`, gerado por `supabase gen types`).

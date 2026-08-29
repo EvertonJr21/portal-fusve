@@ -42,6 +42,14 @@ export function toInput(s: string | null | undefined): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** `YYYY-MM-DD` (de `input[type=date]`) → `DD/MM/YYYY`. Inverso de `toInput`. */
+export function fromInput(s: string | null | undefined): string {
+  if (!s) return ''
+  const [y, m, d] = s.split('-')
+  if (!y || !m || !d) return ''
+  return `${d}/${m}/${y}`
+}
+
 const MS_POR_DIA = 86_400_000
 
 /** Dias entre duas datas (b - a), truncado para baixo. */

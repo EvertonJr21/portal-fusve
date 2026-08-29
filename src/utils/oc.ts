@@ -66,3 +66,57 @@ export function previsaoAtiva(oc: OC): string | null {
   }
   return null
 }
+
+/** Texto do badge de semáforo de prazo, ex.: "Venc. 3d", "5d rest.", "Entregue". */
+export function textoSemaforo(dp: Date | null, sit: string): string {
+  const st = statusPrazo(dp, sit)
+  if (st === 'atendida') return 'Entregue'
+  const dr = diasRestantes(dp)
+  if (dr === null) return '—'
+  if (st === 'vencida') return `Venc. ${Math.abs(dr)}d`
+  return `${dr}d rest.`
+}
+
+/**
+ * Previsão descumprida: sinalizada explicitamente na OC, ou a previsão do
+ * fornecedor já passou sem entrega registrada.
+ */
+export function isPrevisaoDescumprida(oc: OC): boolean {
+  if (oc.previsaoDescumprida) return true
+  if (oc.previsaoForn && !oc.dataEntregaReal) {
+    const d = parseDMY(oc.previsaoForn)
+    if (d && d < getHoje()) return true
+  }
+  return false
+}
+
+const naoFinal = (oc: OC) => !(FINAL_SIT as readonly string[]).includes(oc.sit)
+
+/** OCs pendentes: excluídas as situações finais (Atendida/Cancelada/Fechada). */
+export function ocsPendentes(ocs: OC[]): OC[] {
+  return ocs.filter(naoFinal)
+}
+
+export function ocsVencidas(ocs: OC[], sols: Solicitacao[]): OC[] {
+  return ocsPendentes(ocs).filter((o) => statusPrazo(dataPrazo(o, sols), o.sit) === 'vencida')
+}
+
+export function ocsSemPrevisao(ocs: OC[]): OC[] {
+  return ocsPendentes(ocs).filter((o) => !o.previsaoForn)
+}
+
+/** Sem movimentação há `minDias` dias ou mais (padrão 7, usado no dashboard). */
+export function ocsSemMovimentacao(ocs: OC[], minDias = 7): OC[] {
+  return ocsPendentes(ocs).filter((o) => {
+    const dsm = diasSemMovimentacao(o)
+    return dsm !== null && dsm >= minDias
+  })
+}
+
+export function ocsPrevisaoDescumprida(ocs: OC[]): OC[] {
+  return ocsPendentes(ocs).filter(isPrevisaoDescumprida)
+}
+
+export function ocsParciais(ocs: OC[]): OC[] {
+  return ocsPendentes(ocs).filter((o) => o.sit === 'Parcialmente Atendida')
+}

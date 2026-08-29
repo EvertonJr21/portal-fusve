@@ -1,8 +1,13 @@
+import { Dashboard as DashboardOC } from '@/components/ocs/Dashboard'
+
 export default function Dashboard() {
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-slate-800">Ordens de Compra</h2>
-      <p className="mt-2 text-sm text-slate-500">Módulo em construção — próxima etapa do projeto.</p>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800">Central de Pendências</h2>
+        <p className="text-sm text-slate-500">O que precisa da sua atenção agora</p>
+      </div>
+      <DashboardOC />
     </div>
   )
 }
