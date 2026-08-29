@@ -86,7 +86,7 @@ fusve-portal/
     │   ├── usePareceres.ts          ← usePareceres, useParecer, useSalvarParecer, useExcluirParecer [pronto — mas tabela não existe em produção ainda, item 20 do backlog]
     │   ├── useProdutos.ts           ← useProdutos, useMarcasSugeridas — dynamic import de src/data/ sob demanda [pronto]
     │   ├── useHistoricoConsultas.ts ← histórico de sessão do módulo Pareceres (não persiste) [pronto]
-    │   └── useContratos.ts          ← CRUD de Contratos [a fazer]
+    │   └── useContratos.ts          ← CRUD de Contratos, produtos como sub-tabela (diff/soft-delete) [pronto]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
     │   ├── ui/                      ← componentes genéricos reutilizáveis
@@ -103,7 +103,9 @@ fusve-portal/
     │   │                              OCForm, OCVincular, OCHistorico, OCCobrar, FornecedorForm,
     │   │                              SolForm, filters.ts [tudo pronto]
     │   ├── pareceres/                ← SearchProduto, MarcasEditor, MarcasBadge, ParecerCard, ParecerForm, HistoricoConsultasProvider [tudo pronto]
-    │   └── contratos/                [a fazer: ContratoTable, ContratoForm, ContratoAlertas]
+    │   └── contratos/                ← ContratoForm (modal xl, seções Cabeçalho/Fornecedor/Logística/
+    │   │                                Produtos/Condições Comerciais, busca CNPJ via BrasilAPI),
+    │   │                                ContratoStatusBadge (StatusContratoBadge + VigenciaBadge) [tudo pronto]
     ├── pages/
     │   ├── Modulos.tsx              ← tela inicial de seleção de módulo [pronto]
     │   ├── ocs/                     ← Dashboard, OrdensDeCompra, Solicitacoes, Resumo,
@@ -111,7 +113,12 @@ fusve-portal/
     │   │                              Importar [tudo pronto — falta só Backup]
     │   ├── pareceres/                ← Consultar, Cadastrar, Base, Bionexo, Dashboard [tudo pronto]
     │   └── contratos/
-    │       └── TabelaMestre.tsx     ← placeholder [demais páginas a fazer: Alertas, Indicadores]
+    │       └── TabelaMestre.tsx     ← KPIs (Total/Ativos/Vencendo/Vencidos), filtros (status/tipo/
+    │                                  busca), tabela, CRUD completo — alertas de vencimento e
+    │                                  indicadores vivem aqui mesmo, não em páginas separadas
+    │                                  (decisão consciente, ver item 9 do backlog) [pronto, testado
+    │                                  contra produção em 30/08/2026: criar/editar/filtrar/excluir
+    │                                  e busca de CNPJ, tudo funcionando]
     └── utils/
         ├── date.ts                  ← getHoje, parseDMY, fmt, toInput, fromInput, addDias, diasEntre [pronto]
         ├── oc.ts                    ← statusPrazo (semáforo), riscoOC, diasSemMovimentacao, previsaoAtiva, KPIs puros [pronto]
@@ -121,6 +128,8 @@ fusve-portal/
         ├── bionexo.ts                ← parseBionexoText, parseItensManual [pronto]
         ├── marcas.ts                 ← CATEGORIAS_MARCA, statusBionexoDoParecer [pronto]
         ├── relatorioParecer.ts       ← gerarRelatorioPDF (jspdf+autotable, carregado sob demanda) [pronto]
+        ├── contrato.ts               ← diasParaVencer, statusVigencia (vencido/critico/atencao/ok) [pronto]
+        ├── cnpj.ts                   ← consultarCNPJ (BrasilAPI), formatarCNPJ [pronto]
         ├── validators.ts            [a fazer]
         └── formatters.ts            [a fazer]
 
@@ -751,7 +760,7 @@ if (error) return <ErrorMessage message={error.message} />
 | 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | ✅ Feito (fila sequencial simplificada para "cobrar todos visíveis" em lote, sem o painel passo-a-passo do legado) |
 | 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | ✅ Feito, inclui importação CSV |
 | 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | ✅ Feito (Consultar, Cadastrar, Base, Bionexo, Dashboard) — **mas não testado com dados reais**, ver item 20 |
-| 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | ✅ Feito (schema redesenhado a pedido do Everton — cabeçalho + produtos, contato, logística, comercial, renovação; ver item 20) — Alertas/Indicadores como páginas separadas ficaram de fora, entram como badge/KPI na própria tabela mestre |
+| 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | ✅ Feito (schema redesenhado a pedido do Everton — cabeçalho + produtos, contato, logística, comercial, renovação; ver item 20) — Alertas/Indicadores como páginas separadas ficaram de fora, entram como badge/KPI na própria tabela mestre. **Testado contra produção (30/08/2026)**: criar contrato com produtos, busca de CNPJ via BrasilAPI (preenche razão social automaticamente), editar status e produtos, filtro por status/tipo/busca, excluir — tudo funcionando, nenhum bug encontrado |
 | 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente (depende do módulo Pareceres existir) |
 | 11 | Métricas expandidas (lead time, reincidência, etc.) | OCs | Média | ✅ Lead time feito (bug do legado corrigido — ver seção "Aprendemos"); índice de reincidência não implementado (não existia no legado) |
 | 14 | Cobrança individual/lote, vínculo OC↔Solicitação, histórico | OCs | Alta | ✅ Feito |
