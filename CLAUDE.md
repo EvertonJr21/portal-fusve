@@ -576,7 +576,62 @@ console.log(`Migrados: ${pareceres.length} pareceres`)
 - Importação CSV (OCs e Solicitações) e PDF (Acompanhamento de Compras)
 - Métricas: lead time, taxa de cumprimento, taxa de parciais, índice de reincidência
 
-### Módulo Pareceres Técnicos
+### Evolução do módulo OCs — roadmap (registrado 29/08/2026, spec completa do Everton)
+
+O objetivo é o comprador conseguir responder, ao abrir o sistema: o que precisa da minha
+atenção agora, o que está atrasado, o que está prestes a atrasar, quais fornecedores estão
+com problema ou sem responder, quais previsões foram descumpridas, onde estão os gargalos,
+como está o SLA. Fluxo do sistema: **Solicitação → Cotação → Negociação → OC → Previsão →
+Cobrança → Resposta → Entrega → Análise do fornecedor**. O sistema não deve tentar substituir
+outros setores/sistemas do hospital.
+
+**Fora do escopo, deliberadamente** (não implementar sem justificativa explícita nova):
+histórico de preços (já dá pra ver no MV), controle de consumo (é de outra equipe), cálculo
+de estoque/cobertura/ruptura (fora da responsabilidade do comprador), permissões/aprovação/
+auditoria multiusuário (só o Everton opera o sistema hoje — revisar arquitetura só se isso
+mudar).
+
+**Antes de implementar qualquer coisa nova**, checar: pertence ao fluxo de compras? já existe
+no MV? é responsabilidade de outro setor? reduz trabalho do comprador? melhora acompanhamento
+de OC ou gestão de fornecedor? Se a resposta apontar pra "não", não implementar.
+
+**Roadmap (ordem de prioridade do Everton):**
+
+- **Fase 1 — Operação** (prioridade máxima): central "O que preciso fazer hoje?" com
+  priorização automática (não só o status da OC — considerar prazo, previsão, atraso,
+  existência de cobrança, resposta do fornecedor, descumprimento de previsão, tempo desde a
+  última movimentação) em 4 níveis (🔴 Crítica / 🟠 Alta / 🟡 Média / 🟢 Normal); cada
+  pendência mostra OC, fornecedor, data, prazo, previsão, dias restantes/atraso, última
+  movimentação, última cobrança, status, prioridade e **ação recomendada**; ações rápidas
+  inline (registrar cobrança, atualizar previsão, registrar resposta, registrar entrega, abrir
+  OC, mudar status) sem navegar de tela; histórico de cobrança como **linha do tempo** da OC
+  (não lista solta); registro explícito de previsão prometida × entrega real, com o desvio em
+  dias.
+- **Fase 2 — Fornecedores**: score 0–100 por fornecedor (35pts cumprimento de prazo, 25pts
+  taxa de atraso, 15pts cumprimento de previsões, 15pts responsividade, 10pts tempo de
+  resposta — pesos configuráveis no futuro), acompanhado por período; ranking com filtro por
+  período/hospital/fornecedor/qtd mínima de OCs; ficha individual do fornecedor (resumo +
+  histórico de ocorrências); indicador de responsividade (% de cobranças respondidas) e tempo
+  médio de resposta (cobrança→resposta: média, mediana, min, max); confiabilidade da previsão
+  como indicador **separado** do cumprimento do prazo original (um fornecedor pode cumprir o
+  prazo mas não a previsão, ou vice-versa — preservar a diferença); identificação automática de
+  fornecedores problemáticos (comparar taxa de atraso individual vs. média geral).
+- **Fase 3 — Gestão**: motivo da ocorrência classificado (atraso do fornecedor, falta de
+  produto, logística, transportadora, entrega parcial, sem resposta, previsão alterada,
+  cancelamento, outro) + painel de causas mais frequentes; painel de SLA separando **SLA
+  interno** (Solicitação→OC) de **SLA do fornecedor** (OC→entrega) — nunca misturar os dois;
+  indicadores de tempo por etapa do processo (Solicitação→Cotação→Negociação→OC); dashboard
+  executivo com os indicadores acionáveis (nada decorativo), cada um clicável pra abrir as OCs
+  correspondentes.
+- **Fase 4 — Produtividade**: busca global (nº de OC, fornecedor, nº de solicitação, produto,
+  status); exportação segmentada (atrasadas, sem previsão, por fornecedor, cobranças, SLA,
+  fornecedores, ocorrências, mensal) em Excel/PDF; relatório gerencial mensal automático
+  (resumo, fornecedores críticos, principais ocorrências) baseado só em dados do sistema.
+
+UX: poucos cliques, informação importante visível de cara, filtros persistentes, ações
+rápidas, busca rápida, carregamento rápido — evitar telas complexas demais.
+
+
 - Base de 4.579 produtos do SoulMV (importar de `_legacy/parecer/.../js/data.js`)
 - Consulta por código, nome ou categoria
 - Visualização de marcas por categoria (Padrão/Permitida/Restrita/Proibida)
@@ -709,3 +764,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 19 | **Grandes melhorias visuais/UX no frontend** — Everton achou o visual atual muito básico (28/08/2026), pediu "fluido e bonito como sites mais novos" (29/08/2026). Redesenhei os componentes compartilhados (`src/components/ui/*`): tipografia própria (Plus Jakarta Sans + JetBrains Mono via Google Fonts), sombras em camadas, `Modal`/`Toast` com animação de entrada/saída, `Sidebar` com barra de destaque animada no item ativo, transição de rota, `KpiCard`/`Button`/`Table` com microinterações, `Skeleton`/`EmptyState` novos (aplicados nas telas de maior tráfego: Central de Pendências, Ordens de Compra, Base de Pareceres, Contratos). Por afetar os componentes de base, o visual novo já se propaga pro app inteiro — mas telas específicas (Solicitações, Por Fornecedor, Métricas, etc.) ainda usam texto simples pra loading/vazio em vez de Skeleton/EmptyState. | Base/Todos módulos | Alta | ✅ Fundação feita (29/08/2026) — aplicar Skeleton/EmptyState nas telas restantes fica pra quando fizer sentido |
 | 20 | Criar as tabelas `pareceres`, `contratos` e `contrato_produtos` no Supabase de produção | Pareceres, Contratos | Alta | ✅ Feito (29/08/2026) — Everton rodou o SQL no SQL Editor; confirmado via API que as 3 tabelas existem e estão vazias, prontas pra uso |
 | 21 | **Bug real corrigido**: `queryClient` (TanStack Query) com `retry: 2` deixava queries que falham (ex: tabela inexistente) presas em `fetchStatus: 'paused'` pra sempre em vez de reportar o erro — reproduzido testando o módulo Contratos contra a tabela ausente. Troquei pra `retry: false` + `networkMode: 'always'` em `src/lib/queryClient.ts`. Efeito colateral aceito: sem retry automático em falhas de rede transitórias (raro numa rede de hospital com Wi-Fi/cabo estável; prefiro um erro visível a uma tela travada em "carregando") | Base | — | ✅ Corrigido |
+| 22 | **Evolução do módulo OCs** — spec completa do Everton (29/08/2026), ver seção "Evolução do módulo OCs — roadmap" acima. 4 fases: Operação (central "o que fazer hoje" com priorização automática + ações rápidas + timeline de cobrança + previsão×entrega), Fornecedores (score/ranking/ficha), Gestão (causas/SLA interno×fornecedor/indicadores de processo/dashboard executivo), Produtividade (busca global/exportação segmentada/relatório mensal) | OCs | **Alta — Fase 1 é prioridade máxima do Everton** | Pendente — não iniciado |
