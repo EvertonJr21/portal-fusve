@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-huv: #1a4a80;
+  --color-hmk: #196030;
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+}

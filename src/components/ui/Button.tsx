@@ -1,0 +1,20 @@
+import type { ButtonHTMLAttributes } from 'react'
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'ghost' | 'outline'
+}
+
+const VARIANT_CLASS: Record<NonNullable<ButtonProps['variant']>, string> = {
+  primary: 'bg-blue-700 text-white hover:bg-blue-800',
+  outline: 'border border-slate-300 text-slate-700 hover:bg-slate-50',
+  ghost: 'text-slate-600 hover:bg-slate-100',
+}
+
+export function Button({ variant = 'primary', className = '', ...props }: ButtonProps) {
+  return (
+    <button
+      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASS[variant]} ${className}`}
+      {...props}
+    />
+  )
+}
