@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { BuscaGlobal } from '@/components/ocs/BuscaGlobal'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
@@ -6,6 +7,7 @@ import { Topbar } from '@/components/ui/Topbar'
 import AnaliseCausas from '@/pages/ocs/AnaliseCausas'
 import DashboardExecutivo from '@/pages/ocs/DashboardExecutivo'
 import DashboardOCs from '@/pages/ocs/Dashboard'
+import Exportar from '@/pages/ocs/Exportar'
 import FichaFornecedor from '@/pages/ocs/FichaFornecedor'
 import Fornecedores from '@/pages/ocs/Fornecedores'
 import Importar from '@/pages/ocs/Importar'
@@ -37,6 +39,7 @@ const OCS_ITEMS: NavItem[] = [
   { to: '/ocs/causas', label: 'Análise de Causas' },
   { to: '/ocs/metricas', label: 'Métricas' },
   { to: '/ocs/importar', label: 'Importar' },
+  { to: '/ocs/exportar', label: 'Exportar' },
 ]
 
 function OCsLayout() {
@@ -44,6 +47,9 @@ function OCsLayout() {
     <div className="flex flex-1">
       <Sidebar title="Controle de OCs" items={OCS_ITEMS} />
       <main className="flex-1 overflow-y-auto p-6">
+        <div className="mb-4">
+          <BuscaGlobal />
+        </div>
         <PageTransition>
           <Outlet />
         </PageTransition>
@@ -119,6 +125,7 @@ export default function App() {
             <Route path="causas" element={<AnaliseCausas />} />
             <Route path="metricas" element={<Metricas />} />
             <Route path="importar" element={<Importar />} />
+            <Route path="exportar" element={<Exportar />} />
           </Route>
 
           <Route path="/pareceres" element={<PareceresLayout />}>

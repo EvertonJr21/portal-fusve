@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Table, TableHead } from '@/components/ui/Table'
@@ -25,8 +26,14 @@ export default function Solicitacoes() {
   const atualizarSituacao = useAtualizarSituacaoSol(hospitalId)
   const excluir = useExcluirSol(hospitalId)
   const toast = useToast()
+  const [searchParams] = useSearchParams()
 
-  const [busca, setBusca] = useState('')
+  const [busca, setBusca] = useState(() => searchParams.get('q') ?? '')
+
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) setBusca(q)
+  }, [searchParams])
   const [situacao, setSituacao] = useState('')
   const [vinculo, setVinculo] = useState<'' | 'linked' | 'unlinked'>('')
   const [modal, setModal] = useState<'novo' | Solicitacao | null>(null)

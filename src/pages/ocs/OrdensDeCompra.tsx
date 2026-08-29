@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { OCFilters } from '@/components/ocs/OCFilters'
 import { FILTRO_INICIAL, filtrarOCs, type OCFiltroState } from '@/components/ocs/filters'
@@ -32,8 +33,17 @@ export default function OrdensDeCompra() {
   const atualizarSituacao = useAtualizarSituacaoOC(hospitalId)
   const excluir = useExcluirOC(hospitalId)
   const toast = useToast()
+  const [searchParams] = useSearchParams()
 
-  const [filtro, setFiltro] = useState<OCFiltroState>(FILTRO_INICIAL)
+  const [filtro, setFiltro] = useState<OCFiltroState>(() => ({
+    ...FILTRO_INICIAL,
+    busca: searchParams.get('q') ?? '',
+  }))
+
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) setFiltro((f) => ({ ...f, busca: q }))
+  }, [searchParams])
   const [modal, setModal] = useState<Modal>(null)
 
   const filtradas = filtrarOCs(ocs, sols, filtro)
