@@ -74,3 +74,24 @@ export const CLASSIFICACOES_CONTRATO = [
 /** Alertas de vencimento de contrato, em dias restantes até `vigencia_fim`. */
 export const ALERTA_VENCIMENTO_DIAS = 90
 export const ALERTA_CRITICO_DIAS = 30
+
+/** Motivo estruturado de ocorrência (spec de Evolução de OCs, Fase 3 — item 17). */
+export const MOTIVOS_OCORRENCIA = [
+  'Atraso do fornecedor',
+  'Falta de produto',
+  'Problema logístico',
+  'Problema com transportadora',
+  'Entrega parcial',
+  'Fornecedor não respondeu',
+  'Previsão alterada',
+  'Cancelamento',
+  'Outro',
+] as const
+
+/**
+ * Alvo do SLA interno (Solicitação → OC), em dias. O sistema só tem o prazo
+ * institucional de 15 dias pro ciclo completo (Solicitação → Entrega); não
+ * existe um alvo formal só pra essa etapa — 3 dias é uma suposição inicial,
+ * ajustável aqui se o número certo for outro.
+ */
+export const SLA_INTERNO_DIAS = 3

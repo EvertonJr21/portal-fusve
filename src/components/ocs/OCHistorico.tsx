@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import type { HospitalId } from '@/constants'
-import { FINAL_SIT, PRAZO } from '@/constants'
+import { FINAL_SIT, MOTIVOS_OCORRENCIA, PRAZO } from '@/constants'
 import { useHistOC, useMarcarRespondida } from '@/hooks/useHistOC'
 import { useAtualizarOC } from '@/hooks/useOCs'
 import { useToast } from '@/hooks/useToast'
@@ -206,13 +206,21 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-slate-700">Motivo do atraso</span>
-          <input
-            type="text"
-            placeholder="Ex.: Sem estoque, Transportadora..."
+          <select
             className="rounded-md border border-slate-300 px-2 py-1.5"
-            value={motivoAtraso}
+            value={MOTIVOS_OCORRENCIA.includes(motivoAtraso as (typeof MOTIVOS_OCORRENCIA)[number]) ? motivoAtraso : ''}
             onChange={(e) => setMotivoAtraso(e.target.value)}
-          />
+          >
+            <option value="">— selecionar —</option>
+            {MOTIVOS_OCORRENCIA.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+            {motivoAtraso && !MOTIVOS_OCORRENCIA.includes(motivoAtraso as (typeof MOTIVOS_OCORRENCIA)[number]) && (
+              <option value={motivoAtraso}>{motivoAtraso} (texto livre antigo)</option>
+            )}
+          </select>
         </label>
 
         <div>

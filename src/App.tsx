@@ -3,6 +3,8 @@ import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoCons
 import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
+import AnaliseCausas from '@/pages/ocs/AnaliseCausas'
+import DashboardExecutivo from '@/pages/ocs/DashboardExecutivo'
 import DashboardOCs from '@/pages/ocs/Dashboard'
 import FichaFornecedor from '@/pages/ocs/FichaFornecedor'
 import Fornecedores from '@/pages/ocs/Fornecedores'
@@ -12,6 +14,7 @@ import OrdensDeCompra from '@/pages/ocs/OrdensDeCompra'
 import PorFornecedor from '@/pages/ocs/PorFornecedor'
 import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
 import Resumo from '@/pages/ocs/Resumo'
+import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Bionexo from '@/pages/pareceres/Bionexo'
@@ -23,12 +26,15 @@ import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
 const OCS_ITEMS: NavItem[] = [
   { to: '/ocs', label: 'Central de Pendências', end: true },
+  { to: '/ocs/executivo', label: 'Dashboard Executivo' },
   { to: '/ocs/ordens', label: 'Ordens de Compra' },
   { to: '/ocs/solicitacoes', label: 'Solicitações' },
   { to: '/ocs/resumo', label: 'Resumo Diário' },
   { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
   { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
   { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
+  { to: '/ocs/sla', label: 'SLA' },
+  { to: '/ocs/causas', label: 'Análise de Causas' },
   { to: '/ocs/metricas', label: 'Métricas' },
   { to: '/ocs/importar', label: 'Importar' },
 ]
@@ -101,6 +107,7 @@ export default function App() {
 
           <Route path="/ocs" element={<OCsLayout />}>
             <Route index element={<DashboardOCs />} />
+            <Route path="executivo" element={<DashboardExecutivo />} />
             <Route path="ordens" element={<OrdensDeCompra />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
             <Route path="resumo" element={<Resumo />} />
@@ -108,6 +115,8 @@ export default function App() {
             <Route path="ranking" element={<RankingFornecedores />} />
             <Route path="ranking/:fornecedorId" element={<FichaFornecedor />} />
             <Route path="cadastro-fornecedores" element={<Fornecedores />} />
+            <Route path="sla" element={<SLA />} />
+            <Route path="causas" element={<AnaliseCausas />} />
             <Route path="metricas" element={<Metricas />} />
             <Route path="importar" element={<Importar />} />
           </Route>
