@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { HospitalSwitch } from './HospitalSwitch'
 
@@ -11,6 +12,12 @@ export function Topbar() {
         <HospitalSwitch />
         <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
           <span className="hidden text-xs text-slate-400 sm:inline">{session?.user.email}</span>
+          <Link
+            to="/usuarios"
+            className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          >
+            Usuários
+          </Link>
           <button
             type="button"
             onClick={signOut}

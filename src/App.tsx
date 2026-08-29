@@ -19,6 +19,7 @@ import Resumo from '@/pages/ocs/Resumo'
 import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
+import Usuarios from '@/pages/Usuarios'
 import Bionexo from '@/pages/pareceres/Bionexo'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
@@ -107,6 +108,15 @@ export default function App() {
             element={
               <PageTransition>
                 <Modulos />
+              </PageTransition>
+            }
+          />
+
+          <Route
+            path="/usuarios"
+            element={
+              <PageTransition>
+                <Usuarios />
               </PageTransition>
             }
           />
