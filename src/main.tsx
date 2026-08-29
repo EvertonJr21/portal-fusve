@@ -9,7 +9,16 @@ import { ToastProvider } from './components/ui/Toast.tsx'
 import { useAuth } from './hooks/useAuth.ts'
 import './index.css'
 import { queryClient } from './lib/queryClient.ts'
+import DefinirSenha from './pages/DefinirSenha.tsx'
 import Login from './pages/Login.tsx'
+
+/** Link de convite/recuperação de senha do Supabase — vem no hash (`#...type=invite`) ou na query (`?...type=invite`), dependendo do flow. */
+function isLinkDeConviteOuRecuperacao(): boolean {
+  return (
+    /type=invite|type=recovery/.test(window.location.hash) ||
+    /type=invite|type=recovery/.test(window.location.search)
+  )
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -21,6 +30,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+
+  if (isLinkDeConviteOuRecuperacao()) return <DefinirSenha />
 
   if (!session) return <Login />
 
