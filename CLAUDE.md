@@ -143,12 +143,15 @@ fusve-portal/
 - **Anon key:** no `.env.local` como `VITE_SUPABASE_ANON_KEY` (nunca em arquivo versionado)
 - **Gerar tipos:** `npx supabase gen types typescript --project-id urruseycrvfajnnbupyd > src/types/database.ts`
 
-> ⚠️ **RLS atual é `USING (true)` para o role anon em todas as tabelas** — qualquer
-> pessoa com a URL do app e a anon key (visível no DevTools do navegador) pode
-> ler e escrever todas as tabelas, sem autenticação. Aceitável enquanto o app
-> roda só localmente. **Antes do primeiro deploy público em Vercel**, isso
-> precisa de RLS real (policies por usuário autenticado) — ver item 12 do
-> backlog. Não pular essa etapa por conveniência.
+> ⚠️ **RLS ainda é `USING (true)` para o role anon em todas as tabelas até você
+> rodar o script de migração** (30/08/2026) — o código de autenticação
+> (`src/hooks/useAuth.ts`, `src/components/AuthProvider.tsx`, `src/pages/Login.tsx`)
+> já está pronto e bloqueia a UI sem login, mas o RLS só fica de fato fechado
+> depois que você criar seu usuário no Supabase Dashboard e rodar o SQL que
+> troca as policies `anon` por `authenticated` (mandei como arquivo,
+> `rls-autenticado.sql`) — ver item 12 do backlog. **Não pule essa etapa**:
+> enquanto não rodar o SQL, a anon key sozinha (visível no DevTools) ainda lê
+> e escreve tudo, mesmo com a tela de login no ar.
 
 ---
 
@@ -759,8 +762,8 @@ if (error) return <ErrorMessage message={error.message} />
 | 16 | Solicitações (tela própria) + Resumo Diário | OCs | Média | ✅ Feito |
 | 17 | Importação PDF (Acompanhamento de Compras) | OCs | Média | ✅ Feito — únicos parsers de PDF portados; ver nota abaixo |
 | 18 | Backup (exportar/importar JSON) | OCs | — | ❌ Não necessário — só existia pra migrar dados antes de o app usar o Supabase, já feito manualmente |
-| 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Pendente |
-| 13 | Autenticação real (3 usuários) | Base | Baixa (a não ser que a 12 suba a prioridade) | Pendente |
+| 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Código pronto (30/08/2026), **SQL ainda não rodado em produção** — falta você criar seu usuário no Dashboard e rodar `rls-autenticado.sql` (mandei como arquivo). Ver aviso na seção "Banco de Dados" |
+| 13 | Autenticação real (3 usuários) | Base | Alta (subiu de prioridade — decisão do Everton em 30/08/2026, antes do deploy público) | ✅ Código feito (30/08/2026) — `src/hooks/useAuth.ts` + `src/components/AuthProvider.tsx` (Context/Provider, mesmo padrão do `useHospital`/`HospitalProvider`), `src/pages/Login.tsx` (e-mail/senha, sem cadastro público, "esqueci minha senha" via `resetPasswordForEmail`), `AuthGate` em `src/main.tsx` bloqueia toda a UI (nenhuma query ao Supabase dispara) até ter sessão, botão de logout no `Topbar`. Testado: sem sessão → só a tela de login renderiza, nenhuma chamada a `rest/v1/*`; login com credencial errada → "E-mail ou senha inválidos." vindo do Supabase Auth real. **Sem diferenciação de permissão entre os 3 usuários** — qualquer autenticado tem acesso igual, mesmo modelo de uso atual. **Pendente, fora do meu alcance**: criar as 3 contas reais no Supabase Dashboard (Authentication → Users) — não crio senha de pessoa real; e checar se "Enable email signups" deve ficar desligado lá (minha UI não expõe cadastro, mas a API aceita por padrão) |
 | 19 | **Grandes melhorias visuais/UX no frontend** — Everton achou o visual atual muito básico (28/08/2026), pediu "fluido e bonito como sites mais novos" (29/08/2026). Redesenhei os componentes compartilhados (`src/components/ui/*`): tipografia própria (Plus Jakarta Sans + JetBrains Mono via Google Fonts), sombras em camadas, `Modal`/`Toast` com animação de entrada/saída, `Sidebar` com barra de destaque animada no item ativo, transição de rota, `KpiCard`/`Button`/`Table` com microinterações, `Skeleton`/`EmptyState` novos (aplicados nas telas de maior tráfego: Central de Pendências, Ordens de Compra, Base de Pareceres, Contratos). Por afetar os componentes de base, o visual novo já se propaga pro app inteiro — mas telas específicas (Solicitações, Por Fornecedor, Métricas, etc.) ainda usam texto simples pra loading/vazio em vez de Skeleton/EmptyState. | Base/Todos módulos | Alta | ✅ Fundação feita (29/08/2026) — aplicar Skeleton/EmptyState nas telas restantes fica pra quando fizer sentido |
 | 20 | Criar as tabelas `pareceres`, `contratos` e `contrato_produtos` no Supabase de produção | Pareceres, Contratos | Alta | ✅ Feito (29/08/2026) — Everton rodou o SQL no SQL Editor; confirmado via API que as 3 tabelas existem e estão vazias, prontas pra uso |
 | 21 | **Bug real corrigido**: `queryClient` (TanStack Query) com `retry: 2` deixava queries que falham (ex: tabela inexistente) presas em `fetchStatus: 'paused'` pra sempre em vez de reportar o erro — reproduzido testando o módulo Contratos contra a tabela ausente. Troquei pra `retry: false` + `networkMode: 'always'` em `src/lib/queryClient.ts`. Efeito colateral aceito: sem retry automático em falhas de rede transitórias (raro numa rede de hospital com Wi-Fi/cabo estável; prefiro um erro visível a uma tela travada em "carregando") | Base | — | ✅ Corrigido |
