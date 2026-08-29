@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
 import type { OC, SituacaoOC } from '@/types'
+import type { Database } from '@/types/database'
 
 /** Linha crua da tabela `ocs` no Supabase (snake_case). */
 interface OCRow {
@@ -142,10 +143,10 @@ export function useAtualizarOC(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: number; patch: Partial<OC> }) => {
-      const row: Record<string, unknown> = {}
+      const row: Database['public']['Tables']['ocs']['Update'] = {}
       for (const [key, value] of Object.entries(patch)) {
         const column = PATCH_FIELD_MAP[key as keyof OC]
-        if (column) row[column] = value
+        if (column) (row as Record<string, unknown>)[column] = value
       }
       const { error } = await supabase.from('ocs').update(row).eq('id', id)
       if (error) throw error

@@ -5,6 +5,7 @@ import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
 import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/database'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 
 function sitAvancou(atual: string, nova: string): boolean {
@@ -38,7 +39,7 @@ export default function Importar() {
       for (const item of itens) {
         const existente = ocs.find((o) => o.id === item.id)
         if (existente) {
-          const patch: Record<string, unknown> = {}
+          const patch: Database['public']['Tables']['ocs']['Update'] = {}
           if (sitAvancou(existente.sit, item.sit)) patch.sit = item.sit
           if (item.fornecedorNome && existente.fornecedorNome !== item.fornecedorNome) {
             patch.fornecedor_nome = item.fornecedorNome
@@ -96,7 +97,7 @@ export default function Importar() {
       for (const item of itens) {
         const existente = sols.find((s) => s.id === item.id)
         if (existente) {
-          const patch: Record<string, unknown> = {}
+          const patch: Database['public']['Tables']['sols']['Update'] = {}
           if (!existente.motivo && item.motivo) patch.motivo = item.motivo
           if (!existente.solicitante && item.solicitante) patch.solicitante = item.solicitante
           if ((!existente.produto || existente.produto.includes('verificar')) && item.produto) {
