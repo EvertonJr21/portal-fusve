@@ -54,6 +54,7 @@ export interface HistOC {
   canal: 'mail' | 'wpp' | 'mail (lote)' | 'lembrete'
   resposta: string
   tipo: 'individual' | 'lote' | 'lembrete'
+  respondidoEm: number | null
 }
 
 export type MarcaCategoria = 'padrao' | 'permitidas' | 'restritas' | 'proibidas'

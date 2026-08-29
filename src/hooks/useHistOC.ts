@@ -9,6 +9,7 @@ interface HistOCRow {
   canal: string
   resposta: string
   tipo: string
+  respondido_em: string | null
 }
 
 function toHistOC(row: HistOCRow): HistOC {
@@ -19,6 +20,7 @@ function toHistOC(row: HistOCRow): HistOC {
     canal: row.canal as HistOC['canal'],
     resposta: row.resposta,
     tipo: row.tipo as HistOC['tipo'],
+    respondidoEm: row.respondido_em ? new Date(row.respondido_em).getTime() : null,
   }
 }
 
@@ -35,6 +37,28 @@ export function useHistOC(ocId: number | null) {
         .limit(50)
       if (error) throw error
       return (data as HistOCRow[]).map(toHistOC)
+    },
+  })
+}
+
+/** Última cobrança de cada OC, numa query só — evita N+1 ao popular os cards da Central de Pendências. */
+export function useHistoricoRecentePorOC(ocIds: number[]) {
+  const ids = [...ocIds].sort((a, b) => a - b)
+  return useQuery({
+    queryKey: ['hist-recente', ids],
+    enabled: ids.length > 0,
+    queryFn: async (): Promise<Map<number, HistOC>> => {
+      const { data, error } = await supabase
+        .from('hist_oc')
+        .select('*')
+        .in('oc_id', ids)
+        .order('ts', { ascending: false })
+      if (error) throw error
+      const mapa = new Map<number, HistOC>()
+      for (const row of data as HistOCRow[]) {
+        if (!mapa.has(row.oc_id)) mapa.set(row.oc_id, toHistOC(row))
+      }
+      return mapa
     },
   })
 }
@@ -61,6 +85,25 @@ export function useRegistrarCobranca() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['hist_oc', variables.ocId] })
+      queryClient.invalidateQueries({ queryKey: ['hist-recente'] })
+    },
+  })
+}
+
+/** Marca a cobrança como respondida pelo fornecedor — ação rápida de 1 clique (spec item 15). */
+export function useMarcarRespondida() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ hid }: { hid: number; ocId: number }) => {
+      const { error } = await supabase
+        .from('hist_oc')
+        .update({ respondido_em: new Date().toISOString() })
+        .eq('hid', hid)
+      if (error) throw error
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['hist_oc', variables.ocId] })
+      queryClient.invalidateQueries({ queryKey: ['hist-recente'] })
     },
   })
 }
