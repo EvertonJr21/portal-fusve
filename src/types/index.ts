@@ -1,4 +1,4 @@
-import type { HospitalId, SituacaoOC } from '@/constants'
+import type { CapacidadePeriodo, FreteTipo, HospitalId, SituacaoOC, StatusContrato, TipoContrato } from '@/constants'
 
 export type { SituacaoOC } from '@/constants'
 
@@ -73,20 +73,41 @@ export interface Parecer {
   pdfDataUrl: string | null
 }
 
-export interface Contrato {
+export interface ContratoHeader {
   id: string
-  item: string
-  codSoulmv: string
-  fornecedor: string
-  tipo: 'Contrato' | 'Spot'
-  precoUnitario: number
-  unidade: string
+  tipo: TipoContrato
+  status: StatusContrato
+  fornecedorNome: string
+  fornecedorCnpj: string
+  contatoNome: string
+  contatoEmail: string
+  contatoWhatsapp: string
+  freteTipo: FreteTipo | ''
+  prazoMedioDias: number | null
+  origemEmbarque: string
+  toleranciaAtrasoDias: number | null
+  horarioCutoff: string
+  gatilhoDesconto: string
+  reajusteRegra: string
   vigenciaInicio: string | null
   vigenciaFim: string | null
-  indiceReajuste: string
-  dataProximoReajuste: string | null
+  avisoRenovacaoDias: number
+  renovacaoAutomatica: boolean
   hospitalId: HospitalId | 'ambos'
   classificacao: string
-  saldoQtd: number | null
-  observacao: string
+  observacoes: string
+}
+
+export interface ContratoProduto {
+  id: string
+  contratoId: string
+  sku: string
+  descricao: string
+  codSoulmv: string
+  precoUnitario: number
+  unidade: string
+  moq: number | null
+  capacidadeFornecimento: number | null
+  capacidadePeriodo: CapacidadePeriodo
+  meioPagamento: string
 }

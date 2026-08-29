@@ -45,8 +45,19 @@ export const SITUACOES_OC = [
 ] as const
 export type SituacaoOC = (typeof SITUACOES_OC)[number]
 
-export const TIPOS_CONTRATO = ['Contrato', 'Spot'] as const
+export const TIPOS_CONTRATO = ['Contrato', 'Acordo Comercial'] as const
 export type TipoContrato = (typeof TIPOS_CONTRATO)[number]
+
+export const STATUS_CONTRATO = ['Ativo', 'Inativo', 'Em Negociação', 'Suspenso'] as const
+export type StatusContrato = (typeof STATUS_CONTRATO)[number]
+
+export const FRETE_TIPOS = ['CIF', 'FOB'] as const
+export type FreteTipo = (typeof FRETE_TIPOS)[number]
+
+export const CAPACIDADE_PERIODOS = ['semana', 'mes'] as const
+export type CapacidadePeriodo = (typeof CAPACIDADE_PERIODOS)[number]
+
+export const AVISO_RENOVACAO_OPCOES = [30, 60, 90] as const
 
 export const CLASSIFICACOES_CONTRATO = [
   'OPME',

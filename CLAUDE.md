@@ -233,26 +233,53 @@ fusve-portal/
 
 ### Tabela `contratos`
 
+Redesenhada na Fase 5 (29/08/2026) a pedido do Everton — o desenho de uma linha
+por item não comportava fornecedor estruturado, múltiplos produtos, logística
+e regras de renovação. Como a tabela nunca chegou a ser criada em produção
+(confirmado via API antes da Fase 5), essa foi uma substituição limpa, sem
+migração de dados.
+
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | `id` | uuid PK DEFAULT gen_random_uuid() | |
-| `item` | text | Nome padronizado do item |
-| `cod_soulmv` | text | Código no SoulMV |
-| `fornecedor` | text | Nome do fornecedor |
-| `tipo` | text | `'Contrato'` \| `'Spot'` |
-| `preco_unitario` | numeric(12,2) | Preço vigente |
-| `unidade` | text | Ex: `UNIDADE`, `CAIXA`, `KIT` |
-| `vigencia_inicio` | date | Início do contrato |
-| `vigencia_fim` | date | Fim do contrato |
-| `indice_reajuste` | text | Ex: `IPCA`, `IGP-M`, `Fixo` |
-| `data_proximo_reajuste` | date | Previsão do próximo reajuste |
+| `tipo` | text | `'Contrato'` \| `'Acordo Comercial'` |
+| `status` | text | `'Ativo'` \| `'Inativo'` \| `'Em Negociação'` \| `'Suspenso'` |
+| `fornecedor_nome` | text | Razão social / nome do fornecedor |
+| `fornecedor_cnpj` | text | Autopreenchível via busca de CNPJ (BrasilAPI) |
+| `contato_nome` / `contato_email` / `contato_whatsapp` | text | Contato operacional (vendedor/gerente de conta) |
+| `frete_tipo` | text | `'CIF'` \| `'FOB'` |
+| `prazo_medio_dias` | integer | Prazo médio de entrega |
+| `origem_embarque` | text | Cidade/UF de origem — base pro cálculo de frete FOB |
+| `tolerancia_atraso_dias` | integer | Dias de margem antes de virar "fornecedor crítico" |
+| `horario_cutoff` | text | Horário limite pra pedido manter o prazo padrão |
+| `gatilho_desconto` | text | Texto livre — regra de desconto por volume |
+| `reajuste_regra` | text | Texto livre — Ex: "Anual pelo IPCA" |
+| `vigencia_inicio` / `vigencia_fim` | date | Vigência do contrato |
+| `aviso_renovacao_dias` | integer | Dias antes do vencimento pra alertar (30/60/90) |
+| `renovacao_automatica` | boolean | Se o contrato se renova sozinho |
 | `hospital_id` | text | `'huv'` \| `'mkr'` \| `'ambos'` |
 | `classificacao` | text | `OPME` \| `CME` \| `Farmácia` \| `Infraestrutura` \| etc. |
-| `saldo_qtd` | integer | Saldo contratual (quando aplicável) |
-| `observacao` | text | |
-| `deleted_at` | timestamptz | Soft delete |
-| `created_at` | timestamptz | Auto |
-| `updated_at` | timestamptz | Auto |
+| `observacoes` | text | |
+| `deleted_at` / `created_at` / `updated_at` | timestamptz | |
+
+### Tabela `contrato_produtos`
+
+Produtos de um contrato — 1 contrato pode ter N produtos (relação 1:N via `contrato_id`).
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id` | uuid PK DEFAULT gen_random_uuid() | |
+| `contrato_id` | uuid | FK → `contratos.id`, `ON DELETE CASCADE` |
+| `sku` | text | Código interno pro app conversar com ERP/estoque no futuro |
+| `descricao` | text | Nome do produto |
+| `cod_soulmv` | text | Código no SoulMV |
+| `preco_unitario` | numeric(12,2) | |
+| `unidade` | text | Ex: `UNIDADE`, `CAIXA`, `KIT` |
+| `moq` | integer | Quantidade mínima de pedido exigida pelo fornecedor |
+| `capacidade_fornecimento` | integer | Quantidade máxima que o fornecedor entrega por período |
+| `capacidade_periodo` | text | `'semana'` \| `'mes'` |
+| `meio_pagamento` | text | |
+| `deleted_at` / `created_at` / `updated_at` | timestamptz | |
 
 ---
 
@@ -290,35 +317,60 @@ CREATE TABLE IF NOT EXISTS pareceres (
   updated_at    timestamptz DEFAULT now()
 );
 
--- ── Contratos (nova tabela) ───────────────────────────────────────────
+-- ── Contratos (novo desenho — Fase 5, 2 tabelas) ────────────────────────
 CREATE TABLE IF NOT EXISTS contratos (
-  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  item                  text NOT NULL,
-  cod_soulmv            text NOT NULL DEFAULT '',
-  fornecedor            text NOT NULL DEFAULT '',
-  tipo                  text NOT NULL DEFAULT 'Spot',
-  preco_unitario        numeric(12,2) NOT NULL DEFAULT 0,
-  unidade               text NOT NULL DEFAULT 'UNIDADE',
-  vigencia_inicio       date,
-  vigencia_fim          date,
-  indice_reajuste       text DEFAULT '',
-  data_proximo_reajuste date,
-  hospital_id           text NOT NULL DEFAULT 'huv',
-  classificacao         text NOT NULL DEFAULT '',
-  saldo_qtd             integer,
-  observacao            text DEFAULT '',
-  deleted_at            timestamptz DEFAULT NULL,
-  created_at            timestamptz DEFAULT now(),
-  updated_at            timestamptz DEFAULT now()
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tipo                    text NOT NULL DEFAULT 'Contrato',
+  status                  text NOT NULL DEFAULT 'Ativo',
+  fornecedor_nome         text NOT NULL,
+  fornecedor_cnpj         text DEFAULT '',
+  contato_nome            text DEFAULT '',
+  contato_email           text DEFAULT '',
+  contato_whatsapp        text DEFAULT '',
+  frete_tipo              text DEFAULT '',
+  prazo_medio_dias        integer,
+  origem_embarque         text DEFAULT '',
+  tolerancia_atraso_dias  integer,
+  horario_cutoff          text DEFAULT '',
+  gatilho_desconto        text DEFAULT '',
+  reajuste_regra          text DEFAULT '',
+  vigencia_inicio         date,
+  vigencia_fim            date,
+  aviso_renovacao_dias    integer DEFAULT 60,
+  renovacao_automatica    boolean DEFAULT false,
+  hospital_id             text NOT NULL DEFAULT 'ambos',
+  classificacao           text DEFAULT '',
+  observacoes             text DEFAULT '',
+  deleted_at              timestamptz DEFAULT NULL,
+  created_at              timestamptz DEFAULT now(),
+  updated_at              timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS contrato_produtos (
+  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id               uuid NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+  sku                       text DEFAULT '',
+  descricao                 text NOT NULL,
+  cod_soulmv                text DEFAULT '',
+  preco_unitario            numeric(12,2) NOT NULL DEFAULT 0,
+  unidade                   text DEFAULT 'UNIDADE',
+  moq                       integer,
+  capacidade_fornecimento   integer,
+  capacidade_periodo        text DEFAULT 'mes',
+  meio_pagamento            text DEFAULT '',
+  deleted_at                timestamptz DEFAULT NULL,
+  created_at                timestamptz DEFAULT now(),
+  updated_at                timestamptz DEFAULT now()
 );
 
 -- ── Índices ───────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_ocs_hospital       ON ocs(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_ocs_deleted        ON ocs(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sols_hospital      ON sols(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_hospital ON contratos(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_vigencia ON contratos(vigencia_fim);
-CREATE INDEX IF NOT EXISTS idx_pareceres_cat      ON pareceres(cat);
+CREATE INDEX IF NOT EXISTS idx_ocs_hospital        ON ocs(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_ocs_deleted         ON ocs(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_sols_hospital       ON sols(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_hospital  ON contratos(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_vigencia  ON contratos(vigencia_fim);
+CREATE INDEX IF NOT EXISTS idx_contrato_produtos_contrato ON contrato_produtos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_pareceres_cat       ON pareceres(cat);
 
 -- ── RLS ──────────────────────────────────────────────────────────────
 -- ATENÇÃO: policies abaixo liberam tudo para o role anon. Ver aviso no
@@ -328,15 +380,17 @@ ALTER TABLE ocs        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sols       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE forns      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hist_oc    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pareceres  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contratos  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pareceres        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contratos        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contrato_produtos ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "anon_ocs"        ON ocs        FOR ALL USING (true);
-CREATE POLICY "anon_sols"       ON sols       FOR ALL USING (true);
-CREATE POLICY "anon_forns"      ON forns      FOR ALL USING (true);
-CREATE POLICY "anon_hist_oc"    ON hist_oc    FOR ALL USING (true);
-CREATE POLICY "anon_pareceres"  ON pareceres  FOR ALL USING (true);
-CREATE POLICY "anon_contratos"  ON contratos  FOR ALL USING (true);
+CREATE POLICY "anon_ocs"             ON ocs             FOR ALL USING (true);
+CREATE POLICY "anon_sols"            ON sols            FOR ALL USING (true);
+CREATE POLICY "anon_forns"           ON forns           FOR ALL USING (true);
+CREATE POLICY "anon_hist_oc"         ON hist_oc         FOR ALL USING (true);
+CREATE POLICY "anon_pareceres"       ON pareceres       FOR ALL USING (true);
+CREATE POLICY "anon_contratos"       ON contratos       FOR ALL USING (true);
+CREATE POLICY "anon_contrato_produtos" ON contrato_produtos FOR ALL USING (true);
 ```
 
 ---
@@ -642,7 +696,7 @@ if (error) return <ErrorMessage message={error.message} />
 | 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | ✅ Feito (fila sequencial simplificada para "cobrar todos visíveis" em lote, sem o painel passo-a-passo do legado) |
 | 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | ✅ Feito, inclui importação CSV |
 | 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | ✅ Feito (Consultar, Cadastrar, Base, Bionexo, Dashboard) — **mas não testado com dados reais**, ver item 20 |
-| 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | Pendente |
+| 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | ✅ Feito (schema redesenhado a pedido do Everton — cabeçalho + produtos, contato, logística, comercial, renovação; ver item 20) — Alertas/Indicadores como páginas separadas ficaram de fora, entram como badge/KPI na própria tabela mestre |
 | 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente (depende do módulo Pareceres existir) |
 | 11 | Métricas expandidas (lead time, reincidência, etc.) | OCs | Média | ✅ Lead time feito (bug do legado corrigido — ver seção "Aprendemos"); índice de reincidência não implementado (não existia no legado) |
 | 14 | Cobrança individual/lote, vínculo OC↔Solicitação, histórico | OCs | Alta | ✅ Feito |
@@ -653,4 +707,5 @@ if (error) return <ErrorMessage message={error.message} />
 | 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Pendente |
 | 13 | Autenticação real (3 usuários) | Base | Baixa (a não ser que a 12 suba a prioridade) | Pendente |
 | 19 | **Grandes melhorias visuais/UX no frontend** — Everton achou o visual atual muito básico (28/08/2026). Escopo ainda a definir com ele: candidatos incluem hierarquia visual mais forte nos cards/tabelas, mais identidade visual (não só Tailwind default), microinterações, densidade de informação melhor pensada por tela. Fazer antes do deploy público, já que é a cara do sistema pro dia a dia do setor. | Base/Todos módulos | Alta | Pendente — registrado, não iniciado |
-| 20 | **Criar a tabela `pareceres` no Supabase de produção** — confirmado em 2026-08-28 que ela não existe ainda (`GET /pareceres` retorna 404 `PGRST205`, só `ocs`/`sols`/`forns`/`hist_oc` existem). O SQL já está pronto na seção "SQL de migração completo" deste arquivo — falta só rodar no SQL Editor do Supabase. Bloqueante pro módulo Pareceres funcionar com dados reais (a UI já está pronta e builda limpo, só não tem onde gravar/ler ainda) | Pareceres | **Alta — bloqueia uso real do módulo** | Pendente — precisa da sua confirmação pra rodar DDL em produção |
+| 20 | **Criar as tabelas `pareceres`, `contratos` e `contrato_produtos` no Supabase de produção** — confirmado que nenhuma existe ainda (`GET` retorna 404 `PGRST205`, só `ocs`/`sols`/`forns`/`hist_oc` existem). O SQL já está pronto na seção "SQL de migração completo" deste arquivo — falta só rodar no SQL Editor do Supabase. Bloqueante pros módulos Pareceres e Contratos funcionarem com dados reais (a UI de ambos já está pronta e builda limpo, só não tem onde gravar/ler ainda) | Pareceres, Contratos | **Alta — bloqueia uso real dos módulos** | Pendente — precisa da sua confirmação pra rodar DDL em produção |
+| 21 | **Bug real corrigido**: `queryClient` (TanStack Query) com `retry: 2` deixava queries que falham (ex: tabela inexistente) presas em `fetchStatus: 'paused'` pra sempre em vez de reportar o erro — reproduzido testando o módulo Contratos contra a tabela ausente. Troquei pra `retry: false` + `networkMode: 'always'` em `src/lib/queryClient.ts`. Efeito colateral aceito: sem retry automático em falhas de rede transitórias (raro numa rede de hospital com Wi-Fi/cabo estável; prefiro um erro visível a uma tela travada em "carregando") | Base | — | ✅ Corrigido |
