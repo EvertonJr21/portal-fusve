@@ -15,8 +15,8 @@ Atualizado sempre que a arquitetura mudar.
 | **Responsável** | Everton da Fonseca J Junior — Setor de Compras |
 | **Hospitais** | HUV (Hospital Universitário de Vassouras) e HMK (Hospital Mario Kroeff) |
 | **Financiamento** | 100% SUS — otimização contínua de custo sem comprometer a continuidade operacional |
-| **URL produção** | https://fusve-portal.vercel.app (a definir) |
-| **Repositório** | github.com/EvertonJr21/fusve-portal (privado) |
+| **URL produção** | a definir (deploy Vercel ainda não conectado) |
+| **Repositório** | github.com/EvertonJr21/portal-fusve (privado) — nome corrigido em 30/08/2026, o CLAUDE.md tinha "fusve-portal" por engano |
 | **Supabase** | https://urruseycrvfajnnbupyd.supabase.co |
 
 ### Módulos do portal
