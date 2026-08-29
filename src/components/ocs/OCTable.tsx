@@ -26,9 +26,22 @@ interface OCTableProps {
   onEditar: (oc: OC) => void
   onExcluir: (oc: OC) => void
   onAtualizarSituacao: (id: number, sit: string) => void
+  onVincular: (oc: OC) => void
+  onHistorico: (oc: OC) => void
+  onCobrar: (oc: OC, canal: 'mail' | 'wpp') => void
 }
 
-export function OCTable({ ocs, sols, filtroKey, onEditar, onExcluir, onAtualizarSituacao }: OCTableProps) {
+export function OCTable({
+  ocs,
+  sols,
+  filtroKey,
+  onEditar,
+  onExcluir,
+  onAtualizarSituacao,
+  onVincular,
+  onHistorico,
+  onCobrar,
+}: OCTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [dir, setDir] = useState<SortDir>(-1)
   const [pagina, setPagina] = useState(0)
@@ -125,11 +138,18 @@ export function OCTable({ ocs, sols, filtroKey, onEditar, onExcluir, onAtualizar
                 <td className="px-3 py-2 font-mono text-xs">{o.id}</td>
                 <td className="px-3 py-2 text-xs">{fmt(parseDMY(o.dataSolic))}</td>
                 <td className="px-3 py-2 text-xs">
-                  {o.solicitacaoId ? (
-                    <span className="font-semibold text-status-green">#{o.solicitacaoId}</span>
-                  ) : (
-                    <span className="text-slate-300">—</span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onVincular(o)}
+                    className="rounded px-1 text-left hover:bg-slate-100"
+                    title="Vincular a uma Solicitação"
+                  >
+                    {o.solicitacaoId ? (
+                      <span className="font-semibold text-status-green">#{o.solicitacaoId}</span>
+                    ) : (
+                      <span className="text-slate-300">vincular</span>
+                    )}
+                  </button>
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div className="font-medium text-slate-800">{o.fornecedorNome}</div>
@@ -186,6 +206,30 @@ export function OCTable({ ocs, sols, filtroKey, onEditar, onExcluir, onAtualizar
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div className="flex gap-1">
+                    <button
+                      type="button"
+                      title="Cobrar por e-mail"
+                      onClick={() => onCobrar(o, 'mail')}
+                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                    >
+                      ✉
+                    </button>
+                    <button
+                      type="button"
+                      title="Cobrar por WhatsApp"
+                      onClick={() => onCobrar(o, 'wpp')}
+                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                    >
+                      💬
+                    </button>
+                    <button
+                      type="button"
+                      title="Histórico e previsão"
+                      onClick={() => onHistorico(o)}
+                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                    >
+                      📋
+                    </button>
                     <button
                       type="button"
                       title="Editar"

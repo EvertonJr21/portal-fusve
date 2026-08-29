@@ -20,7 +20,9 @@ import {
   riscoOC,
   statusPrazo,
 } from '@/utils/oc'
+import { OCCobrar } from './OCCobrar'
 import { OCForm } from './OCForm'
+import { OCHistorico } from './OCHistorico'
 
 type FiltroCategoria =
   | 'all'
@@ -29,6 +31,12 @@ type FiltroCategoria =
   | 'sem_movimentacao'
   | 'previsao_descumprida'
   | 'parciais'
+
+type ModalDash =
+  | { tipo: 'editar'; oc: OC }
+  | { tipo: 'historico'; oc: OC }
+  | { tipo: 'cobrar'; oc: OC; canal: 'mail' | 'wpp' }
+  | null
 
 const RISCO_ORDEM: Record<string, number> = { alto: 0, medio: 1, baixo: 2 }
 
@@ -41,7 +49,7 @@ export function Dashboard() {
   const toast = useToast()
 
   const [filtro, setFiltro] = useState<FiltroCategoria>('all')
-  const [editando, setEditando] = useState<OC | null>(null)
+  const [modal, setModal] = useState<ModalDash>(null)
 
   if (isLoading) return <p className="text-sm text-slate-400">Carregando...</p>
   if (error) return <p className="text-sm text-status-red">Erro ao carregar OCs: {error.message}</p>
@@ -202,10 +210,37 @@ export function Dashboard() {
                   {forn?.email && <span>{forn.email}</span>}
                 </div>
                 <div className="flex gap-2">
+                  {forn?.email && (
+                    <button
+                      type="button"
+                      className="rounded border border-slate-200 px-2 py-1 hover:bg-slate-50"
+                      title="Cobrar por e-mail"
+                      onClick={() => setModal({ tipo: 'cobrar', oc: o, canal: 'mail' })}
+                    >
+                      ✉
+                    </button>
+                  )}
+                  {forn?.wpp && (
+                    <button
+                      type="button"
+                      className="rounded border border-slate-200 px-2 py-1 hover:bg-slate-50"
+                      title="Cobrar por WhatsApp"
+                      onClick={() => setModal({ tipo: 'cobrar', oc: o, canal: 'wpp' })}
+                    >
+                      💬
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="rounded border border-slate-200 px-2 py-1 font-medium hover:bg-slate-50"
-                    onClick={() => setEditando(o)}
+                    onClick={() => setModal({ tipo: 'historico', oc: o })}
+                  >
+                    📋 Histórico
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-slate-200 px-2 py-1 font-medium hover:bg-slate-50"
+                    onClick={() => setModal({ tipo: 'editar', oc: o })}
                   >
                     Editar
                   </button>
@@ -223,7 +258,22 @@ export function Dashboard() {
         })}
       </div>
 
-      {editando && <OCForm oc={editando} hospitalId={hospitalId} onClose={() => setEditando(null)} />}
+      {modal?.tipo === 'editar' && (
+        <OCForm oc={modal.oc} hospitalId={hospitalId} onClose={() => setModal(null)} />
+      )}
+      {modal?.tipo === 'historico' && (
+        <OCHistorico oc={modal.oc} sols={sols} hospitalId={hospitalId} onClose={() => setModal(null)} />
+      )}
+      {modal?.tipo === 'cobrar' && (
+        <OCCobrar
+          oc={modal.oc}
+          sols={sols}
+          forn={forns.find((f) => f.id === modal.oc.fornecedorId)}
+          hospitalId={hospitalId}
+          canalInicial={modal.canal}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   )
 }

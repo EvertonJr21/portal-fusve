@@ -82,13 +82,13 @@ fusve-portal/
     │   ├── useOCs.ts                ← useOCs, useSalvarOC, useAtualizarSituacaoOC, useExcluirOC [pronto — cobrança/vínculo/histórico ficam em hooks próprios na Fase 3]
     │   ├── useSols.ts               ← useSols (só leitura nesta fase) [pronto]
     │   ├── useFornecedores.ts       ← useFornecedores (só leitura nesta fase) [pronto]
-    │   ├── useHistOC.ts             ← histórico de cobranças [a fazer — Fase 3]
+    │   ├── useHistOC.ts             ← useHistOC, useRegistrarCobranca [pronto]
     │   ├── usePareceres.ts          ← CRUD de Pareceres Técnicos [a fazer]
     │   └── useContratos.ts          ← CRUD de Contratos [a fazer]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
     │   ├── ui/                      ← componentes genéricos reutilizáveis
-    │   │   ├── Sidebar.tsx          ← navegação agrupada, itens "em breve" para o que falta [pronto]
+    │   │   ├── Sidebar.tsx          ← navegação agrupada por módulo, com link "← Módulos" [pronto]
     │   │   ├── Topbar.tsx           [pronto]
     │   │   ├── HospitalSwitch.tsx   [pronto]
     │   │   ├── Toast.tsx            [pronto]
@@ -96,35 +96,34 @@ fusve-portal/
     │   │   ├── Button.tsx           [pronto]
     │   │   ├── Table.tsx            ← wrapper + SortableTh genérico [pronto]
     │   │   ├── Modal.tsx            [pronto]
-    │   │   ├── KpiCard.tsx          [pronto]
-    │   │   └── DropZone.tsx         ← importação CSV/PDF [a fazer — Fase 3]
-    │   ├── ocs/
-    │   │   ├── Dashboard.tsx        ← Central de Pendências: KPIs, banner, cards por risco [pronto]
-    │   │   ├── KpisOC.tsx           ← 5 KPIs da tabela [pronto]
-    │   │   ├── OCFilters.tsx        ← dropdowns + busca + chips rápidos [pronto]
-    │   │   ├── OCTable.tsx          ← tabela com sort/paginação/semáforo/risco [pronto]
-    │   │   ├── OCForm.tsx           ← modal criar/editar OC [pronto]
-    │   │   ├── filters.ts           ← estado e lógica pura de filtro (usada por OCFilters/OCTable/página) [pronto]
-    │   │   └── (a fazer — Fase 3: OCHistorico, OCCobrar, OCVincular, FornecedorGroup, Resumo, Metricas)
+    │   │   └── KpiCard.tsx          [pronto]
+    │   ├── ocs/                     ← módulo completo: Dashboard, KpisOC, OCFilters, OCTable,
+    │   │                              OCForm, OCVincular, OCHistorico, OCCobrar, FornecedorForm,
+    │   │                              SolForm, filters.ts [tudo pronto]
     │   ├── pareceres/                [a fazer: ParecerConsulta, ParecerForm, ParecerBionexo, MarcasBadge]
     │   └── contratos/                [a fazer: ContratoTable, ContratoForm, ContratoAlertas]
     ├── pages/
-    │   ├── ocs/
-    │   │   ├── Dashboard.tsx        [pronto]
-    │   │   ├── OrdensDeCompra.tsx   [pronto]
-    │   │   └── (a fazer — Fase 3: Solicitacoes, Fornecedores, Metricas, Importar)
+    │   ├── Modulos.tsx              ← tela inicial de seleção de módulo [pronto]
+    │   ├── ocs/                     ← Dashboard, OrdensDeCompra, Solicitacoes, Resumo,
+    │   │                              PorFornecedor, Fornecedores (cadastro), Metricas,
+    │   │                              Importar [tudo pronto — falta só Backup]
     │   ├── pareceres/
     │   │   └── Consultar.tsx        ← placeholder [demais páginas a fazer: Cadastrar, Bionexo, Base, Historico]
     │   └── contratos/
     │       └── TabelaMestre.tsx     ← placeholder [demais páginas a fazer: Alertas, Indicadores]
     └── utils/
-        ├── date.ts                  ← getHoje, parseDMY, fmt, toInput, addDias, diasEntre [pronto]
-        ├── oc.ts                    ← statusPrazo (semáforo), riscoOC, diasSemMovimentacao, previsaoAtiva [pronto]
-        ├── csv.ts                   ← parseOCsCSV, parseSolsCSV [a fazer]
-        ├── pdf.ts                   ← importPDF, parseAcomp, parseBionexoText [a fazer — portar de _legacy/parecer/.../js/engine.js]
+        ├── date.ts                  ← getHoje, parseDMY, fmt, toInput, fromInput, addDias, diasEntre [pronto]
+        ├── oc.ts                    ← statusPrazo (semáforo), riscoOC, diasSemMovimentacao, previsaoAtiva, KPIs puros [pronto]
+        ├── cobranca.ts              ← templates de mensagem (individual/lote), links Outlook/WhatsApp [pronto]
+        ├── csv.ts                   ← parseOCsCSV, parseSolsCSV [pronto]
+        ├── pdf.ts                   ← extractPdfLines, parseAcompPDF (pdfjs-dist, carregado sob demanda) [pronto — ver nota abaixo]
         ├── validators.ts            [a fazer]
         └── formatters.ts            [a fazer]
 ```
+
+**Nota sobre `pdf.ts`:** só o parser de "Acompanhamento de Compras" (`parseAcompPDF`) foi portado — é o único fluxo de PDF sem equivalente em CSV (o vínculo automático OC↔Solicitação). Os parsers de OC e Solicitação via PDF do legado (`parseOC`/`parseSol` em `_legacy/.../pdf.js`) não foram portados: são dois parsers redundantes com o CSV (mesma informação, fonte menos confiável) e muito baseados em regex heurística de posição — portar sem um arquivo real do SoulMV pra testar contra é risco alto de corromper dados de compras reais silenciosamente.
+
+**Importação não testada contra produção:** os parsers de CSV/PDF foram validados por `tsc`/build e por leitura manual do código legado, mas nunca rodados contra um arquivo real do SoulMV — teste com um arquivo pequeno antes de confiar neles com a base de 659 OCs.
 
 ---
 
@@ -630,12 +629,17 @@ if (error) return <ErrorMessage message={error.message} />
 | 2 | Tipos gerados do banco (`supabase gen types`) | Base | Alta | Pendente |
 | 3 | Layout base: sidebar, topbar, troca de hospital, toast | Base | Alta | ✅ Feito |
 | 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | Pendente |
-| 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | ✅ Feito (leitura + CRUD básico; cobrança/vínculo/histórico pendentes) |
-| 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | KPIs e cards por risco feitos; fila de cobrança pendente (Fase 3) |
-| 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | Filtros/ordenação/paginação feitos; importação CSV pendente (Fase 3) |
+| 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | ✅ Feito — módulo OCs completo |
+| 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | ✅ Feito (fila sequencial simplificada para "cobrar todos visíveis" em lote, sem o painel passo-a-passo do legado) |
+| 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | ✅ Feito, inclui importação CSV |
 | 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | Pendente |
 | 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | Pendente |
-| 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente |
-| 11 | Métricas expandidas (lead time, reincidência, etc.) | OCs | Média | Pendente |
+| 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente (depende do módulo Pareceres existir) |
+| 11 | Métricas expandidas (lead time, reincidência, etc.) | OCs | Média | ✅ Lead time feito (bug do legado corrigido — ver seção "Aprendemos"); índice de reincidência não implementado (não existia no legado) |
+| 14 | Cobrança individual/lote, vínculo OC↔Solicitação, histórico | OCs | Alta | ✅ Feito |
+| 15 | Fornecedores agrupados + Cadastro de Fornecedores | OCs | Média | ✅ Feito |
+| 16 | Solicitações (tela própria) + Resumo Diário | OCs | Média | ✅ Feito |
+| 17 | Importação PDF (Acompanhamento de Compras) | OCs | Média | ✅ Feito — únicos parsers de PDF portados; ver nota abaixo |
+| 18 | Backup (exportar/importar JSON) | OCs | Baixa | Pendente |
 | 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Pendente |
 | 13 | Autenticação real (3 usuários) | Base | Baixa (a não ser que a 12 suba a prioridade) | Pendente |

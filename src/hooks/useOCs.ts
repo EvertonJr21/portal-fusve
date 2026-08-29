@@ -123,6 +123,39 @@ export function useAtualizarSituacaoOC(hospitalId: HospitalId) {
   })
 }
 
+const PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
+  solicitacaoId: 'solicitacao_id',
+  cobrado: 'cobrado',
+  previsaoForn: 'previsao_forn',
+  previsaoForn2: 'previsao_forn2',
+  dataEntregaReal: 'data_entrega_real',
+  diasAtraso: 'dias_atraso',
+  proximaAcao: 'proxima_acao',
+  motivoAtraso: 'motivo_atraso',
+  ultimaMovimentacao: 'ultima_movimentacao',
+  previsaoDescumprida: 'previsao_descumprida',
+  sit: 'sit',
+}
+
+/** Atualização parcial de campos operacionais (histórico, vínculo, cobrança) — não é o form de criar/editar. */
+export function useAtualizarOC(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: number; patch: Partial<OC> }) => {
+      const row: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(patch)) {
+        const column = PATCH_FIELD_MAP[key as keyof OC]
+        if (column) row[column] = value
+      }
+      const { error } = await supabase.from('ocs').update(row).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
+    },
+  })
+}
+
 export function useExcluirOC(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({

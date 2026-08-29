@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Fornecedor } from '@/types'
 
@@ -30,6 +30,40 @@ export function useFornecedores() {
         .order('nome', { ascending: true })
       if (error) throw error
       return (data as FornRow[]).map(toFornecedor)
+    },
+  })
+}
+
+export function useSalvarFornecedor() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (forn: Fornecedor) => {
+      const { error } = await supabase.from('forns').upsert({
+        id: forn.id,
+        nome: forn.nome.trim().toUpperCase(),
+        email: forn.email || '',
+        wpp: forn.wpp.replace(/\D/g, ''),
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forns'] })
+    },
+  })
+}
+
+export function useExcluirFornecedor() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from('forns')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forns'] })
     },
   })
 }

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
 import type { Solicitacao } from '@/types'
@@ -39,6 +39,68 @@ export function useSols(hospitalId: HospitalId) {
         .order('id', { ascending: false })
       if (error) throw error
       return (data as SolRow[]).map(toSolicitacao)
+    },
+  })
+}
+
+export interface SalvarSolInput {
+  id: number
+  data: string
+  produto: string
+  motivo: string
+  solicitante: string
+  qtd: number
+  sit: string
+  hospitalId: HospitalId
+}
+
+export function useSalvarSol(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: SalvarSolInput) => {
+      const { error } = await supabase.from('sols').upsert({
+        id: input.id,
+        data: input.data,
+        produto: input.produto,
+        motivo: input.motivo,
+        solicitante: input.solicitante,
+        qtd: input.qtd,
+        sit: input.sit,
+        hospital_id: input.hospitalId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
+    },
+  })
+}
+
+export function useAtualizarSituacaoSol(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sit }: { id: number; sit: string }) => {
+      const { error } = await supabase.from('sols').update({ sit }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
+    },
+  })
+}
+
+export function useExcluirSol(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from('sols')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     },
   })
 }
