@@ -8,15 +8,23 @@ const KIND_CLASS: Record<ToastKind, string> = {
 }
 
 const DURACAO_MS = 2800
+const SAIDA_MS = 200
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ message: string; kind: ToastKind } | null>(null)
+  const [saindo, setSaindo] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saidaRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const show = useCallback((message: string, kind: ToastKind = 'info') => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (saidaRef.current) clearTimeout(saidaRef.current)
+    setSaindo(false)
     setToast({ message, kind })
-    timeoutRef.current = setTimeout(() => setToast(null), DURACAO_MS)
+    timeoutRef.current = setTimeout(() => {
+      setSaindo(true)
+      saidaRef.current = setTimeout(() => setToast(null), SAIDA_MS)
+    }, DURACAO_MS)
   }, [])
 
   const value = useMemo(() => ({ show }), [show])
@@ -27,7 +35,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md px-4 py-2 text-sm font-medium text-white shadow-lg ${KIND_CLASS[toast.kind]}`}
+          className={`fixed bottom-5 left-1/2 -translate-x-1/2 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-soft-lg transition-all duration-200 ease-out ${
+            saindo ? 'translate-y-1 opacity-0' : 'animate-slide-up opacity-100'
+          } ${KIND_CLASS[toast.kind]}`}
         >
           {toast.message}
         </div>

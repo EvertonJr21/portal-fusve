@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
+import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import DashboardOCs from '@/pages/ocs/Dashboard'
@@ -34,7 +35,9 @@ function OCsLayout() {
     <div className="flex flex-1">
       <Sidebar title="Controle de OCs" items={OCS_ITEMS} />
       <main className="flex-1 overflow-y-auto p-6">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   )
@@ -54,7 +57,9 @@ function PareceresLayout() {
       <div className="flex flex-1">
         <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
         <main className="flex-1 overflow-y-auto p-6">
+          <PageTransition>
           <Outlet />
+        </PageTransition>
         </main>
       </div>
     </HistoricoConsultasProvider>
@@ -68,7 +73,9 @@ function ContratosLayout() {
     <div className="flex flex-1">
       <Sidebar title="Gestão de Contratos" items={CONTRATOS_ITEMS} />
       <main className="flex-1 overflow-y-auto p-6">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   )
@@ -80,7 +87,14 @@ export default function App() {
       <Topbar />
       <div className="flex flex-1">
         <Routes>
-          <Route path="/" element={<Modulos />} />
+          <Route
+            path="/"
+            element={
+              <PageTransition>
+                <Modulos />
+              </PageTransition>
+            }
+          />
 
           <Route path="/ocs" element={<OCsLayout />}>
             <Route index element={<DashboardOCs />} />

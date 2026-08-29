@@ -8,6 +8,7 @@ import { OCForm } from '@/components/ocs/OCForm'
 import { OCHistorico } from '@/components/ocs/OCHistorico'
 import { OCTable } from '@/components/ocs/OCTable'
 import { OCVincular } from '@/components/ocs/OCVincular'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useAtualizarSituacaoOC, useExcluirOC, useOCs } from '@/hooks/useOCs'
@@ -72,7 +73,7 @@ export default function OrdensDeCompra() {
       <OCFilters ocs={ocs} filtro={filtro} onChange={setFiltro} />
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={9} />
       ) : (
         <OCTable
           ocs={filtradas}

@@ -31,12 +31,12 @@ export function KpiCard({ label, value, sub, tone = 'gray', active, onClick }: K
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`flex flex-col gap-1 rounded-lg border border-slate-200 border-l-4 bg-white p-4 text-left shadow-sm transition-transform ${BORDER_CLASS[tone]} ${
-        onClick ? 'hover:-translate-y-0.5 hover:shadow-md cursor-pointer' : ''
-      } ${active ? 'ring-2 ring-offset-1 ring-slate-400' : ''}`}
+      className={`group flex flex-col gap-1 rounded-xl border border-slate-200/80 border-l-4 bg-white p-4 text-left shadow-soft-sm transition-[transform,box-shadow] duration-200 ease-out ${BORDER_CLASS[tone]} ${
+        onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-soft-md active:translate-y-0' : ''
+      } ${active ? 'shadow-soft-md ring-2 ring-slate-300 ring-offset-1' : ''}`}
     >
       <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
-      <span className={`font-mono text-3xl font-bold ${VALUE_CLASS[tone]}`}>{value}</span>
+      <span className={`font-mono text-3xl font-bold tabular-nums ${VALUE_CLASS[tone]}`}>{value}</span>
       {sub && <span className="text-xs text-slate-400">{sub}</span>}
     </Tag>
   )

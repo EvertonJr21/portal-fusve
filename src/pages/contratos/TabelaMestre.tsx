@@ -3,6 +3,7 @@ import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
 import { useContratos, useExcluirContrato } from '@/hooks/useContratos'
@@ -96,7 +97,7 @@ export default function TabelaMestre() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={6} />
       ) : (
         <Table>
           <TableHead>
@@ -112,8 +113,9 @@ export default function TabelaMestre() {
           <tbody>
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-400">
-                  Nenhum contrato encontrado.
+                <td colSpan={6} className="px-3 py-12 text-center animate-fade-in">
+                  <span className="mb-1 block text-2xl opacity-60">📑</span>
+                  <span className="text-sm font-medium text-slate-500">Nenhum contrato encontrado.</span>
                 </td>
               </tr>
             )}

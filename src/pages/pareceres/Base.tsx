@@ -3,6 +3,7 @@ import { MarcasBadge } from '@/components/pareceres/MarcasBadge'
 import { ParecerForm } from '@/components/pareceres/ParecerForm'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
@@ -97,7 +98,7 @@ export default function Base() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={8} />
       ) : (
         <Table>
           <TableHead>
@@ -115,8 +116,9 @@ export default function Base() {
           <tbody>
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">
-                  Nenhum resultado.
+                <td colSpan={8} className="px-3 py-12 text-center animate-fade-in">
+                  <span className="mb-1 block text-2xl opacity-60">🔍</span>
+                  <span className="text-sm font-medium text-slate-500">Nenhum resultado.</span>
                 </td>
               </tr>
             )}

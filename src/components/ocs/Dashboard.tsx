@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useHospital } from '@/hooks/useHospital'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useExcluirOC, useOCs } from '@/hooks/useOCs'
@@ -51,7 +53,7 @@ export function Dashboard() {
   const [filtro, setFiltro] = useState<FiltroCategoria>('all')
   const [modal, setModal] = useState<ModalDash>(null)
 
-  if (isLoading) return <p className="text-sm text-slate-400">Carregando...</p>
+  if (isLoading) return <SkeletonRows linhas={5} colunas={3} />
   if (error) return <p className="text-sm text-status-red">Erro ao carregar OCs: {error.message}</p>
 
   const pendentes = ocsPendentes(ocs)
@@ -152,11 +154,7 @@ export function Dashboard() {
       )}
 
       <div className="flex flex-col gap-2">
-        {lista.length === 0 && (
-          <p className="rounded-md border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-400">
-            Nenhuma pendência nesta categoria. ✅
-          </p>
-        )}
+        {lista.length === 0 && <EmptyState icon="✅" title="Nenhuma pendência nesta categoria." />}
         {lista.map((o) => {
           const risco = riscoOC(o, sols)
           const st = statusPrazo(dataPrazo(o, sols), o.sit)
