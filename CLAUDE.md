@@ -691,7 +691,7 @@ if (error) return <ErrorMessage message={error.message} />
 | 1 | Setup inicial React + TypeScript + Vite + Tailwind + Supabase | Base | Alta | ✅ Feito |
 | 2 | Tipos gerados do banco (`supabase gen types`) | Base | Alta | Pendente |
 | 3 | Layout base: sidebar, topbar, troca de hospital, toast | Base | Alta | ✅ Feito |
-| 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | Script pronto em `scripts/migrate-pareceres.ts` (`npm run migrate:pareceres`), **não executado** — tabela `pareceres` já existe (item 20 feito); falta só das credenciais reais do Firebase num `.env` local pra rodar |
+| 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | ✅ Feito (29/08/2026) — `npm run migrate:pareceres` rodado, **98 pareceres** migrados do Firestore (`parecer-tecnico-huv`) pra tabela `pareceres`, confirmado via API |
 | 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | ✅ Feito — módulo OCs completo |
 | 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | ✅ Feito (fila sequencial simplificada para "cobrar todos visíveis" em lote, sem o painel passo-a-passo do legado) |
 | 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | ✅ Feito, inclui importação CSV |

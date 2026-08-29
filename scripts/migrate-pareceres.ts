@@ -11,8 +11,10 @@
 //      FIREBASE_AUTH_DOMAIN=parecer-tecnico-huv.firebaseapp.com
 //      FIREBASE_PROJECT_ID=parecer-tecnico-huv
 //      VITE_SUPABASE_URL=https://urruseycrvfajnnbupyd.supabase.co
-//      SUPABASE_SERVICE_KEY=... (service_role, NÃO a anon key — pegar em
-//        Supabase > Project Settings > API > service_role secret)
+//      SUPABASE_KEY=... (idealmente a service_role — Supabase > Project Settings
+//        > API > service_role secret; mas como a policy de RLS de `pareceres`
+//        hoje é `USING (true)` pra anon — ver aviso no CLAUDE.md — a
+//        VITE_SUPABASE_ANON_KEY do .env.local também funciona)
 //    As credenciais do Firebase estão hoje hardcoded em
 //    _legacy/parecer/Projeto-Parecer_Fusve-main/js/firebase.js — copie de lá pro
 //    .env, não deixe hardcoded em nenhum arquivo versionado.
@@ -41,7 +43,7 @@ async function main() {
   })
   const firestore = getFirestore(firebaseApp)
 
-  const supabase = createClient(env('VITE_SUPABASE_URL'), env('SUPABASE_SERVICE_KEY'))
+  const supabase = createClient(env('VITE_SUPABASE_URL'), env('SUPABASE_KEY'))
 
   console.log('Lendo pareceres do Firestore...')
   const snap = await getDocs(collection(firestore, 'pareceres'))
