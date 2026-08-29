@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ParecerCard } from '@/components/pareceres/ParecerCard'
 import { ParecerForm } from '@/components/pareceres/ParecerForm'
 import { SearchProduto } from '@/components/pareceres/SearchProduto'
@@ -12,6 +13,7 @@ export default function Consultar() {
   const { data: pareceres = [] } = usePareceres()
   const { data: marcasSugeridas = {} } = useMarcasSugeridas()
   const { registrar } = useHistoricoConsultas()
+  const [searchParams] = useSearchParams()
 
   const [produto, setProduto] = useState<Produto | null>(null)
   const [editando, setEditando] = useState(false)
@@ -32,7 +34,7 @@ export default function Consultar() {
       </div>
 
       <div className="max-w-xl">
-        <SearchProduto onSelect={handleSelect} />
+        <SearchProduto onSelect={handleSelect} valorInicial={searchParams.get('produto') ?? ''} />
       </div>
 
       {produto && !editando && (

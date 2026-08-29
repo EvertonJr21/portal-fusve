@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { SortableTh, Table, TableHead, type SortDir } from '@/components/ui/Table'
 import { FINAL_SIT, SITUACOES_OC } from '@/constants'
@@ -45,6 +46,7 @@ export function OCTable({
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [dir, setDir] = useState<SortDir>(-1)
   const [pagina, setPagina] = useState(0)
+  const navigate = useNavigate()
 
   useEffect(() => {
     setPagina(0)
@@ -133,6 +135,7 @@ export function OCTable({
             const dsm = diasSemMovimentacao(o)
             const prev = previsaoAtiva(o)
             const isPrev2 = prev !== null && prev === o.previsaoForn2 && o.sit === 'Parcialmente Atendida'
+            const solVinculada = o.solicitacaoId ? sols.find((s) => s.id === o.solicitacaoId) : undefined
 
             return (
               <tr key={o.id} className="border-t border-slate-100 hover:bg-slate-50">
@@ -231,6 +234,16 @@ export function OCTable({
                     >
                       📋
                     </button>
+                    {solVinculada && (
+                      <button
+                        type="button"
+                        title={`Ver parecer do produto — ${solVinculada.produto}`}
+                        onClick={() => navigate(`/pareceres?produto=${encodeURIComponent(solVinculada.produto)}`)}
+                        className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                      >
+                        🩺
+                      </button>
+                    )}
                     <button
                       type="button"
                       title="Editar"

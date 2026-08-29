@@ -24,7 +24,7 @@ function destacar(texto: string, termo: string) {
 export function SearchProduto({ onSelect, placeholder, valorInicial = '' }: SearchProdutoProps) {
   const { data: produtos = [] } = useProdutos()
   const [query, setQuery] = useState(valorInicial)
-  const [aberto, setAberto] = useState(false)
+  const [aberto, setAberto] = useState(!!valorInicial)
 
   const resultados = useMemo(() => {
     const q = query.trim().toUpperCase()
