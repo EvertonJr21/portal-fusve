@@ -90,7 +90,10 @@ fusve-portal/
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
     │   ├── ui/                      ← componentes genéricos reutilizáveis
-    │   │   ├── Sidebar.tsx          ← navegação agrupada por módulo, com link "← Módulos" [pronto]
+    │   │   ├── Sidebar.tsx          ← navegação agrupada por módulo, com link "← Módulos" e botão
+    │   │   │                          de recolher/expandir (preferência salva em localStorage,
+    │   │   │                          `fusve:sidebarColapsada`) — pedido do Everton pra liberar
+    │   │   │                          espaço horizontal em tabelas largas (ex: Base de Pareceres) [pronto]
     │   │   ├── Topbar.tsx           [pronto]
     │   │   ├── HospitalSwitch.tsx   [pronto]
     │   │   ├── Toast.tsx            [pronto]

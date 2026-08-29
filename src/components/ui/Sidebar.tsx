@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 
 export interface NavItem {
@@ -12,16 +13,53 @@ interface SidebarProps {
   emBreve?: { title: string; items: string[] }[]
 }
 
+const STORAGE_KEY = 'fusve:sidebarColapsada'
+
 /** Sidebar de um módulo: link "voltar aos módulos" + navegação própria do módulo. */
 export function Sidebar({ title, items, emBreve = [] }: SidebarProps) {
+  const [colapsada, setColapsada] = useState(() => localStorage.getItem(STORAGE_KEY) === '1')
+
+  const alternar = () => {
+    setColapsada((c) => {
+      const novo = !c
+      localStorage.setItem(STORAGE_KEY, novo ? '1' : '0')
+      return novo
+    })
+  }
+
+  if (colapsada) {
+    return (
+      <nav className="flex w-10 shrink-0 flex-col items-center border-r border-slate-200/80 bg-white py-4">
+        <button
+          type="button"
+          onClick={alternar}
+          title="Expandir menu"
+          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+        >
+          »
+        </button>
+      </nav>
+    )
+  }
+
   return (
     <nav className="w-56 shrink-0 overflow-y-auto border-r border-slate-200/80 bg-white p-4">
-      <Link
-        to="/"
-        className="mb-3 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
-      >
-        ← Módulos
-      </Link>
+      <div className="mb-3 flex items-center justify-between">
+        <Link
+          to="/"
+          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+        >
+          ← Módulos
+        </Link>
+        <button
+          type="button"
+          onClick={alternar}
+          title="Recolher menu"
+          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+        >
+          «
+        </button>
+      </div>
       <h2 className="mb-1 px-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{title}</h2>
       <ul className="mb-4 flex flex-col gap-0.5">
         {items.map((item) => (
