@@ -104,11 +104,11 @@ export default function Base() {
           <TableHead>
             <tr>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Cód.</th>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produto</th>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Padrão</th>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Permitidas</th>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Restritas</th>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Proibidas</th>
+              <th className="max-w-[220px] px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produto</th>
+              <th className="max-w-[140px] px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Padrão</th>
+              <th className="max-w-[140px] px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Permitidas</th>
+              <th className="max-w-[140px] px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Restritas</th>
+              <th className="max-w-[140px] px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Proibidas</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Validade</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Ações</th>
             </tr>
@@ -127,14 +127,14 @@ export default function Base() {
               return (
                 <tr key={p.cod} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 font-mono text-xs">{p.cod}</td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="max-w-[220px] px-3 py-2 text-xs">
                     <div className="font-medium text-slate-800">{p.nome}</div>
                     <div className="text-[11px] text-slate-400">{p.cat}</div>
                   </td>
-                  <td className="px-3 py-2"><MarcasBadge marcas={p.padrao} categoria="padrao" /></td>
-                  <td className="px-3 py-2"><MarcasBadge marcas={p.permitidas} categoria="permitidas" /></td>
-                  <td className="px-3 py-2"><MarcasBadge marcas={p.restritas} categoria="restritas" /></td>
-                  <td className="px-3 py-2"><MarcasBadge marcas={p.proibidas} categoria="proibidas" /></td>
+                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.padrao} categoria="padrao" /></td>
+                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.permitidas} categoria="permitidas" /></td>
+                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.restritas} categoria="restritas" /></td>
+                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.proibidas} categoria="proibidas" /></td>
                   <td className="px-3 py-2 text-xs">
                     {validade ? <span className={`font-semibold ${validade.classe}`}>{validade.texto}</span> : <span className="text-slate-300">—</span>}
                   </td>
