@@ -83,7 +83,9 @@ fusve-portal/
     │   ├── useSols.ts               ← useSols (só leitura nesta fase) [pronto]
     │   ├── useFornecedores.ts       ← useFornecedores (só leitura nesta fase) [pronto]
     │   ├── useHistOC.ts             ← useHistOC, useRegistrarCobranca [pronto]
-    │   ├── usePareceres.ts          ← CRUD de Pareceres Técnicos [a fazer]
+    │   ├── usePareceres.ts          ← usePareceres, useParecer, useSalvarParecer, useExcluirParecer [pronto — mas tabela não existe em produção ainda, item 20 do backlog]
+    │   ├── useProdutos.ts           ← useProdutos, useMarcasSugeridas — dynamic import de src/data/ sob demanda [pronto]
+    │   ├── useHistoricoConsultas.ts ← histórico de sessão do módulo Pareceres (não persiste) [pronto]
     │   └── useContratos.ts          ← CRUD de Contratos [a fazer]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
@@ -100,15 +102,14 @@ fusve-portal/
     │   ├── ocs/                     ← módulo completo: Dashboard, KpisOC, OCFilters, OCTable,
     │   │                              OCForm, OCVincular, OCHistorico, OCCobrar, FornecedorForm,
     │   │                              SolForm, filters.ts [tudo pronto]
-    │   ├── pareceres/                [a fazer: ParecerConsulta, ParecerForm, ParecerBionexo, MarcasBadge]
+    │   ├── pareceres/                ← SearchProduto, MarcasEditor, MarcasBadge, ParecerCard, ParecerForm, HistoricoConsultasProvider [tudo pronto]
     │   └── contratos/                [a fazer: ContratoTable, ContratoForm, ContratoAlertas]
     ├── pages/
     │   ├── Modulos.tsx              ← tela inicial de seleção de módulo [pronto]
     │   ├── ocs/                     ← Dashboard, OrdensDeCompra, Solicitacoes, Resumo,
     │   │                              PorFornecedor, Fornecedores (cadastro), Metricas,
     │   │                              Importar [tudo pronto — falta só Backup]
-    │   ├── pareceres/
-    │   │   └── Consultar.tsx        ← placeholder [demais páginas a fazer: Cadastrar, Bionexo, Base, Historico]
+    │   ├── pareceres/                ← Consultar, Cadastrar, Base, Bionexo, Dashboard [tudo pronto]
     │   └── contratos/
     │       └── TabelaMestre.tsx     ← placeholder [demais páginas a fazer: Alertas, Indicadores]
     └── utils/
@@ -117,8 +118,16 @@ fusve-portal/
         ├── cobranca.ts              ← templates de mensagem (individual/lote), links Outlook/WhatsApp [pronto]
         ├── csv.ts                   ← parseOCsCSV, parseSolsCSV [pronto]
         ├── pdf.ts                   ← extractPdfLines, parseAcompPDF (pdfjs-dist, carregado sob demanda) [pronto — ver nota abaixo]
+        ├── bionexo.ts                ← parseBionexoText, parseItensManual [pronto]
+        ├── marcas.ts                 ← CATEGORIAS_MARCA, statusBionexoDoParecer [pronto]
+        ├── relatorioParecer.ts       ← gerarRelatorioPDF (jspdf+autotable, carregado sob demanda) [pronto]
         ├── validators.ts            [a fazer]
         └── formatters.ts            [a fazer]
+
+    src/data/                        ← PRODUTOS_SOULMV (4.579 itens) e MARCAS_SUGERIDAS, carregados via
+                                        dynamic import em useProdutos.ts — não pesam no bundle principal
+
+    scripts/migrate-pareceres.ts     ← migração Firebase → Supabase, pronta, não executada (ver item 4 do backlog)
 ```
 
 **Nota sobre `pdf.ts`:** só o parser de "Acompanhamento de Compras" (`parseAcompPDF`) foi portado — é o único fluxo de PDF sem equivalente em CSV (o vínculo automático OC↔Solicitação). Os parsers de OC e Solicitação via PDF do legado (`parseOC`/`parseSol` em `_legacy/.../pdf.js`) não foram portados: são dois parsers redundantes com o CSV (mesma informação, fonte menos confiável) e muito baseados em regex heurística de posição — portar sem um arquivo real do SoulMV pra testar contra é risco alto de corromper dados de compras reais silenciosamente.
@@ -628,11 +637,11 @@ if (error) return <ErrorMessage message={error.message} />
 | 1 | Setup inicial React + TypeScript + Vite + Tailwind + Supabase | Base | Alta | ✅ Feito |
 | 2 | Tipos gerados do banco (`supabase gen types`) | Base | Alta | Pendente |
 | 3 | Layout base: sidebar, topbar, troca de hospital, toast | Base | Alta | ✅ Feito |
-| 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | Pendente |
+| 4 | Script de migração Firebase → Supabase (Pareceres) | Pareceres | Alta | Script pronto em `scripts/migrate-pareceres.ts` (`npm run migrate:pareceres`), **não executado** — precisa da tabela `pareceres` existir primeiro (ver item 20) e das credenciais reais do Firebase num `.env` local |
 | 5 | Migrar lógica de OCs do vanilla para hooks React | OCs | Alta | ✅ Feito — módulo OCs completo |
 | 6 | Dashboard de Pendências (KPIs + fila de cobrança) | OCs | Alta | ✅ Feito (fila sequencial simplificada para "cobrar todos visíveis" em lote, sem o painel passo-a-passo do legado) |
 | 7 | Tabela de OCs com filtros e importação CSV | OCs | Alta | ✅ Feito, inclui importação CSV |
-| 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | Pendente |
+| 8 | Módulo de Pareceres: consulta + cadastro + Bionexo | Pareceres | Média | ✅ Feito (Consultar, Cadastrar, Base, Bionexo, Dashboard) — **mas não testado com dados reais**, ver item 20 |
 | 9 | Tabela mestre de Contratos + alertas de vencimento | Contratos | Média | Pendente |
 | 10 | Integração OC → Parecer (clique no produto) | Integração | Média | Pendente (depende do módulo Pareceres existir) |
 | 11 | Métricas expandidas (lead time, reincidência, etc.) | OCs | Média | ✅ Lead time feito (bug do legado corrigido — ver seção "Aprendemos"); índice de reincidência não implementado (não existia no legado) |
@@ -644,3 +653,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 12 | RLS real (policies por usuário autenticado) — pré-requisito do primeiro deploy público | Base | **Alta antes do deploy** | Pendente |
 | 13 | Autenticação real (3 usuários) | Base | Baixa (a não ser que a 12 suba a prioridade) | Pendente |
 | 19 | **Grandes melhorias visuais/UX no frontend** — Everton achou o visual atual muito básico (28/08/2026). Escopo ainda a definir com ele: candidatos incluem hierarquia visual mais forte nos cards/tabelas, mais identidade visual (não só Tailwind default), microinterações, densidade de informação melhor pensada por tela. Fazer antes do deploy público, já que é a cara do sistema pro dia a dia do setor. | Base/Todos módulos | Alta | Pendente — registrado, não iniciado |
+| 20 | **Criar a tabela `pareceres` no Supabase de produção** — confirmado em 2026-08-28 que ela não existe ainda (`GET /pareceres` retorna 404 `PGRST205`, só `ocs`/`sols`/`forns`/`hist_oc` existem). O SQL já está pronto na seção "SQL de migração completo" deste arquivo — falta só rodar no SQL Editor do Supabase. Bloqueante pro módulo Pareceres funcionar com dados reais (a UI já está pronta e builda limpo, só não tem onde gravar/ler ainda) | Pareceres | **Alta — bloqueia uso real do módulo** | Pendente — precisa da sua confirmação pra rodar DDL em produção |

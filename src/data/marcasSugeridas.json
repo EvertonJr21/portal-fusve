@@ -1,0 +1,197 @@
+{
+  "AGULHAS": [
+    "BD (Becton Dickinson)",
+    "Nipro",
+    "Terumo"
+  ],
+  "SERINGAS": [
+    "BD (Becton Dickinson)",
+    "Nipro",
+    "Terumo"
+  ],
+  "CATETERES": [
+    "BD (Becton Dickinson)",
+    "Biomedical",
+    "Medcom"
+  ],
+  "SONDAS": [
+    "Embramed",
+    "Biomedical",
+    "Rusch"
+  ],
+  "EQUIPOS/INJETOR": [
+    "Embramed",
+    "TKL",
+    "Nipro"
+  ],
+  "DRENOS": [
+    "Madeitex",
+    "Embramed",
+    "Biomedical"
+  ],
+  "LUVA": [
+    "Supermax",
+    "Descarpack",
+    "Sempermed"
+  ],
+  "ADESIVOS/CURATIVOS/HEMOSTATICOS/ESPARADRAPOS/SELOS/TAMPAO/FRALDAS/ABSORVENTES": [
+    "3M",
+    "BSN Medical",
+    "Polar Fix"
+  ],
+  "ATADURAS/FAIXAS/MALHAS": [
+    "Cremer",
+    "Polar Fix",
+    "Europa"
+  ],
+  "FIOS": [
+    "Ethicon (J&J)",
+    "Shalon",
+    "Technofio"
+  ],
+  "HEMODINAMICA": [
+    "Boston Scientific",
+    "Abbott",
+    "Medtronic"
+  ],
+  "CARDIACA": [
+    "Boston Scientific",
+    "Medtronic",
+    "Abbott"
+  ],
+  "ELETROFISIOLOGIA": [
+    "Abbott",
+    "Biosense Webster",
+    "Medtronic"
+  ],
+  "ORTOPEDICA": [
+    "Synthes (DePuy)",
+    "Stryker",
+    "Zimmer Biomet"
+  ],
+  "OPME": [
+    "Synthes (DePuy)",
+    "Stryker",
+    "Zimmer Biomet"
+  ],
+  "INSTRUMENTOS": [
+    "Medline",
+    "Cotlin",
+    "Edlo"
+  ],
+  "PINCAS/PORTA AGULHAS": [
+    "Cotlin",
+    "Edlo",
+    "Golgran"
+  ],
+  "TESOURA CIRURGICA": [
+    "Cotlin",
+    "Edlo",
+    "Golgran"
+  ],
+  "KITS CIRURGICOS/ CONJUNTOS": [
+    "Medi Import",
+    "Bioline",
+    "Medline"
+  ],
+  "KIT": [
+    "Medi Import",
+    "Bioline",
+    "Medline"
+  ],
+  "CANULAS": [
+    "Medtronic",
+    "LMA",
+    "Smiths Medical"
+  ],
+  "TUBOS": [
+    "Embramed",
+    "Bioline",
+    "Mallinkrodt"
+  ],
+  "UROLOGIA": [
+    "Coloplast",
+    "Bard",
+    "Rusch"
+  ],
+  "BOLSAS": [
+    "Coloplast",
+    "Convatec",
+    "Hollister"
+  ],
+  "ONCOLOGICA": [
+    "B. Braun",
+    "BD (Becton Dickinson)",
+    "ICU Medical"
+  ],
+  "NEUROLOGIA": [
+    "Medtronic",
+    "Integra",
+    "Codman"
+  ],
+  "LAMINAS/LANCETAS": [
+    "BD (Becton Dickinson)",
+    "Feather",
+    "Cincinnati"
+  ],
+  "PROTETORES": [
+    "3M",
+    "Medline",
+    "Cremer"
+  ],
+  "DISPOSITIVOS": [
+    "BD (Becton Dickinson)",
+    "B. Braun",
+    "Nipro"
+  ],
+  "ESTERILIZACAO": [
+    "3M",
+    "Getinge",
+    "Sterrad"
+  ],
+  "PULSEIRAS": [
+    "Identix",
+    "Brady",
+    "PDC"
+  ],
+  "OFTALMOLOGIA": [
+    "Alcon",
+    "B&L",
+    "Zeiss"
+  ],
+  "MEDICAMENTO": [
+    "Cristalia",
+    "B. Braun",
+    "Eurofarma"
+  ],
+  "MATERIAL MEDICO": [
+    "BD (Becton Dickinson)",
+    "3M",
+    "B. Braun"
+  ],
+  "COMPRESSAS": [
+    "Missner",
+    "America",
+    "Cremer"
+  ],
+  "SCALPS": [
+    "BD (Becton Dickinson)",
+    "Nipro",
+    "Terumo"
+  ],
+  "COLETORES": [
+    "Obras",
+    "BD (Becton Dickinson)",
+    "Sarstedt"
+  ],
+  "FRASCOS": [
+    "Bioline",
+    "B. Braun",
+    "Fresenius"
+  ],
+  "EXTENSORES/PERFUSORES": [
+    "Nipro",
+    "B. Braun",
+    "TKL"
+  ]
+}

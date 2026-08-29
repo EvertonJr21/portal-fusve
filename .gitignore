@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
 
 # Projetos legados extraídos como referência — contêm credenciais
 # hardcoded (Firebase apiKey, Supabase anon key) e não fazem parte do build.

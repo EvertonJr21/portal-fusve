@@ -1,7 +1,8 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
 import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
-import Dashboard from '@/pages/ocs/Dashboard'
+import DashboardOCs from '@/pages/ocs/Dashboard'
 import Fornecedores from '@/pages/ocs/Fornecedores'
 import Importar from '@/pages/ocs/Importar'
 import Metricas from '@/pages/ocs/Metricas'
@@ -10,7 +11,11 @@ import PorFornecedor from '@/pages/ocs/PorFornecedor'
 import Resumo from '@/pages/ocs/Resumo'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
+import Bionexo from '@/pages/pareceres/Bionexo'
+import Cadastrar from '@/pages/pareceres/Cadastrar'
+import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
+import DashboardPareceres from '@/pages/pareceres/Dashboard'
 import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
 const OCS_ITEMS: NavItem[] = [
@@ -35,16 +40,24 @@ function OCsLayout() {
   )
 }
 
-const PARECERES_ITEMS: NavItem[] = [{ to: '/pareceres', label: 'Consultar', end: true }]
+const PARECERES_ITEMS: NavItem[] = [
+  { to: '/pareceres', label: 'Consultar', end: true },
+  { to: '/pareceres/cadastrar', label: 'Cadastrar' },
+  { to: '/pareceres/base', label: 'Base de Pareceres' },
+  { to: '/pareceres/bionexo', label: 'Bionexo' },
+  { to: '/pareceres/dashboard', label: 'Dashboard' },
+]
 
 function PareceresLayout() {
   return (
-    <div className="flex flex-1">
-      <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
-      <main className="flex-1 overflow-y-auto p-6">
-        <Outlet />
-      </main>
-    </div>
+    <HistoricoConsultasProvider>
+      <div className="flex flex-1">
+        <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </HistoricoConsultasProvider>
   )
 }
 
@@ -70,7 +83,7 @@ export default function App() {
           <Route path="/" element={<Modulos />} />
 
           <Route path="/ocs" element={<OCsLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<DashboardOCs />} />
             <Route path="ordens" element={<OrdensDeCompra />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
             <Route path="resumo" element={<Resumo />} />
@@ -82,6 +95,10 @@ export default function App() {
 
           <Route path="/pareceres" element={<PareceresLayout />}>
             <Route index element={<Consultar />} />
+            <Route path="cadastrar" element={<Cadastrar />} />
+            <Route path="base" element={<Base />} />
+            <Route path="bionexo" element={<Bionexo />} />
+            <Route path="dashboard" element={<DashboardPareceres />} />
           </Route>
 
           <Route path="/contratos" element={<ContratosLayout />}>
