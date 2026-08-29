@@ -63,6 +63,19 @@ export function useHistoricoRecentePorOC(ocIds: number[]) {
   })
 }
 
+/** Toda a tabela hist_oc — só pra agregação de score de fornecedor, não pro dia a dia. */
+export function useHistoricoTodos() {
+  return useQuery({
+    queryKey: ['hist-todos'],
+    queryFn: async (): Promise<HistOC[]> => {
+      const { data, error } = await supabase.from('hist_oc').select('*').order('ts', { ascending: false }).limit(5000)
+      if (error) throw error
+      return (data as HistOCRow[]).map(toHistOC)
+    },
+    staleTime: 60_000,
+  })
+}
+
 export interface RegistrarCobrancaInput {
   ocId: number
   canal: HistOC['canal']

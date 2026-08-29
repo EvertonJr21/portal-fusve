@@ -4,11 +4,13 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import DashboardOCs from '@/pages/ocs/Dashboard'
+import FichaFornecedor from '@/pages/ocs/FichaFornecedor'
 import Fornecedores from '@/pages/ocs/Fornecedores'
 import Importar from '@/pages/ocs/Importar'
 import Metricas from '@/pages/ocs/Metricas'
 import OrdensDeCompra from '@/pages/ocs/OrdensDeCompra'
 import PorFornecedor from '@/pages/ocs/PorFornecedor'
+import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
 import Resumo from '@/pages/ocs/Resumo'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
@@ -25,6 +27,7 @@ const OCS_ITEMS: NavItem[] = [
   { to: '/ocs/solicitacoes', label: 'Solicitações' },
   { to: '/ocs/resumo', label: 'Resumo Diário' },
   { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
+  { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
   { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
   { to: '/ocs/metricas', label: 'Métricas' },
   { to: '/ocs/importar', label: 'Importar' },
@@ -102,6 +105,8 @@ export default function App() {
             <Route path="solicitacoes" element={<Solicitacoes />} />
             <Route path="resumo" element={<Resumo />} />
             <Route path="fornecedores" element={<PorFornecedor />} />
+            <Route path="ranking" element={<RankingFornecedores />} />
+            <Route path="ranking/:fornecedorId" element={<FichaFornecedor />} />
             <Route path="cadastro-fornecedores" element={<Fornecedores />} />
             <Route path="metricas" element={<Metricas />} />
             <Route path="importar" element={<Importar />} />
