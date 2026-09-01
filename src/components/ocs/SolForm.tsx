@@ -61,8 +61,8 @@ export function SolForm({ sol, hospitalId, onClose }: SolFormProps) {
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button form="sol-form" type="submit" disabled={salvar.isPending}>
-            {salvar.isPending ? 'Salvando…' : 'Salvar'}
+          <Button form="sol-form" type="submit" loading={salvar.isPending}>
+            Salvar
           </Button>
         </>
       }

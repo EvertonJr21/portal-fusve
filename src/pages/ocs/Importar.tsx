@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { UploadCard, type UploadStatus } from '@/components/ocs/UploadCard'
 import { SIT_RANK } from '@/constants'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
@@ -8,9 +9,30 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 
+type Relatorio = 'ocs' | 'sols' | 'acomp'
+
 function sitAvancou(atual: string, nova: string): boolean {
   return (SIT_RANK[nova] ?? 0) > (SIT_RANK[atual] ?? 0)
 }
+
+const ICON_OCS = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m-8 4h10a2 2 0 002-2V6a2 2 0 00-2-2H9.5L5 8.5V18a2 2 0 002 2z" />
+  </svg>
+)
+
+const ICON_SOLS = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 9l2 2 4-4" />
+  </svg>
+)
+
+const ICON_PDF = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v6h6M9 15l3 3 3-3M12 12v6" />
+  </svg>
+)
 
 export default function Importar() {
   const { hospitalId } = useHospital()
@@ -19,20 +41,24 @@ export default function Importar() {
   const queryClient = useQueryClient()
 
   const [log, setLog] = useState<string[]>([])
-  const [processando, setProcessando] = useState(false)
-  const ocInputRef = useRef<HTMLInputElement>(null)
-  const solInputRef = useRef<HTMLInputElement>(null)
-  const acompInputRef = useRef<HTMLInputElement>(null)
+  const [ativo, setAtivo] = useState<Relatorio | null>(null)
+  const [status, setStatus] = useState<Record<Relatorio, UploadStatus>>({
+    ocs: { state: 'idle' },
+    sols: { state: 'idle' },
+    acomp: { state: 'idle' },
+  })
   const logRef = useRef<HTMLDivElement>(null)
 
   const addLog = (linha: string) => setLog((l) => [...l, linha])
+  const setCardStatus = (key: Relatorio, s: UploadStatus) => setStatus((prev) => ({ ...prev, [key]: s }))
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
   }, [log])
 
   const importarOCsCSV = async (file: File) => {
-    setProcessando(true)
+    setAtivo('ocs')
+    setCardStatus('ocs', { state: 'processing' })
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
@@ -83,17 +109,22 @@ export default function Importar() {
           addLog(`OC ${item.id} — ${item.sit} (nova)`)
         }
       }
-      addLog(`─ OCs CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança`
+      addLog(`─ OCs CSV: ${resumo}`)
+      setCardStatus('ocs', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
-      addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      addLog(`❌ Erro: ${msg}`)
+      setCardStatus('ocs', { state: 'error', message: msg })
     } finally {
-      setProcessando(false)
+      setAtivo(null)
     }
   }
 
   const importarSolsCSV = async (file: File) => {
-    setProcessando(true)
+    setAtivo('sols')
+    setCardStatus('sols', { state: 'processing' })
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
@@ -136,24 +167,31 @@ export default function Importar() {
           addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
         }
       }
-      addLog(`─ Solicitações CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança`
+      addLog(`─ Solicitações CSV: ${resumo}`)
+      setCardStatus('sols', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     } catch (err) {
-      addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      addLog(`❌ Erro: ${msg}`)
+      setCardStatus('sols', { state: 'error', message: msg })
     } finally {
-      setProcessando(false)
+      setAtivo(null)
     }
   }
 
   const importarAcompPDF = async (file: File) => {
-    setProcessando(true)
+    setAtivo('acomp')
+    setCardStatus('acomp', { state: 'processing' })
     setLog([`📄 ${file.name} — extraindo texto do PDF...`])
     try {
       const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
       const linhas = await extractPdfLines(file)
       const vinculos = parseAcompPDF(linhas)
       if (!vinculos.length) {
-        addLog('⚠ Nenhum vínculo encontrado neste PDF. Verifique se é um relatório de Acompanhamento de Compras válido.')
+        const msg = 'Nenhum vínculo encontrado. Verifique se é um relatório de Acompanhamento de Compras válido.'
+        addLog(`⚠ ${msg}`)
+        setCardStatus('acomp', { state: 'error', message: msg })
         return
       }
 
@@ -192,14 +230,20 @@ export default function Importar() {
         }
         addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
       }
-      addLog(`─ Acompanhamento: ${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)`)
+      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)`
+      addLog(`─ Acompanhamento: ${resumo}`)
+      setCardStatus('acomp', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
-      addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      addLog(`❌ Erro: ${msg}`)
+      setCardStatus('acomp', { state: 'error', message: msg })
     } finally {
-      setProcessando(false)
+      setAtivo(null)
     }
   }
+
+  const processando = ativo !== null
 
   return (
     <div className="flex flex-col gap-4">
@@ -209,56 +253,62 @@ export default function Importar() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-slate-300 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-700">OCs — R_ORD_COM_FOR.csv</h3>
-          <p className="text-xs text-slate-400">Nunca regride a situação de uma OC existente.</p>
-          <input
-            ref={ocInputRef}
-            type="file"
-            accept=".csv"
-            className="text-xs"
-            disabled={processando}
-            onChange={(e) => e.target.files?.[0] && importarOCsCSV(e.target.files[0])}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-slate-300 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-700">Solicitações — R_SOL_PEND_DATA.csv</h3>
-          <p className="text-xs text-slate-400">Só preenche campos vazios de solicitações já existentes.</p>
-          <input
-            ref={solInputRef}
-            type="file"
-            accept=".csv"
-            className="text-xs"
-            disabled={processando}
-            onChange={(e) => e.target.files?.[0] && importarSolsCSV(e.target.files[0])}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-slate-300 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-700">Acompanhamento de Compras (PDF)</h3>
-          <p className="text-xs text-slate-400">Vincula OCs às Solicitações de origem automaticamente.</p>
-          <input
-            ref={acompInputRef}
-            type="file"
-            accept=".pdf"
-            className="text-xs"
-            disabled={processando}
-            onChange={(e) => e.target.files?.[0] && importarAcompPDF(e.target.files[0])}
-          />
-        </div>
+        <UploadCard
+          title="OCs"
+          description="R_ORD_COM_FOR.csv — nunca regride a situação de uma OC existente."
+          filenameHint="Arquivo .csv"
+          accept=".csv"
+          accentClass="border-status-blue/30 bg-status-blue-bg text-status-blue"
+          icon={ICON_OCS}
+          status={status.ocs}
+          disabled={processando && ativo !== 'ocs'}
+          onFile={importarOCsCSV}
+        />
+        <UploadCard
+          title="Solicitações"
+          description="R_SOL_PEND_DATA.csv — só preenche campos vazios de solicitações já existentes."
+          filenameHint="Arquivo .csv"
+          accept=".csv"
+          accentClass="border-status-purple/30 bg-status-purple-bg text-status-purple"
+          icon={ICON_SOLS}
+          status={status.sols}
+          disabled={processando && ativo !== 'sols'}
+          onFile={importarSolsCSV}
+        />
+        <UploadCard
+          title="Acompanhamento de Compras"
+          description="PDF — vincula OCs às Solicitações de origem automaticamente."
+          filenameHint="Arquivo .pdf"
+          accept=".pdf"
+          accentClass="border-status-amber/30 bg-status-amber-bg text-status-amber"
+          icon={ICON_PDF}
+          status={status.acomp}
+          disabled={processando && ativo !== 'acomp'}
+          onFile={importarAcompPDF}
+        />
       </div>
 
       {log.length > 0 && (
-        <div
-          ref={logRef}
-          className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 bg-slate-900 p-4 font-mono text-xs text-slate-200"
-        >
-          {log.map((linha, i) => (
-            <div key={i} className={linha.startsWith('─') ? 'mt-1 font-semibold text-status-green' : ''}>
-              {linha}
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-slate-800 shadow-soft-md">
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-slate-800 px-4 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-status-red/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-status-amber/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-status-green/70" />
+            <span className="ml-2 font-mono text-[11px] text-slate-400">log de importação</span>
+            {processando && (
+              <span className="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-status-blue">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-status-blue" />
+                processando…
+              </span>
+            )}
+          </div>
+          <div ref={logRef} className="max-h-96 overflow-y-auto bg-slate-900 p-4 font-mono text-xs text-slate-200">
+            {log.map((linha, i) => (
+              <div key={i} className={linha.startsWith('─') ? 'mt-1 font-semibold text-status-green' : ''}>
+                {linha}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

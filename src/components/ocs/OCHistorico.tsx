@@ -141,8 +141,8 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} disabled={atualizar.isPending}>
-            {atualizar.isPending ? 'Salvando…' : 'Salvar'}
+          <Button onClick={handleSalvar} loading={atualizar.isPending}>
+            Salvar
           </Button>
         </>
       }

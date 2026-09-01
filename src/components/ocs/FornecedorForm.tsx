@@ -44,8 +44,8 @@ export function FornecedorForm({ forn, onClose }: FornecedorFormProps) {
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button form="forn-form" type="submit" disabled={salvar.isPending}>
-            {salvar.isPending ? 'Salvando…' : 'Salvar'}
+          <Button form="forn-form" type="submit" loading={salvar.isPending}>
+            Salvar
           </Button>
         </>
       }

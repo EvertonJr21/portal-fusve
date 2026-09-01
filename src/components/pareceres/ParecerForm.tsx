@@ -131,8 +131,8 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         )}
       </label>
 
-      <Button type="submit" disabled={salvar.isPending} className="self-start">
-        {salvar.isPending ? 'Salvando…' : parecerExistente ? 'Atualizar parecer' : 'Cadastrar parecer'}
+      <Button type="submit" loading={salvar.isPending} className="self-start">
+        {parecerExistente ? 'Atualizar parecer' : 'Cadastrar parecer'}
       </Button>
     </form>
   )

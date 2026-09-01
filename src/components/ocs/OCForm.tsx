@@ -58,8 +58,8 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button form="oc-form" type="submit" disabled={salvar.isPending}>
-            {salvar.isPending ? 'Salvando…' : 'Salvar'}
+          <Button form="oc-form" type="submit" loading={salvar.isPending}>
+            Salvar
           </Button>
         </>
       }

@@ -40,7 +40,7 @@ export function OCVincular({ oc, sols, hospitalId, onClose }: OCVincularProps) {
       footer={
         <>
           {oc.solicitacaoId && (
-            <Button variant="outline" onClick={() => salvar(null)} disabled={atualizar.isPending}>
+            <Button variant="outline" onClick={() => salvar(null)} loading={atualizar.isPending}>
               Desvincular
             </Button>
           )}
@@ -49,9 +49,10 @@ export function OCVincular({ oc, sols, hospitalId, onClose }: OCVincularProps) {
           </Button>
           <Button
             onClick={() => selecionado && salvar(selecionado)}
-            disabled={!selecionado || atualizar.isPending}
+            disabled={!selecionado}
+            loading={atualizar.isPending}
           >
-            {atualizar.isPending ? 'Salvando…' : 'Confirmar vínculo'}
+            Confirmar vínculo
           </Button>
         </>
       }

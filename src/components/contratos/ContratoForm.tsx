@@ -142,8 +142,8 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button form="contrato-form" type="submit" disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar contrato'}
+          <Button form="contrato-form" type="submit" loading={salvando}>
+            Salvar contrato
           </Button>
         </>
       }
