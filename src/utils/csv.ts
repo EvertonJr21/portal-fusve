@@ -10,8 +10,29 @@ export async function decodeFile(file: File): Promise<string> {
   }
 }
 
+/**
+ * Split de linha CSV respeitando campos entre aspas — necessário porque os
+ * exports do SoulMV usam vírgula como separador decimal em valores (ex:
+ * "748,80"), e o Excel escapa esses campos entre aspas. Um split ingênuo por
+ * vírgula quebra esses campos ao meio e desalinha as colunas seguintes.
+ */
 function splitCsvLine(line: string): string[] {
-  return line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
+  const result: string[] = []
+  let atual = ''
+  let entreAspas = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') {
+      entreAspas = !entreAspas
+    } else if (c === ',' && !entreAspas) {
+      result.push(atual.trim())
+      atual = ''
+    } else {
+      atual += c
+    }
+  }
+  result.push(atual.trim())
+  return result
 }
 
 export interface OCImportada {
@@ -42,15 +63,22 @@ export function parseOCsCSV(text: string): OCImportada[] {
     const fornNome = (cols[7] ?? '').trim()
     if (fornNome.length < 2) continue
 
-    const dtPrev = cols[10] ?? ''
+    // Dt. Prevista e dias em atraso vêm depois do nome do fornecedor, mas a posição
+    // exata varia entre blocos do mesmo arquivo (alguns têm uma coluna extra vazia
+    // antes de "Tipo Pagamento") — busca por padrão em vez de índice fixo.
+    const cauda = cols.slice(8)
+    const dtPrevIdx = cauda.findIndex((c) => /^\d{2}\/\d{2}\/\d{4}$/.test(c))
+    const dtPrev = dtPrevIdx >= 0 ? cauda[dtPrevIdx] : null
+    const diasAtrasoStr = dtPrevIdx >= 0 ? cauda.slice(dtPrevIdx + 1).find((c) => /^\d+$/.test(c)) : undefined
+
     itens.push({
       id: parseInt(cols[1], 10),
       dataSolic: cols[3],
       sit: cols[5] || 'Autorizada',
       fornecedorId: parseInt(cols[6], 10) || 0,
       fornecedorNome: fornNome,
-      previsaoForn: /^\d{2}\/\d{2}\/\d{4}$/.test(dtPrev) ? dtPrev : null,
-      diasAtraso: parseInt(cols[11], 10) || 0,
+      previsaoForn: dtPrev,
+      diasAtraso: parseInt(diasAtrasoStr ?? '', 10) || 0,
       estoque: estoqueAtual,
     })
   }
