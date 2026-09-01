@@ -56,6 +56,7 @@ export default function Importar() {
             const { error } = await supabase.from('ocs').update(patch).eq('id', item.id)
             if (error) throw error
             updated++
+            addLog(`OC ${item.id} — ${item.sit}`)
           } else {
             skipped++
           }
@@ -79,8 +80,8 @@ export default function Importar() {
           })
           if (error) throw error
           added++
+          addLog(`OC ${item.id} — ${item.sit} (nova)`)
         }
-        addLog(`OC ${item.id} — ${item.sit}`)
       }
       addLog(`─ OCs CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
@@ -115,6 +116,7 @@ export default function Importar() {
             const { error } = await supabase.from('sols').update(patch).eq('id', item.id)
             if (error) throw error
             updated++
+            addLog(`Solicitação ${item.id} — ${item.sit}`)
           } else {
             skipped++
           }
@@ -131,8 +133,8 @@ export default function Importar() {
           })
           if (error) throw error
           added++
+          addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
         }
-        addLog(`Solicitação ${item.id} — ${item.sit}`)
       }
       addLog(`─ Solicitações CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
