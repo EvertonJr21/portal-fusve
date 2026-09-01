@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SIT_RANK } from '@/constants'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
@@ -19,13 +19,17 @@ export default function Importar() {
   const queryClient = useQueryClient()
 
   const [log, setLog] = useState<string[]>([])
-  const [progresso, setProgresso] = useState('')
   const [processando, setProcessando] = useState(false)
   const ocInputRef = useRef<HTMLInputElement>(null)
   const solInputRef = useRef<HTMLInputElement>(null)
   const acompInputRef = useRef<HTMLInputElement>(null)
+  const logRef = useRef<HTMLDivElement>(null)
 
   const addLog = (linha: string) => setLog((l) => [...l, linha])
+
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+  }, [log])
 
   const importarOCsCSV = async (file: File) => {
     setProcessando(true)
@@ -76,15 +80,13 @@ export default function Importar() {
           if (error) throw error
           added++
         }
-        setProgresso(`OC ${item.id} — ${i + 1}/${itens.length} (${added} novas, ${updated} atualizadas, ${skipped} sem mudança)`)
+        addLog(`OC ${item.id} — ${item.sit}`)
       }
-      setProgresso('')
       addLog(`─ OCs CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
-      setProgresso('')
       setProcessando(false)
     }
   }
@@ -130,15 +132,13 @@ export default function Importar() {
           if (error) throw error
           added++
         }
-        setProgresso(`Solicitação ${item.id} — ${i + 1}/${itens.length} (${added} novas, ${updated} atualizadas, ${skipped} sem mudança)`)
+        addLog(`Solicitação ${item.id} — ${item.sit}`)
       }
-      setProgresso('')
       addLog(`─ Solicitações CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
-      setProgresso('')
       setProcessando(false)
     }
   }
@@ -185,16 +185,16 @@ export default function Importar() {
           const { error } = await supabase.from('ocs').update({ solicitacao_id: v.solicitacaoId }).eq('id', v.ocId)
           if (error) throw error
           vinculados++
+        } else {
+          continue
         }
-        setProgresso(`OC ${v.ocId} — ${i + 1}/${vinculos.length} (${vinculados} vinculadas, ${criadas} criadas)`)
+        addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
       }
-      setProgresso('')
       addLog(`─ Acompanhamento: ${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)`)
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
-      setProgresso('')
       setProcessando(false)
     }
   }
@@ -248,11 +248,15 @@ export default function Importar() {
       </div>
 
       {log.length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-slate-900 p-4 font-mono text-xs text-slate-200">
+        <div
+          ref={logRef}
+          className="max-h-96 overflow-y-auto rounded-lg border border-slate-200 bg-slate-900 p-4 font-mono text-xs text-slate-200"
+        >
           {log.map((linha, i) => (
-            <div key={i}>{linha}</div>
+            <div key={i} className={linha.startsWith('─') ? 'mt-1 font-semibold text-status-green' : ''}>
+              {linha}
+            </div>
           ))}
-          {progresso && <div className="text-status-amber animate-pulse">⏳ {progresso}</div>}
         </div>
       )}
     </div>
