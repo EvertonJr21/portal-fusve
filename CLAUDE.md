@@ -148,6 +148,8 @@ fusve-portal/
 
 **Importação real rodada em produção (31/08/2026)**: Everton importou os dois CSVs pela tela `/ocs/importar`, logado. Base de OCs foi de 659 pra **845** (186 novas). **Achado durante a verificação pós-import**: 16 OCs já existentes na base tinham `dias_atraso` corrompido (valores tipo 949, 944, 926 dias) — sobra de uma importação anterior à correção do bug de aspas (a lógica de `importarOCsCSV`/`useAtualizarOC` nunca sobrescreve `dias_atraso` de OC já existente, de propósito, então o dado ruim nunca era corrigido sozinho num re-import). Cruzei os 16 IDs contra o CSV real: **14 corrigidos** via `UPDATE` direto no SQL Editor com os valores corretos extraídos do arquivo; **2 (74463, 75521) não estavam no CSV** (mais antigos que o período do arquivo) — deixados como estão, sem inventar dado. Confirmado via `information_schema`: 0 → 2 OCs com `dias_atraso` > 250 depois da correção (as 2 sem fonte de dado).
 
+**Log de progresso adicionado (31/08/2026)**: o Everton achou que a importação tinha travado — na real, `Importar.tsx` só escrevia uma linha de log **no final** das ~665 chamadas sequenciais ao Supabase, sem feedback durante o processo. Adicionado estado `progresso` que atualiza a cada item processado (linha "⏳ OC 78624 — 412/665 (186 novas, 226 atualizadas, ...)"), nos três fluxos (OCs CSV, Solicitações CSV, Acompanhamento PDF), limpo em `finally` pra nunca ficar uma linha de progresso "presa" depois de erro ou conclusão.
+
 ---
 
 ## BANCO DE DADOS — SUPABASE

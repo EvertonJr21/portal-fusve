@@ -19,6 +19,7 @@ export default function Importar() {
   const queryClient = useQueryClient()
 
   const [log, setLog] = useState<string[]>([])
+  const [progresso, setProgresso] = useState('')
   const [processando, setProcessando] = useState(false)
   const ocInputRef = useRef<HTMLInputElement>(null)
   const solInputRef = useRef<HTMLInputElement>(null)
@@ -36,7 +37,8 @@ export default function Importar() {
       let updated = 0
       let skipped = 0
 
-      for (const item of itens) {
+      for (let i = 0; i < itens.length; i++) {
+        const item = itens[i]
         const existente = ocs.find((o) => o.id === item.id)
         if (existente) {
           const patch: Database['public']['Tables']['ocs']['Update'] = {}
@@ -74,12 +76,15 @@ export default function Importar() {
           if (error) throw error
           added++
         }
+        setProgresso(`OC ${item.id} — ${i + 1}/${itens.length} (${added} novas, ${updated} atualizadas, ${skipped} sem mudança)`)
       }
+      setProgresso('')
       addLog(`─ OCs CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      setProgresso('')
       setProcessando(false)
     }
   }
@@ -94,7 +99,8 @@ export default function Importar() {
       let updated = 0
       let skipped = 0
 
-      for (const item of itens) {
+      for (let i = 0; i < itens.length; i++) {
+        const item = itens[i]
         const existente = sols.find((s) => s.id === item.id)
         if (existente) {
           const patch: Database['public']['Tables']['sols']['Update'] = {}
@@ -124,12 +130,15 @@ export default function Importar() {
           if (error) throw error
           added++
         }
+        setProgresso(`Solicitação ${item.id} — ${i + 1}/${itens.length} (${added} novas, ${updated} atualizadas, ${skipped} sem mudança)`)
       }
+      setProgresso('')
       addLog(`─ Solicitações CSV: ${added} novas | ${updated} atualizadas | ${skipped} sem mudança`)
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      setProgresso('')
       setProcessando(false)
     }
   }
@@ -149,7 +158,8 @@ export default function Importar() {
       let vinculados = 0
       let criadas = 0
 
-      for (const v of vinculos) {
+      for (let i = 0; i < vinculos.length; i++) {
+        const v = vinculos[i]
         const existente = ocs.find((o) => o.id === v.ocId)
         if (!existente) {
           const { error } = await supabase.from('ocs').insert({
@@ -176,12 +186,15 @@ export default function Importar() {
           if (error) throw error
           vinculados++
         }
+        setProgresso(`OC ${v.ocId} — ${i + 1}/${vinculos.length} (${vinculados} vinculadas, ${criadas} criadas)`)
       }
+      setProgresso('')
       addLog(`─ Acompanhamento: ${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)`)
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
       addLog(`❌ Erro: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      setProgresso('')
       setProcessando(false)
     }
   }
@@ -239,6 +252,7 @@ export default function Importar() {
           {log.map((linha, i) => (
             <div key={i}>{linha}</div>
           ))}
+          {progresso && <div className="text-status-amber animate-pulse">⏳ {progresso}</div>}
         </div>
       )}
     </div>
