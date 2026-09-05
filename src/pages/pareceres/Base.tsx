@@ -8,6 +8,7 @@ import { Table, TableHead } from '@/components/ui/Table'
 import { useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Parecer } from '@/types'
+import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 
 function validadeInfo(dataISO: string): { texto: string; classe: string } | null {
   if (!dataISO) return null
@@ -149,15 +150,14 @@ export default function Base() {
                         ✏
                       </button>
                       {p.pdfDataUrl && (
-                        <a
-                          href={p.pdfDataUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => abrirPdfDataUrl(p.pdfDataUrl!)}
                           title="Ver PDF"
                           className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                         >
                           📄
-                        </a>
+                        </button>
                       )}
                       <button
                         type="button"

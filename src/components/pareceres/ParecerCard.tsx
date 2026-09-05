@@ -1,6 +1,7 @@
 import type { Produto } from '@/data/produtos'
 import type { Parecer } from '@/types'
 import { CATEGORIAS_MARCA, temAlgumaMarca } from '@/utils/marcas'
+import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 import { MarcasBadge } from './MarcasBadge'
 
 interface ParecerCardProps {
@@ -23,14 +24,13 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
           <div className="text-xs text-slate-400">{produto.cat}</div>
         </div>
         {parecer?.pdfDataUrl && (
-          <a
-            href={parecer.pdfDataUrl}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => abrirPdfDataUrl(parecer.pdfDataUrl!)}
             className="ml-auto rounded border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
           >
             📄 Ver Parecer
-          </a>
+          </button>
         )}
       </div>
 

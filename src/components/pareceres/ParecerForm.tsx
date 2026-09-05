@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/useToast'
 import type { Produto } from '@/data/produtos'
 import type { Parecer } from '@/types'
 import { toInput, fromInput } from '@/utils/date'
+import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 import { MarcasEditor, type MarcasPorCategoria } from './MarcasEditor'
 
 interface ParecerFormProps {
@@ -125,9 +126,9 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
           onChange={(e) => handlePdf(e.target.files?.[0])}
         />
         {pdf && (
-          <a href={pdf.dataUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-700 hover:underline">
+          <button type="button" onClick={() => abrirPdfDataUrl(pdf.dataUrl)} className="self-start text-xs text-blue-700 hover:underline">
             📄 {pdf.nome}
-          </a>
+          </button>
         )}
       </label>
 
