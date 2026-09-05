@@ -15,13 +15,3 @@ export function useProdutos() {
   })
 }
 
-export function useMarcasSugeridas() {
-  return useQuery({
-    queryKey: ['marcas-sugeridas'],
-    queryFn: async () => {
-      const { MARCAS_SUGERIDAS } = await import('@/data/marcasSugeridas')
-      return MARCAS_SUGERIDAS
-    },
-    staleTime: Infinity,
-  })
-}

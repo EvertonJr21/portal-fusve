@@ -84,8 +84,12 @@ fusve-portal/
     │   ├── useFornecedores.ts       ← useFornecedores (só leitura nesta fase) [pronto]
     │   ├── useHistOC.ts             ← useHistOC, useRegistrarCobranca [pronto]
     │   ├── usePareceres.ts          ← usePareceres, useParecer, useSalvarParecer, useExcluirParecer [pronto — mas tabela não existe em produção ainda, item 20 do backlog]
-    │   ├── useProdutos.ts           ← useProdutos, useMarcasSugeridas — dynamic import de src/data/ sob demanda [pronto]
+    │   ├── useProdutos.ts           ← useProdutos (base SoulMV) — dynamic import de src/data/ sob demanda [pronto]
+    │   ├── useMarcasSugeridas.ts    ← useMarcasSugeridas, useSalvarMarcasSugeridas, useExcluirMarcasSugeridas —
+    │   │                              tabela `marcas_sugeridas`, editável em /pareceres/marcas-sugeridas (antes era
+    │   │                              src/data/marcasSugeridas.json estático, exigia deploy pra mudar) [pronto]
     │   ├── useHistoricoConsultas.ts ← histórico de sessão do módulo Pareceres (não persiste) [pronto]
+    │   ├── useScoreReset.ts         ← data de corte do score/ranking de fornecedores, em localStorage [pronto]
     │   └── useContratos.ts          ← CRUD de Contratos, produtos como sub-tabela (diff/soft-delete) [pronto]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
@@ -111,10 +115,12 @@ fusve-portal/
     │   │                                ContratoStatusBadge (StatusContratoBadge + VigenciaBadge) [tudo pronto]
     ├── pages/
     │   ├── Modulos.tsx              ← tela inicial de seleção de módulo [pronto]
-    │   ├── ocs/                     ← Dashboard, OrdensDeCompra, Solicitacoes, Resumo,
+    │   ├── ocs/                     ← Dashboard, OrdensDeCompra, Solicitacoes,
     │   │                              PorFornecedor, Fornecedores (cadastro), Metricas,
-    │   │                              Importar [tudo pronto — falta só Backup]
-    │   ├── pareceres/                ← Consultar, Cadastrar, Base, Bionexo, Dashboard [tudo pronto]
+    │   │                              Importar [tudo pronto — falta só Backup]. "Resumo Diário"
+    │   │                              removido (01/09/2026) — Dashboard Executivo cobre a mesma função
+    │   ├── pareceres/                ← Consultar, Cadastrar, Base, MarcasSugeridas, Dashboard [tudo pronto].
+    │   │                              Bionexo removido (01/09/2026, pedido do Everton — não usa mais)
     │   └── contratos/
     │       └── TabelaMestre.tsx     ← KPIs (Total/Ativos/Vencendo/Vencidos), filtros (status/tipo/
     │                                  busca), tabela, CRUD completo — alertas de vencimento e
@@ -128,16 +134,20 @@ fusve-portal/
         ├── cobranca.ts              ← templates de mensagem (individual/lote), links Outlook/WhatsApp [pronto]
         ├── csv.ts                   ← parseOCsCSV, parseSolsCSV [pronto]
         ├── pdf.ts                   ← extractPdfLines, parseAcompPDF (pdfjs-dist, carregado sob demanda) [pronto — ver nota abaixo]
-        ├── bionexo.ts                ← parseBionexoText, parseItensManual [pronto]
-        ├── marcas.ts                 ← CATEGORIAS_MARCA, statusBionexoDoParecer [pronto]
+        ├── marcas.ts                 ← CATEGORIAS_MARCA, temAlgumaMarca [pronto]
         ├── relatorioParecer.ts       ← gerarRelatorioPDF (jspdf+autotable, carregado sob demanda) [pronto]
+        ├── exportarPdf.ts            ← exportarPDF genérico (jsPDF+autoTable), usado em Exportar.tsx [pronto]
+        ├── scoreFornecedor.ts        ← calcularScoreFornecedor(Todos), fornecedoresProblematicos, filtrarDesdeReset [pronto]
         ├── contrato.ts               ← diasParaVencer, statusVigencia (vencido/critico/atencao/ok) [pronto]
         ├── cnpj.ts                   ← consultarCNPJ (BrasilAPI), formatarCNPJ [pronto]
         ├── validators.ts            [a fazer]
         └── formatters.ts            [a fazer]
 
-    src/data/                        ← PRODUTOS_SOULMV (4.579 itens) e MARCAS_SUGERIDAS, carregados via
-                                        dynamic import em useProdutos.ts — não pesam no bundle principal
+    src/data/                        ← PRODUTOS_SOULMV (4.579 itens), dynamic import em useProdutos.ts —
+                                        não pesa no bundle principal. marcasSugeridas.json/.ts ficaram só
+                                        como seed de `scripts/migrate-marcas-sugeridas.ts` (01/09/2026) —
+                                        os dados agora vivem na tabela `marcas_sugeridas`, editável em
+                                        /pareceres/marcas-sugeridas
 
     scripts/migrate-pareceres.ts     ← migração Firebase → Supabase, pronta, não executada (ver item 4 do backlog)
 ```
@@ -246,6 +256,36 @@ fusve-portal/
 | `pdf_data_url` | text | PDF do parecer em base64 (pode ser null) |
 | `created_at` | timestamptz | Auto |
 | `updated_at` | timestamptz | Auto |
+
+### Tabela `marcas_sugeridas`
+
+Nova em 01/09/2026 — antes vivia em `src/data/marcasSugeridas.json` (estático,
+exigia alterar código e fazer deploy pra mudar uma recomendação). Migrada com
+`npm run migrate:marcas-sugeridas` (idempotente, upsert por `cat`). Editável
+em `/pareceres/marcas-sugeridas`.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `cat` | text PK | Categoria de produto (ex: `AGULHAS`) — mesmo valor de `pareceres.cat` |
+| `marcas` | text[] | Marcas de mercado recomendadas pra essa categoria (histórico: sempre 3, mas o campo aceita qualquer quantidade) |
+| `updated_at` | timestamptz | Auto |
+
+SQL pra criar (RLS já no padrão fechado, igual as outras 7 tabelas — ver item 12 do backlog):
+
+```sql
+CREATE TABLE IF NOT EXISTS marcas_sugeridas (
+  cat        text PRIMARY KEY,
+  marcas     text[] NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE marcas_sugeridas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth_marcas_sugeridas" ON marcas_sugeridas
+  FOR ALL USING (auth.role() = 'authenticated');
+```
+
+Depois de rodar isso, `npm run migrate:marcas-sugeridas` carrega as 39 categorias
+que já existiam em `src/data/marcasSugeridas.json` (precisa de `SUPABASE_KEY`
+service_role no `.env` — RLS exige autenticado, o script roda fora de sessão logada).
 
 ### Tabela `contratos`
 

@@ -23,6 +23,7 @@ import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
 import DashboardPareceres from '@/pages/pareceres/Dashboard'
+import MarcasSugeridas from '@/pages/pareceres/MarcasSugeridas'
 import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
 const OCS_ITEMS: NavItem[] = [
@@ -60,6 +61,7 @@ const PARECERES_ITEMS: NavItem[] = [
   { to: '/pareceres', label: 'Consultar', end: true },
   { to: '/pareceres/cadastrar', label: 'Cadastrar' },
   { to: '/pareceres/base', label: 'Base de Pareceres' },
+  { to: '/pareceres/marcas-sugeridas', label: 'Marcas Sugeridas' },
   { to: '/pareceres/dashboard', label: 'Dashboard' },
 ]
 
@@ -137,6 +139,7 @@ export default function App() {
             <Route index element={<Consultar />} />
             <Route path="cadastrar" element={<Cadastrar />} />
             <Route path="base" element={<Base />} />
+            <Route path="marcas-sugeridas" element={<MarcasSugeridas />} />
             <Route path="dashboard" element={<DashboardPareceres />} />
           </Route>
 

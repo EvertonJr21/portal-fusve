@@ -5,7 +5,7 @@ import { ParecerForm } from '@/components/pareceres/ParecerForm'
 import { SearchProduto } from '@/components/pareceres/SearchProduto'
 import { Button } from '@/components/ui/Button'
 import type { Produto } from '@/data/produtos'
-import { useMarcasSugeridas } from '@/hooks/useProdutos'
+import { useMarcasSugeridas } from '@/hooks/useMarcasSugeridas'
 import { usePareceres } from '@/hooks/usePareceres'
 import { useHistoricoConsultas } from '@/hooks/useHistoricoConsultas'
 

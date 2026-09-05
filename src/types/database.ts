@@ -303,6 +303,24 @@ export interface Database {
           },
         ]
       }
+      marcas_sugeridas: {
+        Row: {
+          cat: string
+          marcas: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          cat: string
+          marcas?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          cat?: string
+          marcas?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pareceres: {
         Row: {
           cod: string
