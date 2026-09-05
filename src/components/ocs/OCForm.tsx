@@ -24,6 +24,7 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
   const [sit, setSit] = useState<SituacaoOC>((oc?.sit as SituacaoOC) ?? 'Autorizada')
   const [estoque, setEstoque] = useState(oc?.estoque ?? '')
   const [previsaoForn, setPrevisaoForn] = useState(toInput(oc?.previsaoForn))
+  const [previsaoForn2, setPrevisaoForn2] = useState(toInput(oc?.previsaoForn2))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +41,7 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
         sit,
         estoque: estoque || 'SUP CAF',
         previsaoForn: previsaoForn ? fromInput(previsaoForn) : null,
+        previsaoForn2: previsaoForn2 ? fromInput(previsaoForn2) : null,
         hospitalId,
       })
       toast.show(oc ? `OC ${idNum} atualizada` : `OC ${idNum} criada`)
@@ -126,7 +128,9 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Previsão do fornecedor</span>
+          <span className="font-medium text-slate-700">
+            {sit === 'Parcialmente Atendida' ? 'Previsão — 1ª entrega' : 'Previsão do fornecedor'}
+          </span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -134,6 +138,18 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
             onChange={(e) => setPrevisaoForn(e.target.value)}
           />
         </label>
+
+        {sit === 'Parcialmente Atendida' && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700">Previsão — 2ª entrega</span>
+            <input
+              type="date"
+              className="rounded-md border border-slate-300 px-2 py-1.5"
+              value={previsaoForn2}
+              onChange={(e) => setPrevisaoForn2(e.target.value)}
+            />
+          </label>
+        )}
       </form>
     </Modal>
   )

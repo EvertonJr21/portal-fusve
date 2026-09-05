@@ -1,4 +1,4 @@
-import type { HospitalId } from '@/constants'
+import { SITUACOES_OC, type HospitalId } from '@/constants'
 
 /** Lê um arquivo tentando UTF-8; se inválido, cai para latin-1 (padrão dos exports do SoulMV). */
 export async function decodeFile(file: File): Promise<string> {
@@ -33,6 +33,20 @@ function splitCsvLine(line: string): string[] {
   }
   result.push(atual.trim())
   return result
+}
+
+/**
+ * O export do SoulMV trunca a situação em campo de largura fixa — "Parcialmente
+ * Atendida" (21 caracteres) vira "Parcialmente Ate" (16). Normaliza pelo prefixo
+ * contra a lista canônica em vez de comparar string exata, senão `SIT_RANK` não
+ * reconhece o valor truncado e a OC nunca avança de "Autorizada" pra "Parcialmente
+ * Atendida" na importação.
+ */
+function normalizeSit(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return 'Autorizada'
+  const match = SITUACOES_OC.find((s) => s === trimmed || s.startsWith(trimmed))
+  return match ?? trimmed
 }
 
 export interface OCImportada {
@@ -74,7 +88,7 @@ export function parseOCsCSV(text: string): OCImportada[] {
     itens.push({
       id: parseInt(cols[1], 10),
       dataSolic: cols[3],
-      sit: cols[5] || 'Autorizada',
+      sit: normalizeSit(cols[5] ?? ''),
       fornecedorId: parseInt(cols[6], 10) || 0,
       fornecedorNome: fornNome,
       previsaoForn: dtPrev,

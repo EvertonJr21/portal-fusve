@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
@@ -8,10 +9,19 @@ import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
+import { useScoreReset } from '@/hooks/useScoreReset'
 import { useSols } from '@/hooks/useSols'
 import type { OC } from '@/types'
-import { getHoje, parseDMY } from '@/utils/date'
-import { calcularScoresTodos, fornecedoresProblematicos, type ScoreFornecedor } from '@/utils/scoreFornecedor'
+import { fmt, getHoje, parseDMY } from '@/utils/date'
+import { calcularScoresTodos, filtrarDesdeReset, fornecedoresProblematicos, type ScoreFornecedor } from '@/utils/scoreFornecedor'
+
+const PESOS_SCORE = [
+  { peso: 35, label: 'Cumprimento de prazo', descricao: 'entregas dentro do prazo institucional' },
+  { peso: 25, label: 'Taxa de atraso', descricao: 'quanto menor a taxa, maior a pontuação' },
+  { peso: 15, label: 'Cumprimento de previsão', descricao: 'entregou até a data prometida' },
+  { peso: 15, label: 'Responsividade', descricao: '% de cobranças respondidas' },
+  { peso: 10, label: 'Tempo de resposta', descricao: 'cheio até 4h, zera em 48h' },
+] as const
 
 const PERIODOS = [
   { value: '30', label: 'Últimos 30 dias' },
@@ -43,18 +53,26 @@ export default function RankingFornecedores() {
   const { data: sols = [] } = useSols(hospitalId)
   const { data: forns = [] } = useFornecedores()
   const { data: cobrancas = [], isLoading: carregandoHist } = useHistoricoTodos()
+  const { resetAt, resetar, limpar } = useScoreReset()
 
   const [periodo, setPeriodo] = useState<(typeof PERIODOS)[number]['value']>('90')
   const [minOCs, setMinOCs] = useState(3)
   const [busca, setBusca] = useState('')
+  const [legendaAberta, setLegendaAberta] = useState(false)
 
   const isLoading = carregandoOCs || carregandoHist
 
   const scores = useMemo(() => {
     if (isLoading) return []
-    const ocsPeriodo = filtrarPorPeriodo(ocs, periodo)
+    const ocsDesdeReset = filtrarDesdeReset(ocs, resetAt)
+    const ocsPeriodo = filtrarPorPeriodo(ocsDesdeReset, periodo)
     return calcularScoresTodos(forns, ocsPeriodo, sols, cobrancas).sort((a, b) => b.score - a.score)
-  }, [forns, ocs, sols, cobrancas, periodo, isLoading])
+  }, [forns, ocs, sols, cobrancas, periodo, isLoading, resetAt])
+
+  const handleResetar = () => {
+    if (!confirm('Isso faz o score e o ranking passarem a contar só as OCs solicitadas a partir de agora — OCs anteriores continuam no sistema, só saem do cálculo. Confirmar?')) return
+    resetar()
+  }
 
   const problematicos = useMemo(() => new Set(fornecedoresProblematicos(scores).map((s) => s.fornecedorId)), [scores])
 
@@ -68,10 +86,40 @@ export default function RankingFornecedores() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-800">Ranking de Fornecedores</h2>
-        <p className="text-sm text-slate-500">Score baseado em prazo, atraso, previsão e responsividade</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Ranking de Fornecedores</h2>
+          <p className="text-sm text-slate-500">Score baseado em prazo, atraso, previsão e responsividade</p>
+          {resetAt && (
+            <p className="mt-1 text-xs font-medium text-status-blue">
+              🔄 Contando desde {fmt(new Date(resetAt))} — OCs anteriores não entram no score.{' '}
+              <button type="button" onClick={limpar} className="underline hover:text-status-blue/80">
+                remover reset
+              </button>
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setLegendaAberta((v) => !v)}>
+            {legendaAberta ? 'Ocultar' : 'ℹ️ Como o score é calculado'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleResetar}>
+            🔄 Resetar contagem
+          </Button>
+        </div>
       </div>
+
+      {legendaAberta && (
+        <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-soft-sm sm:grid-cols-2 lg:grid-cols-5">
+          {PESOS_SCORE.map((p) => (
+            <div key={p.label} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <div className="font-mono text-lg font-bold text-status-blue">{p.peso}pts</div>
+              <div className="text-xs font-semibold text-slate-700">{p.label}</div>
+              <div className="text-[11px] text-slate-500">{p.descricao}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <KpiCard label="Fornecedores avaliados" value={filtrados.length} tone="blue" />

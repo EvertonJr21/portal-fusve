@@ -8,10 +8,11 @@ import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
+import { useScoreReset } from '@/hooks/useScoreReset'
 import { useSols } from '@/hooks/useSols'
 import { fmt, parseDMY } from '@/utils/date'
 import { dataPrazo, statusPrazo } from '@/utils/oc'
-import { calcularScoreFornecedor } from '@/utils/scoreFornecedor'
+import { calcularScoreFornecedor, filtrarDesdeReset } from '@/utils/scoreFornecedor'
 
 function scoreClasse(score: number): string {
   if (score >= 80) return 'text-status-green'
@@ -34,16 +35,18 @@ export default function FichaFornecedor() {
   const { data: sols = [] } = useSols(hospitalId)
   const { data: forns = [] } = useFornecedores()
   const { data: cobrancas = [], isLoading: carregandoHist } = useHistoricoTodos()
+  const { resetAt } = useScoreReset()
 
   const isLoading = carregandoOCs || carregandoHist
   const forn = forns.find((f) => String(f.id) === fornecedorId)
 
   const resultado = useMemo(() => {
     if (isLoading || !forn) return null
-    const ocIds = new Set(ocs.filter((o) => o.fornecedorId === forn.id).map((o) => o.id))
+    const ocsConsideradas = filtrarDesdeReset(ocs, resetAt)
+    const ocIds = new Set(ocsConsideradas.filter((o) => o.fornecedorId === forn.id).map((o) => o.id))
     const cobrancasDoFornecedor = cobrancas.filter((h) => ocIds.has(h.ocId))
-    return calcularScoreFornecedor(forn, ocs, sols, cobrancasDoFornecedor)
-  }, [isLoading, forn, ocs, sols, cobrancas])
+    return calcularScoreFornecedor(forn, ocsConsideradas, sols, cobrancasDoFornecedor)
+  }, [isLoading, forn, ocs, sols, cobrancas, resetAt])
 
   if (isLoading) return <SkeletonRows linhas={4} colunas={3} />
   if (!forn) return <EmptyState icon="🔍" title="Fornecedor não encontrado." />

@@ -15,12 +15,10 @@ import Metricas from '@/pages/ocs/Metricas'
 import OrdensDeCompra from '@/pages/ocs/OrdensDeCompra'
 import PorFornecedor from '@/pages/ocs/PorFornecedor'
 import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
-import Resumo from '@/pages/ocs/Resumo'
 import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Usuarios from '@/pages/Usuarios'
-import Bionexo from '@/pages/pareceres/Bionexo'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
@@ -32,7 +30,6 @@ const OCS_ITEMS: NavItem[] = [
   { to: '/ocs/executivo', label: 'Dashboard Executivo' },
   { to: '/ocs/ordens', label: 'Ordens de Compra' },
   { to: '/ocs/solicitacoes', label: 'Solicitações' },
-  { to: '/ocs/resumo', label: 'Resumo Diário' },
   { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
   { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
   { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
@@ -63,7 +60,6 @@ const PARECERES_ITEMS: NavItem[] = [
   { to: '/pareceres', label: 'Consultar', end: true },
   { to: '/pareceres/cadastrar', label: 'Cadastrar' },
   { to: '/pareceres/base', label: 'Base de Pareceres' },
-  { to: '/pareceres/bionexo', label: 'Bionexo' },
   { to: '/pareceres/dashboard', label: 'Dashboard' },
 ]
 
@@ -126,7 +122,6 @@ export default function App() {
             <Route path="executivo" element={<DashboardExecutivo />} />
             <Route path="ordens" element={<OrdensDeCompra />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
-            <Route path="resumo" element={<Resumo />} />
             <Route path="fornecedores" element={<PorFornecedor />} />
             <Route path="ranking" element={<RankingFornecedores />} />
             <Route path="ranking/:fornecedorId" element={<FichaFornecedor />} />
@@ -142,7 +137,6 @@ export default function App() {
             <Route index element={<Consultar />} />
             <Route path="cadastrar" element={<Cadastrar />} />
             <Route path="base" element={<Base />} />
-            <Route path="bionexo" element={<Bionexo />} />
             <Route path="dashboard" element={<DashboardPareceres />} />
           </Route>
 

@@ -93,6 +93,7 @@ export interface SalvarOCInput {
   sit: SituacaoOC
   estoque?: string | null
   previsaoForn?: string | null
+  previsaoForn2?: string | null
   hospitalId: HospitalId
 }
 

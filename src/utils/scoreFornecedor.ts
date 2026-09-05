@@ -27,6 +27,16 @@ function media(valores: number[]): number | null {
   return valores.reduce((s, v) => s + v, 0) / valores.length
 }
 
+/** Aplica o "reset" de contagem do score (item `resetAt` de `useScoreReset`) — exclui OCs solicitadas antes da data de corte. */
+export function filtrarDesdeReset(ocs: OC[], resetAt: string | null): OC[] {
+  if (!resetAt) return ocs
+  const limite = new Date(resetAt)
+  return ocs.filter((o) => {
+    const d = parseDMY(o.dataSolic)
+    return d ? d >= limite : false
+  })
+}
+
 /**
  * Pontuação do tempo médio de resposta: cheia até 4h, decai linearmente até
  * zero em 48h. Curva inicial — os pesos/curva são "configuráveis no futuro"
