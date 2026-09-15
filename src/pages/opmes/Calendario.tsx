@@ -70,7 +70,12 @@ export default function Calendario() {
         <Button onClick={() => setModal({ opme: null })}>+ Novo OPME</Button>
       </div>
 
-      {error && <p className="text-sm text-status-red">Erro ao carregar OPMEs: {error.message}</p>}
+      {error && (
+        <p className="text-sm text-status-red">
+          Erro ao carregar OPMEs: {error.message}
+          {error.message.includes('opmes') && ' — a tabela pode ainda não existir no Supabase (ver CLAUDE.md).'}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard label="Cirurgias no mês" value={opmesDoMes.length} tone="blue" />
