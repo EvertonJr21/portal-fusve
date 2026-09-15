@@ -26,6 +26,7 @@ Atualizado sempre que a arquitetura mudar.
 | **OCs** | Fundação pronta, módulo a portar | Controle de Ordens de Compra pós-emissão |
 | **Pareceres Técnicos** | Fundação pronta, módulo a portar (migrar do Firebase) | Marcas aprovadas/restritas/proibidas por produto |
 | **Contratos** | Fundação pronta, construir do zero | Tabela mestre, alertas de vencimento, indicadores |
+| **OPME** | Construído em 15/09/2026 | Calendário de cirurgias com OPME — paciente, data, fornecedor, status de entrega |
 
 ---
 
@@ -336,6 +337,48 @@ Produtos de um contrato — 1 contrato pode ter N produtos (relação 1:N via `c
 | `capacidade_periodo` | text | `'semana'` \| `'mes'` |
 | `meio_pagamento` | text | |
 | `deleted_at` / `created_at` / `updated_at` | timestamptz | |
+
+### Tabela `opmes`
+
+Nova em 15/09/2026 — módulo de controle de OPME (Órtese/Prótese/Material Especial),
+pedido do Everton pra lembrar se o OPME de uma cirurgia já foi entregue ou não.
+Fornecedor reaproveita a tabela `forns` (compartilhada com o módulo OCs) em vez de
+lista própria. Deliberadamente **sem campo de material/produto** — o pedido foi só
+lembrar entrega sim/não por paciente/cirurgia, não repetir o controle de item que já
+existe em OCs/Pareceres/Contratos.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id` | uuid PK DEFAULT gen_random_uuid() | |
+| `paciente` | text | Nome do paciente — dado sensível (LGPD), mesma proteção de RLS das demais tabelas |
+| `data_cirurgia` | date | Data prevista da cirurgia — base do calendário |
+| `fornecedor_id` | integer | FK → `forns.id`, nullable (pode não ter fornecedor definido ainda) |
+| `hospital_id` | text | `'huv'` \| `'mkr'` |
+| `status` | text | `'pendente'` \| `'entregue'` |
+| `observacao` | text | Observação livre |
+| `deleted_at` / `created_at` / `updated_at` | timestamptz | |
+
+SQL pra criar (RLS no mesmo padrão fechado das outras tabelas):
+
+```sql
+CREATE TABLE IF NOT EXISTS opmes (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  paciente       text NOT NULL,
+  data_cirurgia  date NOT NULL,
+  fornecedor_id  integer REFERENCES forns(id),
+  hospital_id    text NOT NULL,
+  status         text NOT NULL DEFAULT 'pendente',
+  observacao     text DEFAULT '',
+  deleted_at     timestamptz DEFAULT NULL,
+  created_at     timestamptz DEFAULT now(),
+  updated_at     timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_opmes_hospital ON opmes(hospital_id);
+CREATE INDEX IF NOT EXISTS idx_opmes_data     ON opmes(data_cirurgia);
+ALTER TABLE opmes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth_opmes" ON opmes
+  FOR ALL USING (auth.role() = 'authenticated');
+```
 
 ---
 
@@ -688,7 +731,7 @@ UX: poucos cliques, informação importante visível de cara, filtros persistent
 rápidas, busca rápida, carregamento rápido — evitar telas complexas demais.
 
 
-- Base de 4.579 produtos do SoulMV (importar de `_legacy/parecer/.../js/data.js`)
+- Base de 17.733 produtos do SoulMV (expandida em 15/09/2026 com `R_PRODUTO.csv`, ver `src/data/produtos.ts`)
 - Consulta por código, nome ou categoria
 - Visualização de marcas por categoria (Padrão/Permitida/Restrita/Proibida)
 - Cadastro e edição de pareceres
@@ -708,6 +751,26 @@ rápidas, busca rápida, carregamento rápido — evitar telas complexas demais.
 ### Integração entre módulos
 - OC → clica no produto → abre parecer técnico correspondente
 - OC com preço fora do contrato → alerta visual na tabela
+
+### Módulo OPME
+
+Novo em 15/09/2026. Fluxo real (visto nos e-mails do Centro Cirúrgico/fornecedores):
+Centro Cirúrgico solicita OPME pra uma cirurgia → Everton cota com fornecedor → aprova
+→ acompanha até a entrega antes da data da cirurgia. O módulo cobre só a última parte
+desse fluxo — lembrar se o OPME já chegou ou não —, não a cotação em si (isso continua
+por e-mail).
+
+- Calendário mensal (`/opmes`) — cada dia mostra as cirurgias com OPME daquele dia,
+  com uma bolinha colorida por status (🟡 pendente / 🟢 entregue)
+- Clicar num dia vazio abre o formulário já com a data preenchida; clicar num OPME
+  existente abre pra editar
+- Cadastro: paciente, data da cirurgia, fornecedor (lista de `forns`, compartilhada
+  com OCs), hospital, status (pendente/entregue), observação livre
+- **Sem campo de material/produto** — decisão consciente do Everton, o objetivo é só
+  controlar entrega por paciente/cirurgia, não duplicar o controle de item que já
+  existe em OCs/Pareceres/Contratos
+- KPIs do mês (total, pendentes, entregues) + lista de pendentes nos próximos 7 dias
+- Soft delete, mesmo padrão do resto do sistema
 
 ---
 
@@ -822,3 +885,5 @@ if (error) return <ErrorMessage message={error.message} />
 | 21 | **Bug real corrigido**: `queryClient` (TanStack Query) com `retry: 2` deixava queries que falham (ex: tabela inexistente) presas em `fetchStatus: 'paused'` pra sempre em vez de reportar o erro — reproduzido testando o módulo Contratos contra a tabela ausente. Troquei pra `retry: false` + `networkMode: 'always'` em `src/lib/queryClient.ts`. Efeito colateral aceito: sem retry automático em falhas de rede transitórias (raro numa rede de hospital com Wi-Fi/cabo estável; prefiro um erro visível a uma tela travada em "carregando") | Base | — | ✅ Corrigido |
 | 22 | **Evolução do módulo OCs** — spec completa do Everton (29/08/2026), ver seção "Evolução do módulo OCs — roadmap" acima. 4 fases: Operação (central "o que fazer hoje" com priorização automática + ações rápidas + timeline de cobrança + previsão×entrega), Fornecedores (score/ranking/ficha), Gestão (causas/SLA interno×fornecedor/indicadores de processo/dashboard executivo), Produtividade (busca global/exportação segmentada/relatório mensal) | OCs | **Alta** | **Fases 1 e 2 ✅ Feitas (29/08/2026)**. Fase 1: motor de priorização de 4 níveis, Central de Pendências redesenhada, timeline de OC, ação "marcar como respondida". Fase 2: score 0-100 (`src/utils/scoreFornecedor.ts`), Ranking de Fornecedores, Ficha do Fornecedor, detecção automática de problemáticos (≥1,5× a taxa de atraso média) — testado contra produção, identificou corretamente os mesmos fornecedores já sinalizados na Central de Pendências (W J RITSON, B BRAUN, etc.). **Achado**: OCs importadas historicamente não têm `data_entrega_real` preenchida, só a situação final — por isso "tempo médio de entrega" e "previsões cumpridas" aparecem como "—" pra boa parte dos fornecedores até as entregas passarem a ser registradas daqui pra frente pela Central de Pendências; o score em si funciona porque taxa de atraso não depende dessa data. **Fase 3 ✅ Feita (29/08/2026)**: motivo estruturado de ocorrência (`MOTIVOS_OCORRENCIA`, select em vez de texto livre — mantém compatibilidade com texto livre já salvo), Análise de Causas (`/ocs/causas`), SLA interno vs. do fornecedor **sempre em cards separados** (`/ocs/sla`, `src/utils/sla.ts`), Dashboard Executivo (`/ocs/executivo`, só consolida indicadores que já existiam em outras telas). **Limitação documentada, não implementada**: indicadores por etapa Solicitação→Cotação→Negociação→OC do item 20 não têm como ser calculados — o sistema só registra a data da Solicitação e da OC, não existe timestamp de cotação/negociação em nenhum lugar do schema; o "SLA interno" mede só Solicitação→OC (o que dá pra medir de verdade). Alvo do SLA interno (`SLA_INTERNO_DIAS = 3`) é uma suposição inicial documentada no código, ajustável. Testado contra produção, números batem entre as telas (ex.: 17 atrasadas aparecem igual no Dashboard Executivo e na Central de Pendências). **Fase 4 ✅ Feita (29/08/2026) — roadmap completo**: Busca Global (`src/components/ocs/BuscaGlobal.tsx`, embutida no layout do módulo OCs) busca em paralelo OC/Solicitação/Fornecedor e navega pro resultado com o filtro já preenchido via `?q=`; Exportação Inteligente (`/ocs/exportar`, `src/utils/exportar.ts`) — 7 categorias em Excel (OCs em atraso, sem previsão, por fornecedor, cobranças, SLA, ranking de fornecedores, ocorrências), testado contra produção (exportação "OCs por fornecedor" trouxe as 659 OCs reais); Relatório Gerencial Mensal em PDF (`src/utils/relatorioMensal.ts`, mesmo padrão do relatório de pareceres) — resumo do mês, fornecedores críticos, principais ocorrências, **sem valor movimentado** (OCs não têm preço no schema atual). **Decisão registrada**: `xlsx` (SheetJS) tem CVEs conhecidas (prototype pollution/ReDoS) não corrigidas na versão do npm — avaliado como não explorável aqui porque o app só **gera** planilhas a partir de dados que já controla, nunca lê (`XLSX.read`) arquivo de terceiro; instalado via npm normal, decisão documentada no comentário de `exportar.ts`. Com isso as 4 fases do roadmap de Evolução de OCs do Everton estão completas |
 | 23 | Adicionar `respondido_em timestamptz` em `hist_oc` | OCs | Alta | ✅ Feito (29/08/2026) — Everton rodou o SQL, confirmado via API. Ação "✓ Marcar como respondida" 100% funcional em produção |
+| 24 | Expandir base de produtos do módulo Pareceres com `R_PRODUTO.csv` (export completo do SoulMV) | Pareceres | Média | ✅ Feito (15/09/2026) — 4.579 → 17.733 produtos em `src/data/produtos.json`, cobrindo 14 categorias além de material médico (medicamentos, laboratório, odontologia, manutenção, limpeza, químicos, segurança do trabalho, rouparia/uniformes, gases, terapia nutricional, informática, acessórios/equipamentos, oncológicos, doados). Só amplia a base de busca estática (`useProdutos`/`SearchProduto`) — não criou registros na tabela `pareceres`, já que o CSV não tem informação de marca (decisão do Everton, ver seção "Módulo Pareceres" acima) |
+| 25 | Novo módulo OPME — calendário de cirurgias com controle de entrega | OPME | Alta | ✅ Feito (15/09/2026) — tabela `opmes` (SQL em "Banco de Dados" acima, **Everton ainda precisa rodar no SQL Editor de produção**, igual aos outros itens de schema do backlog), hook `useOpmes.ts`, calendário mensal em `/opmes` com KPIs e lista de pendentes nos próximos 7 dias. Reaproveita `forns` pra fornecedor, sem campo de material (decisão consciente do Everton). Build/typecheck limpos; **não testado contra produção ainda** — tabela não existe em produção até o SQL rodar |

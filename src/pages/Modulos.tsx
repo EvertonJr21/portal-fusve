@@ -22,6 +22,13 @@ const MODULOS = [
     icone: '📑',
     tone: 'green',
   },
+  {
+    to: '/opmes',
+    titulo: 'Controle de OPME',
+    descricao: 'Calendário de cirurgias, fornecedor e status de entrega.',
+    icone: '🗓️',
+    tone: 'amber',
+  },
 ] as const
 
 const TONE_CLASS = {
@@ -40,16 +47,21 @@ const TONE_CLASS = {
     glow: 'hover:shadow-[0_16px_40px_-12px_rgba(22,101,52,0.35)]',
     ring: 'group-hover:ring-status-green/20',
   },
+  amber: {
+    iconBg: 'bg-status-amber-bg text-status-amber',
+    glow: 'hover:shadow-[0_16px_40px_-12px_rgba(180,83,9,0.35)]',
+    ring: 'group-hover:ring-status-amber/20',
+  },
 } as const
 
 export default function Modulos() {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-14">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-14">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portal FUSVE — Compras</h1>
         <p className="text-sm text-slate-500">Escolha um módulo para continuar</p>
       </div>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {MODULOS.map((m, i) => {
           const t = TONE_CLASS[m.tone]
           return (

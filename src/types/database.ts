@@ -303,6 +303,52 @@ export interface Database {
           },
         ]
       }
+      opmes: {
+        Row: {
+          id: string
+          paciente: string
+          data_cirurgia: string
+          fornecedor_id: number | null
+          hospital_id: string
+          status: string
+          observacao: string | null
+          deleted_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          paciente: string
+          data_cirurgia: string
+          fornecedor_id?: number | null
+          hospital_id: string
+          status?: string
+          observacao?: string | null
+          deleted_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          paciente?: string
+          data_cirurgia?: string
+          fornecedor_id?: number | null
+          hospital_id?: string
+          status?: string
+          observacao?: string | null
+          deleted_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'opmes_fornecedor_id_fkey'
+            columns: ['fornecedor_id']
+            referencedRelation: 'forns'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       marcas_sugeridas: {
         Row: {
           cat: string

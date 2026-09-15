@@ -59,6 +59,9 @@ export type CapacidadePeriodo = (typeof CAPACIDADE_PERIODOS)[number]
 
 export const AVISO_RENOVACAO_OPCOES = [30, 60, 90] as const
 
+export const STATUS_OPME = ['pendente', 'entregue'] as const
+export type StatusOpme = (typeof STATUS_OPME)[number]
+
 export const CLASSIFICACOES_CONTRATO = [
   'OPME',
   'CME',

@@ -1,4 +1,4 @@
-import type { CapacidadePeriodo, FreteTipo, HospitalId, SituacaoOC, StatusContrato, TipoContrato } from '@/constants'
+import type { CapacidadePeriodo, FreteTipo, HospitalId, SituacaoOC, StatusContrato, StatusOpme, TipoContrato } from '@/constants'
 
 export type { SituacaoOC } from '@/constants'
 
@@ -72,6 +72,16 @@ export interface Parecer {
   dataParecer: string
   parecer: string
   pdfDataUrl: string | null
+}
+
+export interface Opme {
+  id: string
+  paciente: string
+  dataCirurgia: string
+  fornecedorId: number | null
+  hospitalId: HospitalId
+  status: StatusOpme
+  observacao: string
 }
 
 export interface ContratoHeader {

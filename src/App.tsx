@@ -19,6 +19,7 @@ import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Usuarios from '@/pages/Usuarios'
+import Calendario from '@/pages/opmes/Calendario'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
@@ -95,6 +96,21 @@ function ContratosLayout() {
   )
 }
 
+const OPMES_ITEMS: NavItem[] = [{ to: '/opmes', label: 'Calendário', end: true }]
+
+function OpmesLayout() {
+  return (
+    <div className="flex flex-1">
+      <Sidebar title="Controle de OPME" items={OPMES_ITEMS} />
+      <main className="flex-1 overflow-y-auto p-6">
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
+      </main>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <div className="flex min-h-svh flex-col">
@@ -145,6 +161,10 @@ export default function App() {
 
           <Route path="/contratos" element={<ContratosLayout />}>
             <Route index element={<TabelaMestre />} />
+          </Route>
+
+          <Route path="/opmes" element={<OpmesLayout />}>
+            <Route index element={<Calendario />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
