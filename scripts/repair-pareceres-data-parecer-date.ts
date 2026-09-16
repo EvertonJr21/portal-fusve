@@ -31,7 +31,7 @@
 
 import 'dotenv/config'
 import { initializeApp } from 'firebase/app'
-import { collection, getDocs, getFirestore } from 'firebase/firestore'
+import { collection, getDocs, initializeFirestore } from 'firebase/firestore'
 import { createClient } from '@supabase/supabase-js'
 
 function env(nome: string): string {
@@ -87,7 +87,11 @@ async function main() {
     authDomain: env('FIREBASE_AUTH_DOMAIN'),
     projectId: env('FIREBASE_PROJECT_ID'),
   })
-  const firestore = getFirestore(firebaseApp)
+  // experimentalForceLongPolling evita um bug conhecido do transporte gRPC padrão
+  // do firebase-js-sdk quando roda em Node fora de um Cloud Function (dispara um
+  // erro enganoso "Metadata string value ... contains illegal characters" que não
+  // tem relação real com a API key).
+  const firestore = initializeFirestore(firebaseApp, { experimentalForceLongPolling: true })
   const supabase = createClient(env('VITE_SUPABASE_URL'), env('SUPABASE_KEY'))
 
   console.log('Lendo pareceres do Firestore...')
