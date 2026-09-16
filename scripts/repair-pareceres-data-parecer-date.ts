@@ -110,8 +110,19 @@ async function buscarTodosDocumentos(projectId: string, apiKey: string): Promise
   return documentos
 }
 
+/** Trunca valores de string longos (ex: PDF em base64) antes de imprimir no console. */
+function paraDebug(valor: unknown): unknown {
+  if (typeof valor === 'string' && valor.length > 200) return `${valor.slice(0, 200)}... (${valor.length} chars)`
+  if (Array.isArray(valor)) return valor.map(paraDebug)
+  if (valor && typeof valor === 'object') {
+    return Object.fromEntries(Object.entries(valor as Record<string, unknown>).map(([k, v]) => [k, paraDebug(v)]))
+  }
+  return valor
+}
+
 async function main() {
   const aplicar = process.argv.includes('--apply')
+  const debug = process.argv.includes('--debug')
 
   const apiKey = env('FIREBASE_API_KEY')
   const projectId = env('FIREBASE_PROJECT_ID')
@@ -120,6 +131,16 @@ async function main() {
   console.log('Lendo pareceres do Firestore (REST API)...')
   const documentos = await buscarTodosDocumentos(projectId, apiKey)
   console.log(`Encontrados ${documentos.length} documentos no Firestore.\n`)
+
+  if (debug) {
+    for (const doc of documentos.slice(0, 3)) {
+      const cod = doc.name.split('/').pop() ?? '?'
+      console.log(`── ${cod} ──`)
+      console.log(JSON.stringify(paraDebug(doc.fields ?? {}), null, 2))
+      console.log()
+    }
+    return
+  }
 
   let recuperados = 0
   let semData = 0
