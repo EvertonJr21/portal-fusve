@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "migrate:pareceres": "tsx scripts/migrate-pareceres.ts",
-    "migrate:marcas-sugeridas": "tsx scripts/migrate-marcas-sugeridas.ts"
+    "migrate:marcas-sugeridas": "tsx scripts/migrate-marcas-sugeridas.ts",
+    "repair:pareceres-data": "tsx scripts/repair-pareceres-data-parecer-date.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
