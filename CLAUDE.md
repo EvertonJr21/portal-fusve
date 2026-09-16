@@ -438,113 +438,18 @@ CREATE POLICY "auth_opmes" ON opmes
 
 ### SQL de migração completo
 
-```sql
--- ── OCs ──────────────────────────────────────────────────────────────
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS previsao_forn2    text;
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS deleted_at        timestamptz DEFAULT NULL;
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS created_at        timestamptz DEFAULT now();
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS updated_at        timestamptz DEFAULT now();
+O bloco de SQL do setup inicial (29/08/2026, antes de `supabase/migrations/`
+existir como fonte de verdade) foi **removido daqui em 16/09/2026** — regra 42
+do `CLAUDE_ENGINEERING.md` ("SQL antigo não pode permanecer como instrução
+ativa"): continha as policies antigas de RLS anônimo (`USING (true)`, já
+substituídas — ver backlog item 12) e a coluna `pareceres.data_parecer` como
+`text` (já removida — ver "Migração de Datas Texto → Date"). Rodar aquele
+bloco de novo reabriria acesso anônimo e recriaria uma coluna obsoleta.
 
--- ── Solicitações ─────────────────────────────────────────────────────
-ALTER TABLE sols ADD COLUMN IF NOT EXISTS deleted_at       timestamptz DEFAULT NULL;
-ALTER TABLE sols ADD COLUMN IF NOT EXISTS created_at       timestamptz DEFAULT now();
-
--- ── Fornecedores ─────────────────────────────────────────────────────
-ALTER TABLE forns ADD COLUMN IF NOT EXISTS deleted_at      timestamptz DEFAULT NULL;
-
--- ── Pareceres (nova tabela) ───────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pareceres (
-  cod           text PRIMARY KEY,
-  nome          text NOT NULL DEFAULT '',
-  cat           text NOT NULL DEFAULT '',
-  padrao        text[] NOT NULL DEFAULT '{}',
-  permitidas    text[] NOT NULL DEFAULT '{}',
-  restritas     text[] NOT NULL DEFAULT '{}',
-  proibidas     text[] NOT NULL DEFAULT '{}',
-  observacao    text NOT NULL DEFAULT '',
-  responsavel   text NOT NULL DEFAULT '',
-  data_parecer  text NOT NULL DEFAULT '',
-  parecer       text NOT NULL DEFAULT '',
-  pdf_data_url  text,
-  created_at    timestamptz DEFAULT now(),
-  updated_at    timestamptz DEFAULT now()
-);
-
--- ── Contratos (novo desenho — Fase 5, 2 tabelas) ────────────────────────
-CREATE TABLE IF NOT EXISTS contratos (
-  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tipo                    text NOT NULL DEFAULT 'Contrato',
-  status                  text NOT NULL DEFAULT 'Ativo',
-  fornecedor_nome         text NOT NULL,
-  fornecedor_cnpj         text DEFAULT '',
-  contato_nome            text DEFAULT '',
-  contato_email           text DEFAULT '',
-  contato_whatsapp        text DEFAULT '',
-  frete_tipo              text DEFAULT '',
-  prazo_medio_dias        integer,
-  origem_embarque         text DEFAULT '',
-  tolerancia_atraso_dias  integer,
-  horario_cutoff          text DEFAULT '',
-  gatilho_desconto        text DEFAULT '',
-  reajuste_regra          text DEFAULT '',
-  vigencia_inicio         date,
-  vigencia_fim            date,
-  aviso_renovacao_dias    integer DEFAULT 60,
-  renovacao_automatica    boolean DEFAULT false,
-  hospital_id             text NOT NULL DEFAULT 'ambos',
-  classificacao           text DEFAULT '',
-  observacoes             text DEFAULT '',
-  deleted_at              timestamptz DEFAULT NULL,
-  created_at              timestamptz DEFAULT now(),
-  updated_at              timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS contrato_produtos (
-  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contrato_id               uuid NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
-  sku                       text DEFAULT '',
-  descricao                 text NOT NULL,
-  cod_soulmv                text DEFAULT '',
-  preco_unitario            numeric(12,2) NOT NULL DEFAULT 0,
-  unidade                   text DEFAULT 'UNIDADE',
-  moq                       integer,
-  capacidade_fornecimento   integer,
-  capacidade_periodo        text DEFAULT 'mes',
-  meio_pagamento            text DEFAULT '',
-  deleted_at                timestamptz DEFAULT NULL,
-  created_at                timestamptz DEFAULT now(),
-  updated_at                timestamptz DEFAULT now()
-);
-
--- ── Índices ───────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_ocs_hospital        ON ocs(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_ocs_deleted         ON ocs(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sols_hospital       ON sols(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_hospital  ON contratos(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_vigencia  ON contratos(vigencia_fim);
-CREATE INDEX IF NOT EXISTS idx_contrato_produtos_contrato ON contrato_produtos(contrato_id);
-CREATE INDEX IF NOT EXISTS idx_pareceres_cat       ON pareceres(cat);
-
--- ── RLS ──────────────────────────────────────────────────────────────
--- ATENÇÃO: policies abaixo liberam tudo para o role anon. Ver aviso no
--- topo da seção "BANCO DE DADOS" — trocar por policies reais antes do
--- deploy público.
-ALTER TABLE ocs        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sols       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE forns      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hist_oc    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pareceres        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contratos        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contrato_produtos ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "anon_ocs"             ON ocs             FOR ALL USING (true);
-CREATE POLICY "anon_sols"            ON sols            FOR ALL USING (true);
-CREATE POLICY "anon_forns"           ON forns           FOR ALL USING (true);
-CREATE POLICY "anon_hist_oc"         ON hist_oc         FOR ALL USING (true);
-CREATE POLICY "anon_pareceres"       ON pareceres       FOR ALL USING (true);
-CREATE POLICY "anon_contratos"       ON contratos       FOR ALL USING (true);
-CREATE POLICY "anon_contrato_produtos" ON contrato_produtos FOR ALL USING (true);
-```
+Preservado só como registro histórico em
+[`docs/history/202608290001_setup_inicial_pre_migrations.sql`](../docs/history/202608290001_setup_inicial_pre_migrations.sql)
+(marcado como "NÃO EXECUTAR" no cabeçalho). A fonte de verdade real do schema
+é `supabase/migrations/` — ver `supabase/migrations/README.md`.
 
 ---
 
