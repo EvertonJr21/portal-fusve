@@ -219,24 +219,34 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 
 ### Tabela `ocs`
 
+> **Migração de datas texto→date (16/09/2026)**: as 5 colunas de data desta
+> tabela viraram `date` nativo (`*_date`) — ver seção "Migração de Datas
+> Texto → Date". As colunas texto antigas (`data_solic`/`previsao_forn`/
+> `previsao_forn2`/`data_entrega_real`/`ultima_movimentacao`, mostradas
+> abaixo riscadas) já não são lidas nem escritas pelo app desde a Fase 2;
+> a tabela abaixo já reflete o schema alvo pós-`DROP COLUMN`
+> (`202609160004_remove_colunas_texto_datas.sql`, Everton ainda precisa
+> rodar essa migration no SQL Editor — enquanto isso as colunas antigas
+> continuam fisicamente na tabela, só não são mais usadas).
+
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | `id` | integer PK | Número da OC no SoulMV |
-| `data_solic` | text | DD/MM/YYYY — data da solicitação de origem |
+| `data_solic_date` | date | Data da solicitação de origem (era `data_solic` text DD/MM/YYYY) |
 | `fornecedor_nome` | text | Nome do fornecedor |
 | `fornecedor_id` | integer | Código do fornecedor no SoulMV |
 | `sit` | text | `Autorizada` \| `Parcialmente Atendida` \| `Atendida` \| `Cancelada` \| `Aberta` |
 | `estoque` | text | Ex: `SUP CAF`, `SUP HEMODINAMICA` |
 | `solicitacao_id` | integer | FK → `sols.id` |
 | `cobrado` | boolean | Se já houve cobrança registrada |
-| `previsao_forn` | text | DD/MM/YYYY prometida pelo fornecedor |
-| `previsao_forn2` | text | DD/MM/YYYY segunda entrega (para parciais) |
-| `data_entrega_real` | text | DD/MM/YYYY efetiva |
+| `previsao_forn_date` | date | Previsão prometida pelo fornecedor (era `previsao_forn` text) |
+| `previsao_forn2_date` | date | Segunda entrega, para parciais (era `previsao_forn2` text) |
+| `data_entrega_real_date` | date | Entrega efetiva (era `data_entrega_real` text) |
 | `dias_atraso` | integer | Calculado pelo SoulMV |
 | `hospital_id` | text | `'huv'` \| `'mkr'` |
 | `proxima_acao` | text | Cobrar fornecedor \| Aguardar retorno \| etc. |
 | `motivo_atraso` | text | Sem estoque \| Transportadora \| etc. |
-| `ultima_movimentacao` | text | DD/MM/YYYY da última ação |
+| `ultima_movimentacao_date` | date | Última ação (era `ultima_movimentacao` text) |
 | `previsao_descumprida` | boolean | Previsão passou sem entrega |
 | `deleted_at` | timestamptz | Soft delete — null = ativo |
 | `created_at` | timestamptz | Auto |
@@ -244,10 +254,14 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 
 ### Tabela `sols`
 
+> Mesma migração de datas — `data_date` (native `date`) substitui `data`
+> (text), ver nota acima. `DROP COLUMN` de `data` também está na migration
+> `202609160004_remove_colunas_texto_datas.sql`, pendente de execução.
+
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | `id` | integer PK | Número da solicitação no SoulMV |
-| `data` | text | DD/MM/YYYY |
+| `data_date` | date | Data da solicitação (era `data` text DD/MM/YYYY) |
 | `produto` | text | Descrição do produto |
 | `motivo` | text | COTACAO \| COMPRA NORMAL \| COMPRA PARA REPOSICAO ESTOQUE \| etc. |
 | `solicitante` | text | Nome do solicitante |
@@ -279,6 +293,11 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 
 ### Tabela `pareceres`
 
+> Mesma migração de datas — `data_parecer_date` (native `date`) substitui
+> `data_parecer` (text), ver nota na tabela `ocs` acima. `DROP COLUMN` de
+> `data_parecer` também está na migration
+> `202609160004_remove_colunas_texto_datas.sql`, pendente de execução.
+
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | `cod` | text PK | Código do produto no SoulMV (ex: `"22045"`) |
@@ -290,7 +309,7 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 | `proibidas` | text[] | Marcas proibidas (não aceitar) |
 | `observacao` | text | Observação técnica livre |
 | `responsavel` | text | Nome do responsável pelo parecer |
-| `data_parecer` | text | DD/MM/YYYY do parecer |
+| `data_parecer_date` | date | Data do parecer (era `data_parecer` text DD/MM/YYYY) |
 | `parecer` | text | Texto livre do parecer |
 | `pdf_data_url` | text | PDF do parecer em base64 (pode ser null) |
 | `created_at` | timestamptz | Auto |
@@ -747,12 +766,11 @@ que o doc exige (seção 9), **nunca** um `ALTER COLUMN` direto:
 5. manter compatibilidade temporária
 6. remover coluna antiga
 
-**Fase 1 (aditiva, sem risco) — pronta em 16/09/2026, ainda não rodada em produção:**
+**Fase 1 (aditiva, sem risco) — ✅ aplicada em produção (16/09/2026), verificações deram 0:**
 `202609160001_datas_ocs_date.sql`, `202609160002_datas_sols_date.sql`,
-`202609160003_datas_pareceres_date.sql` (`supabase/migrations/`) — cada uma só faz
+`202609160003_datas_pareceres_date.sql` (`supabase/migrations/`) — cada uma só fez
 `ADD COLUMN IF NOT EXISTS` + `UPDATE` de backfill via `to_date()`, sem tocar nas colunas
-texto originais. Cada migration tem, comentada no fim, a query de verificação que **precisa
-dar 0 linhas** antes de qualquer código de aplicação mudar (passos 1-2 do processo acima).
+texto originais. Everton rodou as 3 e confirmou 0 discrepâncias nas queries de verificação.
 
 **Fase 2 (troca de código) — ✅ completa (16/09/2026)**, nas 3 tabelas (`pareceres.data_parecer`,
 `sols.data`, as 5 colunas de `ocs`), uma coluna por vez, começando pelas de menor risco.
@@ -762,9 +780,21 @@ em `DD/MM/AAAA` (nenhuma mudança em formulários/telas/`src/utils/oc.ts`), e s�
 repository de cada entidade passou a ler preferencialmente a coluna `_date` nativa
 (convertendo pra `DD/MM/AAAA` com `fromInput()` pra manter o domínio igual) e a escrever
 nas duas colunas — texto (compatibilidade temporária, passo 5) e `_date` (via `toInput()`).
-Ver `ocRepository.ts`/`solRepository.ts`/`parecerRepository.ts` como referência do padrão.
-**Falta só o passo 6** (remover as colunas texto), etapa futura separada, sem pressa —
-só depois de confirmar, tabela por tabela, que nada mais lê o texto.
+
+**Passo 6 (remover colunas texto) — código pronto (16/09/2026), migration pendente
+de execução.** Depois da Fase 2 confirmada estável, os 3 repositories (`ocRepository.ts`,
+`solRepository.ts`, `parecerRepository.ts`) pararam de ler/escrever de vez as 7 colunas
+texto (5 de `ocs`, 1 de `sols`, 1 de `pareceres`) — agora só tocam as colunas `_date`.
+`src/types/database.ts` também teve as colunas texto removidas dos tipos `Row`/`Insert`/
+`Update` das 3 tabelas. A migration `202609160004_remove_colunas_texto_datas.sql` faz o
+`DROP COLUMN IF EXISTS` das 7 colunas — **Everton precisa rodar essa migration no SQL
+Editor, mas só depois de confirmar que o deploy do Vercel com este código já está no ar**
+(rodar o `DROP` antes disso quebraria uma versão antiga do app que ainda estivesse
+lendo/escrevendo o texto). A migration tem, comentada no topo, uma bateria de queries
+opcionais de segurança pra confirmar que nenhum dado real ficou só no texto fora do
+padrão `DD/MM/AAAA` (nunca convertido na Fase 1) antes do `DROP` — recomendado rodar
+antes, embora o app já não dependa mais desse dado. Com isso, **o processo de 6 passos
+está com todo o código pronto** — falta só a execução final desta migration em produção.
 
 ---
 
@@ -1002,4 +1032,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 26 | **Hardening v1.0 (fase 1 — P0)** — recebi `CLAUDE_ENGINEERING.md` (agora versionado no repo) com padrões de engenharia/testes/schema. Diagnóstico completo + Top 10 riscos + plano P0-P3 entregues no chat antes de mexer em código (regra 62/63 do doc de engenharia); esta linha registra o que já foi implementado da fatia P0 | Base | **Alta** | ✅ Feito (15/09/2026): **(1)** Vitest configurado (`vitest.config.ts`, `tsconfig.test.json` separado do app pra não vazar tipos `node` pro bundle do navegador) com 32 testes — regressão dos 2 bugs reais já documentados do parser CSV (vírgula decimal entre aspas, dois layouts de coluna) usando fixtures sintéticas em `tests/fixtures/` (não os CSVs reais), e cobertura de `statusPrazo`/`riscoOC`/`diasSemMovimentacao`/`previsaoAtiva`/`isPrevisaoDescumprida`/`dataPrazo` com datas relativas a `getHoje()` (sem precisar de um `Clock` injetável ainda — isso é P2/P3 se algum dia os testes precisarem de data fixa). **(2)** Schema versionado em `supabase/migrations/` — 0001 a 0005 são reconstruções do histórico já aplicado (não rodar de novo; ver `supabase/migrations/README.md` pra a ressalva de que não são um dump exato da CLI, é o que o CLAUDE.md já documentava em prosa, agora em SQL). **(3)** Nova migration `202609150002_check_constraints.sql` com `CHECK ... NOT VALID` (não valida dado histórico, só passa a proteger escritas novas) pra `hospital_id`/`status`/`tipo`/`qtd >= 0`/`preco_unitario >= 0` — **deliberadamente sem CHECK em `ocs.sit`/`sols.sit`**, porque `normalizeSit()` tem fallback intencional pra situação não reconhecida do SoulMV, e uma CHECK estrita transformaria isso em erro de importação (decisão de produto separada, não uma migration). **Aplicada em produção em 16/09/2026** — Everton rodou no SQL Editor, Success em todas as `ALTER TABLE`. `VALIDATE CONSTRAINT` retroativo (cobrir dado histórico) ficou como opcional, não confirmado se foi rodado — as constraints já protegem escritas novas independente disso. **(4)** CI mínimo (`.github/workflows/ci.yml`): lint + typecheck + testes + build em todo push/PR — **sem branch protection ainda**, não bloqueia push direto em main, só dá visibilidade; ativar proteção de branch é decisão do Everton, muda o fluxo de trabalho atual. **Não implementado ainda desta fase P0** (fica pro próximo ciclo): nada mais — repositories/services (P2), migração de datas texto→date (P2, maior risco do plano), Storage pra PDF (P2), Sentry/staging (P3) ficam pra quando o Everton pedir, conforme o roadmap apresentado no chat |
 | 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
 | 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs, Contratos, Pareceres, OPME | Média | ✅ **Completo (16/09/2026)** — as 8 tabelas do projeto migradas do padrão "hook faz SQL + mapeamento + tudo" pro padrão repository/hook-adaptador: **`ocRepository.ts`** (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `criarOCImportada`, `excluirOC`, `toOC`), **`solRepository.ts`** (`listarSols`, `salvarSol`, `atualizarSituacaoSol`, `atualizarCamposSol`, `excluirSol`, `toSolicitacao`), **`fornecedorRepository.ts`** (`listarFornecedores`, `salvarFornecedor`, `excluirFornecedor`, `toFornecedor`), **`contratoRepository.ts`** (`listarContratos`, `listarContratoProdutos`, `salvarContrato`, `salvarProdutosContrato`, `excluirContrato`, `toContrato`, `toContratoProduto`), **`parecerRepository.ts`** (`listarPareceres`, `buscarParecer`, `salvarParecer`, `excluirParecer`, `toParecer`), **`marcaSugeridaRepository.ts`** (`listarMarcasSugeridas`, `salvarMarcasSugeridas`, `excluirMarcasSugeridas`, `toMapa`), **`opmeRepository.ts`** (`listarOpmes`, `salvarOpme`, `alternarStatusOpme`, `excluirOpme`, `toOpme`), **`histOcRepository.ts`** (`listarHistOC`, `listarHistoricoRecentePorOC`, `listarHistoricoTodos`, `registrarCobranca`, `marcarRespondida`, `toHistOC`). Todos os 8 hooks correspondentes (`useOCs`/`useSols`/`useFornecedores`/`useContratos`/`usePareceres`/`useMarcasSugeridas`/`useOpmes`/`useHistOC`) viraram adaptadores finos — mesma interface pública de antes em todos, nenhum componente/página mudou. `contratoRepository.ts` foi o primeiro a testar o padrão contra sub-tabela relacionada (1 contrato : N produtos, diff/soft-delete preservado). **Achado na migração de pareceres**: `excluirParecer` já usava `DELETE` físico, não soft delete — violação pré-existente da regra 6, documentada no cabeçalho do repository e preservada tal como estava (mudar é decisão de produto separada). **`Importar.tsx` também deixou de acessar o Supabase direto** (violava a regra 4 desde sempre): patch parcial de OC/Solicitação existente usa `atualizarCamposOC`/`atualizarCamposSol`; criação de OC nova (CSV e vínculo do PDF de Acompanhamento) usa `ocRepository.criarOCImportada()`, que **preserva exatamente os mesmos defaults de antes** em vez de reaproveitar `salvarOC`, pra não mudar comportamento de produção silenciosamente. Migração sempre gradual, uma entidade por vez, nunca big-bang (CLAUDE_ENGINEERING.md seção 64). 41 testes novos no total (6 `ocRepository`, 4 `solRepository`, 2 `fornecedorRepository`, 7 `contratoRepository`, 4 `parecerRepository`, 3 `marcaSugeridaRepository`, 3 `opmeRepository`, 5 `histOcRepository`, mais os que já existiam) cobrindo defaults de mapeamento pra campos nullable do schema gerado — total do projeto: **81 testes**. **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária em nenhuma etapa desta fase |
-| 29 | **Hardening v1.0 — migração de datas texto→date, Fase 1 (aditiva)** | Base, OCs, Pareceres | Média | **Fase 1 aplicada em produção (16/09/2026)** — Everton rodou as 3 migrations no SQL Editor e confirmou que as queries de verificação deram 0 linhas nas 3 (`ocs`, `sols`, `pareceres`) — backfill 100% correto, nenhum dado real fora do padrão `DD/MM/AAAA` encontrado. **Fase 2 iniciada, uma coluna por vez, começando pela de menor risco**: `pareceres.data_parecer` ✅ feito (16/09/2026) — `parecerRepository.ts` (`toParecer`) agora lê `data_parecer_date` (coluna `date` nativa) como fonte principal, convertendo pra `DD/MM/YYYY` via `fromInput()`, com fallback pro texto legado `data_parecer` só se a linha não tiver sido backfillada; `salvarParecer` (`toRow`) grava as duas colunas — `data_parecer` (texto) mantida por compatibilidade temporária (passo 5 do processo de 6 passos), `data_parecer_date` (nativa) calculada via `toInput()`. O tipo de domínio `Parecer.dataParecer` continua `string` em `DD/MM/YYYY` — nenhuma mudança em `ParecerForm.tsx`/`Base.tsx`/`relatorioParecer.ts`, que só consomem o campo já formatado. `src/types/database.ts` ganhou `data_parecer_date: string \| null` no Row/Insert/Update de `pareceres`. 2 testes novos em `parecerRepository.test.ts` (prioridade da coluna nova, fallback pra legado). `sols.data` ✅ feito (16/09/2026) — mesmo padrão em `solRepository.ts`: `toSolicitacao` lê `data_date` com fallback pro texto `data`; `salvarSol` e `atualizarCamposSol` (usada na reconciliação de importação) gravam as duas colunas — `atualizarCamposSol` calcula `data_date` sempre que a chave `data` aparece no patch, mesmo com valor vazio/null, pra nunca deixar a coluna nova dessincronizada de um patch parcial. `src/types/database.ts` ganhou `data_date: string \| null` no Row/Insert/Update de `sols`. 2 testes novos em `solRepository.test.ts`. Tipo de domínio `Solicitacao.data` inalterado. **`ocs` (5 colunas) ✅ feito (16/09/2026), última tabela da Fase 2** — `ocRepository.ts` ganhou o helper `paraColunaDate()` (`DD/MM/YYYY` → `YYYY-MM-DD`); `toOC` lê `data_solic_date`/`previsao_forn_date`/`previsao_forn2_date`/`data_entrega_real_date`/`ultima_movimentacao_date` com fallback pros 5 textos legados; `toRow` (usado por `salvarOC`, o form manual) e `criarOCImportada` (que só grava 3 das 5 datas — `dataSolic`/`previsaoForn`/`ultimaMovimentacao` — os outros dois campos não existem na importação) gravam as colunas novas junto das antigas; `atualizarCamposOC` ganhou `DATE_PATCH_FIELD_MAP` (mapa separado do `PATCH_FIELD_MAP` de sempre) que mantém a coluna `_date` em sincronia sempre que `previsaoForn`/`previsaoForn2`/`dataEntregaReal`/`ultimaMovimentacao` aparecem num patch parcial (histórico de cobrança, vínculo, entrega). **`dataSolic` nunca é alterada via patch** (só na criação da OC), então ficou de fora do `DATE_PATCH_FIELD_MAP` de propósito — documentado no cabeçalho do repository. Tipo de domínio `OC` (todos os 5 campos de data) continua `string | null` em `DD/MM/YYYY` — **nenhuma mudança em `src/utils/oc.ts`** (`statusPrazo`/`riscoOC`/`dataPrazo`/etc. continuam operando sobre essas strings via `parseDMY`, o código mais crítico do sistema não foi tocado) nem em `OCForm.tsx`/`OCHistorico.tsx`/`OCCobrar.tsx`/`OCVincular.tsx`/`Importar.tsx`, que só passam strings formatadas pro repository. `src/types/database.ts` ganhou as 5 colunas `*_date: string \| null` em Row/Insert/Update de `ocs`. 4 testes novos em `ocRepository.test.ts` (prioridade das colunas novas, fallback pro legado, cobrindo as 5 datas) — **com isso a Fase 2 do hardening de datas está completa nas 3 tabelas** (`pareceres`, `sols`, `ocs`). Total do projeto: **87 testes**. **Falta só o passo 6** (remover as 7 colunas texto — 5 de `ocs`, 1 de `sols`, 1 de `pareceres`), que só acontece depois de confirmar, tabela por tabela, que nada mais lê o texto — decisão e etapa futura separada, sem pressa (a coluna texto não atrapalha nada continuando ali) |
+| 29 | **Hardening v1.0 — migração de datas texto→date, processo completo (Fases 1, 2 e Passo 6)** | Base, OCs, Pareceres | Média | Ver seção "Migração de Datas Texto → Date" pro detalhe completo do processo de 6 passos. **Fase 1 (backfill aditivo)** ✅ aplicada em produção (16/09/2026) nas 3 tabelas (`ocs`, `sols`, `pareceres`), verificações deram 0 discrepâncias. **Fase 2 (troca de código pra ler/escrever as duas colunas)** ✅ completa (16/09/2026), uma coluna por vez, começando pelas de menor risco: `pareceres.data_parecer` → `sols.data` → as 5 colunas de `ocs` por último (`dataSolic`/`previsaoForn`/`previsaoForn2`/`dataEntregaReal`/`ultimaMovimentacao`, que alimentam `src/utils/oc.ts`). Tipo de domínio de cada campo continuou `string`/`string | null` em `DD/MM/YYYY` o tempo todo — nenhuma mudança em formulários/telas/`src/utils/oc.ts`, só nos repositories (`parecerRepository.ts`/`solRepository.ts`/`ocRepository.ts`). **Passo 6 (remover as 7 colunas texto)** — código pronto (16/09/2026): os 3 repositories pararam de vez de ler/escrever as colunas texto (agora só tocam `data_parecer_date`/`data_date`/as 5 `*_date` de `ocs`), `src/types/database.ts` teve as 7 colunas texto removidas dos tipos `Row`/`Insert`/`Update`, `ocRepository.ts` ganhou `deColunaDate()` (inverso de `paraColunaDate()`, preserva `null` em vez de virar `''`) pra manter `OC.previsaoForn`/`dataEntregaReal`/etc. como `null` quando a `_date` correspondente não existe (fallback pro texto removido). Testes de fallback trocados por testes de conversão/null (`ocRepository.test.ts`: 4, `solRepository.test.ts`: 2, `parecerRepository.test.ts`: 2) — total do projeto continua em **87 testes**. Migration `202609160004_remove_colunas_texto_datas.sql` (novo) faz o `DROP COLUMN IF EXISTS` das 7 colunas, com bateria de queries de segurança comentadas no topo (confere se algum dado real ficou só no texto fora do padrão `DD/MM/AAAA`, nunca convertido na Fase 1) — **pendente de execução por Everton, só depois de confirmar que o deploy deste código já está no ar** (ordem importa: código primeiro, DROP depois, nunca o contrário). Documentação das 3 tabelas em "BANCO DE DADOS" atualizada pro schema alvo pós-`DROP` |

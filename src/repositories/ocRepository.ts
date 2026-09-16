@@ -14,17 +14,18 @@ import type { Database } from '@/types/database'
  * dentro do hook por enquanto, migração é gradual (Strangler Pattern), não
  * big-bang.
  *
- * Fase 2 da migração de datas texto→date (CLAUDE.md, "Migração de Datas
- * Texto → Date"), última tabela da fase — as 5 colunas de data de `ocs`
+ * Fase 2 (completa) + Passo 6 da migração de datas texto→date (CLAUDE.md,
+ * "Migração de Datas Texto → Date") — as 5 colunas de data de `ocs`
  * alimentam toda a lógica de prazo/risco em `src/utils/oc.ts`, por isso
- * ficaram por último. Mesmo padrão já aplicado a `pareceres`/`sols`: leitura
- * prefere a coluna `date` nativa (`*_date`, backfillada e validada em
- * produção), com fallback pro texto legado só pra linha que não tenha
- * backfillado; escrita grava as duas colunas até confirmar que nada mais lê
- * o texto (passo 5 do processo de 6 passos) e removê-lo (passo 6, etapa
- * futura separada). `dataSolic` nunca é alterada via `atualizarCamposOC`
- * (só definida na criação), então só precisa do tratamento em `toOC`/`toRow`/
- * `criarOCImportada` — não no mapa de patch.
+ * ficaram por último no processo. Depois da Fase 2 (ler/escrever as duas
+ * colunas) rodar em produção sem incidentes, o app agora só lê/escreve as
+ * colunas `date` nativas (`*_date`) — as 5 colunas texto legadas
+ * (`data_solic`/`previsao_forn`/`previsao_forn2`/`data_entrega_real`/
+ * `ultima_movimentacao`) não são mais tocadas por este repository, só ficam
+ * de fora no banco até a migration de `DROP COLUMN` (passo 6) rodar.
+ * `dataSolic` nunca é alterada via `atualizarCamposOC` (só definida na
+ * criação), então só precisa do tratamento em `toOC`/`toRow`/`criarOCImportada`
+ * — não no mapa de patch.
  */
 
 type OCRow = Database['public']['Tables']['ocs']['Row']
@@ -36,26 +37,29 @@ function paraColunaDate(texto: string | null | undefined): string | null {
   return texto ? toInput(texto) || null : null
 }
 
+/** `YYYY-MM-DD` (coluna `date` nativa) → `DD/MM/YYYY` ou `null`, preservando null (não vira ''). */
+function deColunaDate(data: string | null): string | null {
+  return data ? fromInput(data) : null
+}
+
 export function toOC(row: OCRow): OC {
   return {
     id: row.id,
-    dataSolic: row.data_solic_date ? fromInput(row.data_solic_date) : row.data_solic,
+    dataSolic: deColunaDate(row.data_solic_date),
     fornecedorNome: row.fornecedor_nome ?? '',
     fornecedorId: row.fornecedor_id,
     sit: (row.sit ?? 'Autorizada') as SituacaoOC,
     estoque: row.estoque,
     solicitacaoId: row.solicitacao_id,
     cobrado: row.cobrado ?? false,
-    previsaoForn: row.previsao_forn_date ? fromInput(row.previsao_forn_date) : row.previsao_forn,
-    previsaoForn2: row.previsao_forn2_date ? fromInput(row.previsao_forn2_date) : row.previsao_forn2,
-    dataEntregaReal: row.data_entrega_real_date ? fromInput(row.data_entrega_real_date) : row.data_entrega_real,
+    previsaoForn: deColunaDate(row.previsao_forn_date),
+    previsaoForn2: deColunaDate(row.previsao_forn2_date),
+    dataEntregaReal: deColunaDate(row.data_entrega_real_date),
     diasAtraso: row.dias_atraso ?? 0,
     hospitalId: row.hospital_id as HospitalId,
     proximaAcao: row.proxima_acao,
     motivoAtraso: row.motivo_atraso,
-    ultimaMovimentacao: row.ultima_movimentacao_date
-      ? fromInput(row.ultima_movimentacao_date)
-      : row.ultima_movimentacao,
+    ultimaMovimentacao: deColunaDate(row.ultima_movimentacao_date),
     previsaoDescumprida: row.previsao_descumprida ?? false,
   }
 }
@@ -63,7 +67,6 @@ export function toOC(row: OCRow): OC {
 function toRow(oc: Partial<OC> & Pick<OC, 'id' | 'dataSolic' | 'fornecedorNome' | 'hospitalId'>): OCInsert {
   return {
     id: oc.id,
-    data_solic: oc.dataSolic,
     data_solic_date: paraColunaDate(oc.dataSolic),
     fornecedor_nome: oc.fornecedorNome,
     fornecedor_id: oc.fornecedorId ?? null,
@@ -71,17 +74,13 @@ function toRow(oc: Partial<OC> & Pick<OC, 'id' | 'dataSolic' | 'fornecedorNome' 
     estoque: oc.estoque ?? 'SUP CAF',
     solicitacao_id: oc.solicitacaoId ?? null,
     cobrado: oc.cobrado ?? false,
-    previsao_forn: oc.previsaoForn ?? null,
     previsao_forn_date: paraColunaDate(oc.previsaoForn),
-    previsao_forn2: oc.previsaoForn2 ?? null,
     previsao_forn2_date: paraColunaDate(oc.previsaoForn2),
-    data_entrega_real: oc.dataEntregaReal ?? null,
     data_entrega_real_date: paraColunaDate(oc.dataEntregaReal),
     dias_atraso: oc.diasAtraso ?? 0,
     hospital_id: oc.hospitalId,
     proxima_acao: oc.proximaAcao ?? null,
     motivo_atraso: oc.motivoAtraso ?? null,
-    ultima_movimentacao: oc.ultimaMovimentacao ?? null,
     ultima_movimentacao_date: paraColunaDate(oc.ultimaMovimentacao),
     previsao_descumprida: oc.previsaoDescumprida ?? false,
   }
@@ -146,7 +145,6 @@ export interface OCImportadaInput {
 export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
   const { error } = await supabase.from('ocs').insert({
     id: input.id,
-    data_solic: input.dataSolic,
     data_solic_date: paraColunaDate(input.dataSolic),
     fornecedor_nome: input.fornecedorNome,
     fornecedor_id: input.fornecedorId,
@@ -154,13 +152,11 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
     estoque: input.estoque,
     solicitacao_id: input.solicitacaoId,
     cobrado: false,
-    previsao_forn: input.previsaoForn,
     previsao_forn_date: paraColunaDate(input.previsaoForn),
     dias_atraso: input.diasAtraso,
     hospital_id: input.hospitalId,
     proxima_acao: '',
     motivo_atraso: '',
-    ultima_movimentacao: input.ultimaMovimentacao,
     ultima_movimentacao_date: paraColunaDate(input.ultimaMovimentacao),
     previsao_descumprida: false,
   })
@@ -170,13 +166,9 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
 const PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
   solicitacaoId: 'solicitacao_id',
   cobrado: 'cobrado',
-  previsaoForn: 'previsao_forn',
-  previsaoForn2: 'previsao_forn2',
-  dataEntregaReal: 'data_entrega_real',
   diasAtraso: 'dias_atraso',
   proximaAcao: 'proxima_acao',
   motivoAtraso: 'motivo_atraso',
-  ultimaMovimentacao: 'ultima_movimentacao',
   previsaoDescumprida: 'previsao_descumprida',
   sit: 'sit',
   fornecedorNome: 'fornecedor_nome',

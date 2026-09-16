@@ -15,7 +15,6 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     proibidas: [],
     observacao: 'Observação técnica',
     responsavel: 'FULANO',
-    data_parecer: '10/09/2026',
     data_parecer_date: '2026-09-10',
     parecer: 'Texto do parecer',
     pdf_data_url: null,
@@ -34,14 +33,14 @@ describe('toParecer', () => {
     expect(p.dataParecer).toBe('10/09/2026')
   })
 
-  it('prefere data_parecer_date (Fase 2 da migração de datas) sobre o texto legado', () => {
-    const p = toParecer(rowBase({ data_parecer: '01/01/2000', data_parecer_date: '2026-09-10' }))
-    expect(p.dataParecer).toBe('10/09/2026')
+  it('converte data_parecer_date (YYYY-MM-DD) pra DD/MM/YYYY', () => {
+    const p = toParecer(rowBase({ data_parecer_date: '2026-01-05' }))
+    expect(p.dataParecer).toBe('05/01/2026')
   })
 
-  it('cai pro texto legado quando data_parecer_date ainda não foi backfillada', () => {
-    const p = toParecer(rowBase({ data_parecer: '10/09/2026', data_parecer_date: null }))
-    expect(p.dataParecer).toBe('10/09/2026')
+  it('usa string vazia quando data_parecer_date é nula (passo 6 — coluna texto removida)', () => {
+    const p = toParecer(rowBase({ data_parecer_date: null }))
+    expect(p.dataParecer).toBe('')
   })
 
   it('usa array vazio como padrão pras marcas nulas', () => {
@@ -56,7 +55,7 @@ describe('toParecer', () => {
   it('usa string vazia como padrão pros campos de texto nulos', () => {
     const p = toParecer(
       // @ts-expect-error o schema marca como NOT NULL, mas o mapeamento é defensivo
-      rowBase({ observacao: null, responsavel: null, data_parecer: null, data_parecer_date: null, parecer: null }),
+      rowBase({ observacao: null, responsavel: null, data_parecer_date: null, parecer: null }),
     )
     expect(p.observacao).toBe('')
     expect(p.responsavel).toBe('')

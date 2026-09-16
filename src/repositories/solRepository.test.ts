@@ -7,7 +7,6 @@ type SolRow = Database['public']['Tables']['sols']['Row']
 function rowBase(overrides: Partial<SolRow> = {}): SolRow {
   return {
     id: 54321,
-    data: '15/08/2026',
     data_date: '2026-08-15',
     produto: 'SERINGA DESCARTAVEL 10ML',
     motivo: 'COMPRA NORMAL',
@@ -30,14 +29,14 @@ describe('toSolicitacao', () => {
     expect(sol.hospitalId).toBe('huv')
   })
 
-  it('prefere data_date (Fase 2 da migração de datas) sobre o texto legado', () => {
-    const sol = toSolicitacao(rowBase({ data: '01/01/2000', data_date: '2026-08-15' }))
+  it('converte data_date (YYYY-MM-DD) pra DD/MM/YYYY', () => {
+    const sol = toSolicitacao(rowBase({ data_date: '2026-08-15' }))
     expect(sol.data).toBe('15/08/2026')
   })
 
-  it('cai pro texto legado quando data_date ainda não foi backfillada', () => {
-    const sol = toSolicitacao(rowBase({ data: '15/08/2026', data_date: null }))
-    expect(sol.data).toBe('15/08/2026')
+  it('usa null quando data_date é nula (passo 6 — coluna texto removida)', () => {
+    const sol = toSolicitacao(rowBase({ data_date: null }))
+    expect(sol.data).toBeNull()
   })
 
   it('usa string vazia como padrão pra produto/motivo/solicitante nulos', () => {

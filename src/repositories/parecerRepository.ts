@@ -11,14 +11,12 @@ import type { Database } from '@/types/database'
  * soft delete é uma decisão de produto separada, não parte de um refactor
  * de camadas; ver regra 6 do CLAUDE.md, que hoje é violada só aqui).
  *
- * Fase 2 da migração de datas texto→date (CLAUDE.md, "Migração de Datas
- * Texto → Date"): leitura prefere `data_parecer_date` (coluna `date` nativa,
- * backfillada e validada em produção), com fallback pro texto legado
- * `data_parecer` só pra linha que porventura não tenha backfillado (não deve
- * acontecer, mas é mais seguro que quebrar). Escrita grava as duas colunas —
- * `data_parecer` (texto) mantida por compatibilidade temporária (passo 5 do
- * processo de 6 passos), até confirmar que nada mais lê ela e removê-la
- * (passo 6, etapa futura separada).
+ * Fase 2 (completa) + Passo 6 da migração de datas texto→date (CLAUDE.md,
+ * "Migração de Datas Texto → Date"): depois da Fase 2 rodar em produção sem
+ * incidentes, o app só lê/escreve `data_parecer_date` (coluna `date`
+ * nativa) — a coluna texto legada `data_parecer` não é mais tocada por este
+ * repository, só fica de fora no banco até a migration de `DROP COLUMN`
+ * (passo 6) rodar.
  */
 
 type ParecerRow = Database['public']['Tables']['pareceres']['Row']
@@ -34,7 +32,7 @@ export function toParecer(row: ParecerRow): Parecer {
     proibidas: row.proibidas ?? [],
     observacao: row.observacao ?? '',
     responsavel: row.responsavel ?? '',
-    dataParecer: row.data_parecer_date ? fromInput(row.data_parecer_date) : row.data_parecer ?? '',
+    dataParecer: row.data_parecer_date ? fromInput(row.data_parecer_date) : '',
     parecer: row.parecer ?? '',
     pdfDataUrl: row.pdf_data_url,
   }
@@ -51,7 +49,6 @@ function toRow(p: Parecer) {
     proibidas: p.proibidas,
     observacao: p.observacao,
     responsavel: p.responsavel,
-    data_parecer: p.dataParecer,
     data_parecer_date: p.dataParecer ? toInput(p.dataParecer) || null : null,
     parecer: p.parecer,
     pdf_data_url: p.pdfDataUrl,

@@ -7,13 +7,12 @@ import type { Database } from '@/types/database'
 /**
  * Acesso ao Supabase pra `sols` — mesmo padrão de `ocRepository.ts` (Hardening P2).
  *
- * Fase 2 da migração de datas texto→date (CLAUDE.md, "Migração de Datas Texto
- * → Date"): leitura prefere `data_date` (coluna `date` nativa, backfillada e
- * validada em produção), com fallback pro texto legado `data` só pra linha
- * que porventura não tenha backfillado. Escrita grava as duas colunas —
- * `data` (texto) mantida por compatibilidade temporária (passo 5 do processo
- * de 6 passos), até confirmar que nada mais lê ela e removê-la (passo 6,
- * etapa futura separada). Mesmo padrão já aplicado em `parecerRepository.ts`.
+ * Fase 2 (completa) + Passo 6 da migração de datas texto→date (CLAUDE.md,
+ * "Migração de Datas Texto → Date"): depois da Fase 2 rodar em produção sem
+ * incidentes, o app só lê/escreve `data_date` (coluna `date` nativa) — a
+ * coluna texto legada `data` não é mais tocada por este repository, só fica
+ * de fora no banco até a migration de `DROP COLUMN` (passo 6) rodar. Mesmo
+ * padrão já aplicado em `parecerRepository.ts`/`ocRepository.ts`.
  */
 
 type SolRow = Database['public']['Tables']['sols']['Row']
@@ -22,7 +21,7 @@ type SolUpdate = Database['public']['Tables']['sols']['Update']
 export function toSolicitacao(row: SolRow): Solicitacao {
   return {
     id: row.id,
-    data: row.data_date ? fromInput(row.data_date) : row.data,
+    data: row.data_date ? fromInput(row.data_date) : null,
     produto: row.produto ?? '',
     motivo: row.motivo ?? '',
     solicitante: row.solicitante ?? '',
@@ -57,7 +56,6 @@ export interface SalvarSolInput {
 export async function salvarSol(input: SalvarSolInput): Promise<void> {
   const { error } = await supabase.from('sols').upsert({
     id: input.id,
-    data: input.data,
     data_date: input.data ? toInput(input.data) || null : null,
     produto: input.produto,
     motivo: input.motivo,
@@ -75,7 +73,6 @@ export async function atualizarSituacaoSol(id: number, sit: string): Promise<voi
 }
 
 const PATCH_FIELD_MAP: Partial<Record<keyof Solicitacao, keyof SolRow>> = {
-  data: 'data',
   produto: 'produto',
   motivo: 'motivo',
   solicitante: 'solicitante',

@@ -230,7 +230,6 @@ export interface Database {
       ocs: {
         Row: {
           id: number
-          data_solic: string | null
           data_solic_date: string | null
           fornecedor_nome: string | null
           fornecedor_id: number | null
@@ -238,9 +237,7 @@ export interface Database {
           estoque: string | null
           solicitacao_id: number | null
           cobrado: boolean | null
-          previsao_forn: string | null
           previsao_forn_date: string | null
-          data_entrega_real: string | null
           data_entrega_real_date: string | null
           dias_atraso: number | null
           created_at: string | null
@@ -248,16 +245,13 @@ export interface Database {
           hospital_id: string | null
           proxima_acao: string | null
           motivo_atraso: string | null
-          ultima_movimentacao: string | null
           ultima_movimentacao_date: string | null
           previsao_descumprida: boolean | null
           deleted_at: string | null
-          previsao_forn2: string | null
           previsao_forn2_date: string | null
         }
         Insert: {
           id: number
-          data_solic?: string | null
           data_solic_date?: string | null
           fornecedor_nome?: string | null
           fornecedor_id?: number | null
@@ -265,9 +259,7 @@ export interface Database {
           estoque?: string | null
           solicitacao_id?: number | null
           cobrado?: boolean | null
-          previsao_forn?: string | null
           previsao_forn_date?: string | null
-          data_entrega_real?: string | null
           data_entrega_real_date?: string | null
           dias_atraso?: number | null
           created_at?: string | null
@@ -275,16 +267,13 @@ export interface Database {
           hospital_id?: string | null
           proxima_acao?: string | null
           motivo_atraso?: string | null
-          ultima_movimentacao?: string | null
           ultima_movimentacao_date?: string | null
           previsao_descumprida?: boolean | null
           deleted_at?: string | null
-          previsao_forn2?: string | null
           previsao_forn2_date?: string | null
         }
         Update: {
           id?: number
-          data_solic?: string | null
           data_solic_date?: string | null
           fornecedor_nome?: string | null
           fornecedor_id?: number | null
@@ -292,9 +281,7 @@ export interface Database {
           estoque?: string | null
           solicitacao_id?: number | null
           cobrado?: boolean | null
-          previsao_forn?: string | null
           previsao_forn_date?: string | null
-          data_entrega_real?: string | null
           data_entrega_real_date?: string | null
           dias_atraso?: number | null
           created_at?: string | null
@@ -302,11 +289,9 @@ export interface Database {
           hospital_id?: string | null
           proxima_acao?: string | null
           motivo_atraso?: string | null
-          ultima_movimentacao?: string | null
           ultima_movimentacao_date?: string | null
           previsao_descumprida?: boolean | null
           deleted_at?: string | null
-          previsao_forn2?: string | null
           previsao_forn2_date?: string | null
         }
         Relationships: [
@@ -393,7 +378,6 @@ export interface Database {
           proibidas: string[]
           observacao: string
           responsavel: string
-          data_parecer: string
           data_parecer_date: string | null
           parecer: string
           pdf_data_url: string | null
@@ -410,7 +394,6 @@ export interface Database {
           proibidas?: string[]
           observacao?: string
           responsavel?: string
-          data_parecer?: string
           data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
@@ -427,7 +410,6 @@ export interface Database {
           proibidas?: string[]
           observacao?: string
           responsavel?: string
-          data_parecer?: string
           data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
@@ -439,7 +421,6 @@ export interface Database {
       sols: {
         Row: {
           id: number
-          data: string | null
           data_date: string | null
           produto: string | null
           solicitante: string | null
@@ -453,7 +434,6 @@ export interface Database {
         }
         Insert: {
           id: number
-          data?: string | null
           data_date?: string | null
           produto?: string | null
           solicitante?: string | null
@@ -467,7 +447,6 @@ export interface Database {
         }
         Update: {
           id?: number
-          data?: string | null
           data_date?: string | null
           produto?: string | null
           solicitante?: string | null
