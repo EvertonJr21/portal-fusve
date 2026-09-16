@@ -1,4 +1,5 @@
--- NOVA — ainda NÃO aplicada em produção. Everton precisa rodar no SQL Editor.
+-- Aplicada em produção em 16/09/2026 — Everton rodou no SQL Editor, Success
+-- em todas as ALTER TABLE. Não rodar de novo.
 --
 -- Objetivo: o banco hoje não protege nenhum invariante de domínio — só a UI
 -- impede hospital_id inválido, status fora da lista, quantidade negativa.
