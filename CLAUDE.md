@@ -91,11 +91,13 @@ fusve-portal/
     │   ├── fornecedorRepository.ts  ← idem pra `forns` [pronto, 16/09/2026]
     │   ├── contratoRepository.ts    ← idem pra `contratos`/`contrato_produtos`, incluindo o diff/soft-delete
     │   │                              de `salvarProdutosContrato` (sub-tabela) [pronto, 16/09/2026]
-    │   └── parecerRepository.ts     ← idem pra `pareceres` — nota: `excluirParecer` usa DELETE físico, não
-    │                                  soft delete, comportamento pré-existente preservado tal como estava
-    │                                  (mudar é decisão de produto separada) [pronto, 16/09/2026]
-    │                                  — `marcas_sugeridas`/`opmes`/`hist_oc` continuam com Supabase direto
-    │                                  no hook por enquanto, migração é gradual
+    │   ├── parecerRepository.ts     ← idem pra `pareceres` — nota: `excluirParecer` usa DELETE físico, não
+    │   │                              soft delete, comportamento pré-existente preservado tal como estava
+    │   │                              (mudar é decisão de produto separada) [pronto, 16/09/2026]
+    │   ├── marcaSugeridaRepository.ts ← idem pra `marcas_sugeridas` [pronto, 16/09/2026]
+    │   ├── opmeRepository.ts        ← idem pra `opmes` [pronto, 16/09/2026]
+    │   └── histOcRepository.ts      ← idem pra `hist_oc` [pronto, 16/09/2026]
+    │                                  — as 8 tabelas do projeto estão todas no padrão repository agora
     ├── hooks/
     │   ├── useHospital.ts           ← contexto de hospital ativo [pronto]
     │   ├── useToast.ts              ← contexto de toast [pronto]
@@ -103,15 +105,17 @@ fusve-portal/
     │   │                              fino sobre `ocRepository.ts`, sem SQL/mapeamento aqui [pronto — cobrança/vínculo/histórico ficam em hooks próprios na Fase 3]
     │   ├── useSols.ts               ← adaptador fino sobre `solRepository.ts` (só leitura nesta fase) [pronto]
     │   ├── useFornecedores.ts       ← adaptador fino sobre `fornecedorRepository.ts` (só leitura nesta fase) [pronto]
-    │   ├── useHistOC.ts             ← useHistOC, useRegistrarCobranca [pronto]
+    │   ├── useHistOC.ts             ← adaptador fino sobre `histOcRepository.ts` (useHistOC, useHistoricoRecentePorOC,
+    │   │                              useHistoricoTodos, useRegistrarCobranca, useMarcarRespondida) [pronto]
     │   ├── usePareceres.ts          ← adaptador fino sobre `parecerRepository.ts` [pronto]
     │   ├── useProdutos.ts           ← useProdutos (base SoulMV) — dynamic import de src/data/ sob demanda [pronto]
-    │   ├── useMarcasSugeridas.ts    ← useMarcasSugeridas, useSalvarMarcasSugeridas, useExcluirMarcasSugeridas —
-    │   │                              tabela `marcas_sugeridas`, editável em /pareceres/marcas-sugeridas (antes era
-    │   │                              src/data/marcasSugeridas.json estático, exigia deploy pra mudar) [pronto]
+    │   ├── useMarcasSugeridas.ts    ← adaptador fino sobre `marcaSugeridaRepository.ts` — tabela `marcas_sugeridas`,
+    │   │                              editável em /pareceres/marcas-sugeridas (antes era src/data/marcasSugeridas.json
+    │   │                              estático, exigia deploy pra mudar) [pronto]
     │   ├── useHistoricoConsultas.ts ← histórico de sessão do módulo Pareceres (não persiste) [pronto]
     │   ├── useScoreReset.ts         ← data de corte do score/ranking de fornecedores, em localStorage [pronto]
-    │   └── useContratos.ts          ← adaptador fino sobre `contratoRepository.ts` [pronto]
+    │   ├── useContratos.ts          ← adaptador fino sobre `contratoRepository.ts` [pronto]
+    │   └── useOpmes.ts              ← adaptador fino sobre `opmeRepository.ts` [pronto]
     ├── components/
     │   ├── HospitalProvider.tsx     ← provider do useHospital, persiste em localStorage [pronto]
     │   ├── ui/                      ← componentes genéricos reutilizáveis
@@ -554,29 +558,35 @@ Rodar sempre que o schema mudar. **Ainda não rodado neste projeto** — `src/ty
 ### 4. Um hook por entidade
 Todo acesso ao Supabase passa por um hook TanStack Query. Nenhum componente faz fetch diretamente.
 
-> **Padrão-alvo desde 16/09/2026 (Hardening P2):** SQL e mapeamento snake↔camel
-> vão em `src/repositories/<entidade>Repository.ts`; o hook vira um adaptador
-> fino que só chama o repository dentro de `queryFn`/`mutationFn` (ver
-> `ocRepository.ts` + `useOCs.ts` como referência). Migração é gradual
-> (Strangler Pattern, CLAUDE_ENGINEERING.md seção 64) — só `ocs` foi migrada
-> até agora. O exemplo abaixo (Supabase direto no hook) ainda é o padrão
-> válido pras entidades que não foram migradas ainda.
+> **Padrão desde 16/09/2026 (Hardening P2 — completo):** SQL e mapeamento
+> snake↔camel vão em `src/repositories/<entidade>Repository.ts`; o hook vira
+> um adaptador fino que só chama o repository dentro de `queryFn`/`mutationFn`
+> (ver `ocRepository.ts` + `useOCs.ts` como referência). Migrado em etapas
+> (Strangler Pattern, CLAUDE_ENGINEERING.md seção 64), uma entidade por vez —
+> as 8 tabelas do projeto (`ocs`, `sols`, `forns`, `contratos`/`contrato_produtos`,
+> `pareceres`, `marcas_sugeridas`, `opmes`, `hist_oc`) já estão nesse padrão.
+> Todo hook novo (ou tabela nova) segue esse padrão desde já — não existe
+> mais "padrão antigo" válido pra copiar.
 
 ```typescript
-// Exemplo do padrão antigo (ainda válido pras entidades não migradas)
-export function useOCs(hospitalId: HospitalId) {
+// Exemplo do padrão: hook adaptador + repository
+// src/repositories/exemploRepository.ts
+export async function listarExemplos(hospitalId: HospitalId): Promise<Exemplo[]> {
+  const { data, error } = await supabase
+    .from('exemplos')
+    .select('*')
+    .eq('hospital_id', hospitalId)
+    .is('deleted_at', null)
+    .order('id', { ascending: false })
+  if (error) throw error
+  return (data as ExemploRow[]).map(toExemplo)
+}
+
+// src/hooks/useExemplos.ts
+export function useExemplos(hospitalId: HospitalId) {
   return useQuery({
-    queryKey: ['ocs', hospitalId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ocs')
-        .select('*')
-        .eq('hospital_id', hospitalId)
-        .is('deleted_at', null)
-        .order('id', { ascending: false })
-      if (error) throw error
-      return data
-    },
+    queryKey: ['exemplos', hospitalId],
+    queryFn: () => exemploRepository.listarExemplos(hospitalId),
   })
 }
 ```
@@ -955,4 +965,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 25 | Novo módulo OPME — calendário de cirurgias com controle de entrega | OPME | Alta | ✅ Feito (15/09/2026) — tabela `opmes` criada e confirmada pelo Everton em produção, hook `useOpmes.ts`, calendário mensal em `/opmes` com KPIs e lista de pendentes nos próximos 7 dias. Reaproveita `forns` pra fornecedor, sem campo de material (decisão consciente do Everton) |
 | 26 | **Hardening v1.0 (fase 1 — P0)** — recebi `CLAUDE_ENGINEERING.md` (agora versionado no repo) com padrões de engenharia/testes/schema. Diagnóstico completo + Top 10 riscos + plano P0-P3 entregues no chat antes de mexer em código (regra 62/63 do doc de engenharia); esta linha registra o que já foi implementado da fatia P0 | Base | **Alta** | ✅ Feito (15/09/2026): **(1)** Vitest configurado (`vitest.config.ts`, `tsconfig.test.json` separado do app pra não vazar tipos `node` pro bundle do navegador) com 32 testes — regressão dos 2 bugs reais já documentados do parser CSV (vírgula decimal entre aspas, dois layouts de coluna) usando fixtures sintéticas em `tests/fixtures/` (não os CSVs reais), e cobertura de `statusPrazo`/`riscoOC`/`diasSemMovimentacao`/`previsaoAtiva`/`isPrevisaoDescumprida`/`dataPrazo` com datas relativas a `getHoje()` (sem precisar de um `Clock` injetável ainda — isso é P2/P3 se algum dia os testes precisarem de data fixa). **(2)** Schema versionado em `supabase/migrations/` — 0001 a 0005 são reconstruções do histórico já aplicado (não rodar de novo; ver `supabase/migrations/README.md` pra a ressalva de que não são um dump exato da CLI, é o que o CLAUDE.md já documentava em prosa, agora em SQL). **(3)** Nova migration `202609150002_check_constraints.sql` com `CHECK ... NOT VALID` (não valida dado histórico, só passa a proteger escritas novas) pra `hospital_id`/`status`/`tipo`/`qtd >= 0`/`preco_unitario >= 0` — **deliberadamente sem CHECK em `ocs.sit`/`sols.sit`**, porque `normalizeSit()` tem fallback intencional pra situação não reconhecida do SoulMV, e uma CHECK estrita transformaria isso em erro de importação (decisão de produto separada, não uma migration). **Aplicada em produção em 16/09/2026** — Everton rodou no SQL Editor, Success em todas as `ALTER TABLE`. `VALIDATE CONSTRAINT` retroativo (cobrir dado histórico) ficou como opcional, não confirmado se foi rodado — as constraints já protegem escritas novas independente disso. **(4)** CI mínimo (`.github/workflows/ci.yml`): lint + typecheck + testes + build em todo push/PR — **sem branch protection ainda**, não bloqueia push direto em main, só dá visibilidade; ativar proteção de branch é decisão do Everton, muda o fluxo de trabalho atual. **Não implementado ainda desta fase P0** (fica pro próximo ciclo): nada mais — repositories/services (P2), migração de datas texto→date (P2, maior risco do plano), Storage pra PDF (P2), Sentry/staging (P3) ficam pra quando o Everton pedir, conforme o roadmap apresentado no chat |
 | 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
-| 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs, Contratos, Pareceres | Média | ✅ Feito parcialmente (16/09/2026), por design — 5 entidades migradas até agora: **`ocRepository.ts`** (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `criarOCImportada`, `excluirOC`, `toOC`), **`solRepository.ts`** (`listarSols`, `salvarSol`, `atualizarSituacaoSol`, `atualizarCamposSol`, `excluirSol`, `toSolicitacao`), **`fornecedorRepository.ts`** (`listarFornecedores`, `salvarFornecedor`, `excluirFornecedor`, `toFornecedor`), **`contratoRepository.ts`** (`listarContratos`, `listarContratoProdutos`, `salvarContrato`, `salvarProdutosContrato` — mantém o diff/soft-delete da sub-tabela `contrato_produtos` que já existia —, `excluirContrato`, `toContrato`, `toContratoProduto`), **`parecerRepository.ts`** (`listarPareceres`, `buscarParecer`, `salvarParecer`, `excluirParecer`, `toParecer`); `useOCs.ts`/`useSols.ts`/`useFornecedores.ts`/`useContratos.ts`/`usePareceres.ts` viraram adaptadores finos (só `useQuery`/`useMutation` chamando o repository) — mesma interface pública de antes, nenhum componente/página que os importa mudou. `contratoRepository.ts` foi o primeiro a testar o padrão contra uma entidade com sub-tabela relacionada (1 contrato : N produtos) — o diff (`produtosAtuais` vs `produtosOriginais`) só mudou de arquivo, lógica idêntica. **Achado na migração de pareceres**: `excluirParecer` já usava `DELETE` físico, não soft delete — violação pré-existente da regra 6, documentada no cabeçalho do repository e preservada tal como estava (mudar pra soft delete é decisão de produto separada, não faz parte de mover camadas). **`Importar.tsx` também deixou de acessar o Supabase direto** (violava a regra 4 desde sempre — "todo acesso ao Supabase dentro de um hook", mas a tela de importação sempre fez `insert`/`update` cru pra reconciliação item a item): o patch parcial de OC/Solicitação existente agora usa `atualizarCamposOC`/`atualizarCamposSol`; a criação de OC nova (CSV e vínculo do PDF de Acompanhamento) usa a função nova `ocRepository.criarOCImportada()`, que **preserva exatamente os mesmos defaults de antes** (`proxima_acao`/`motivo_atraso` vazios, não `null` — diferente do que `salvarOC` do formulário manual usa) em vez de reaproveitar `salvarOC`, pra não mudar comportamento de produção silenciosamente numa refatoração. Escolha de quais migrar primeiro: as mais críticas/testadas, as que a tela de importação usa junto, a primeira com sub-tabela, e a primeira com uma violação pré-existente de regra a documentar (CLAUDE_ENGINEERING.md seção 64, Strangler Pattern — nunca big-bang). `marcas_sugeridas`/`opmes`/`hist_oc` continuam com Supabase direto dentro do hook, fica pro próximo ciclo. 30 testes novos no total (6 `ocRepository`, 4 `solRepository`, 2 `fornecedorRepository`, 7 `contratoRepository`, 4 `parecerRepository`, mais os que já existiam) cobrindo defaults de mapeamento pra campos nullable do schema gerado — total do projeto: **70 testes**. **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária |
+| 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs, Contratos, Pareceres, OPME | Média | ✅ **Completo (16/09/2026)** — as 8 tabelas do projeto migradas do padrão "hook faz SQL + mapeamento + tudo" pro padrão repository/hook-adaptador: **`ocRepository.ts`** (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `criarOCImportada`, `excluirOC`, `toOC`), **`solRepository.ts`** (`listarSols`, `salvarSol`, `atualizarSituacaoSol`, `atualizarCamposSol`, `excluirSol`, `toSolicitacao`), **`fornecedorRepository.ts`** (`listarFornecedores`, `salvarFornecedor`, `excluirFornecedor`, `toFornecedor`), **`contratoRepository.ts`** (`listarContratos`, `listarContratoProdutos`, `salvarContrato`, `salvarProdutosContrato`, `excluirContrato`, `toContrato`, `toContratoProduto`), **`parecerRepository.ts`** (`listarPareceres`, `buscarParecer`, `salvarParecer`, `excluirParecer`, `toParecer`), **`marcaSugeridaRepository.ts`** (`listarMarcasSugeridas`, `salvarMarcasSugeridas`, `excluirMarcasSugeridas`, `toMapa`), **`opmeRepository.ts`** (`listarOpmes`, `salvarOpme`, `alternarStatusOpme`, `excluirOpme`, `toOpme`), **`histOcRepository.ts`** (`listarHistOC`, `listarHistoricoRecentePorOC`, `listarHistoricoTodos`, `registrarCobranca`, `marcarRespondida`, `toHistOC`). Todos os 8 hooks correspondentes (`useOCs`/`useSols`/`useFornecedores`/`useContratos`/`usePareceres`/`useMarcasSugeridas`/`useOpmes`/`useHistOC`) viraram adaptadores finos — mesma interface pública de antes em todos, nenhum componente/página mudou. `contratoRepository.ts` foi o primeiro a testar o padrão contra sub-tabela relacionada (1 contrato : N produtos, diff/soft-delete preservado). **Achado na migração de pareceres**: `excluirParecer` já usava `DELETE` físico, não soft delete — violação pré-existente da regra 6, documentada no cabeçalho do repository e preservada tal como estava (mudar é decisão de produto separada). **`Importar.tsx` também deixou de acessar o Supabase direto** (violava a regra 4 desde sempre): patch parcial de OC/Solicitação existente usa `atualizarCamposOC`/`atualizarCamposSol`; criação de OC nova (CSV e vínculo do PDF de Acompanhamento) usa `ocRepository.criarOCImportada()`, que **preserva exatamente os mesmos defaults de antes** em vez de reaproveitar `salvarOC`, pra não mudar comportamento de produção silenciosamente. Migração sempre gradual, uma entidade por vez, nunca big-bang (CLAUDE_ENGINEERING.md seção 64). 41 testes novos no total (6 `ocRepository`, 4 `solRepository`, 2 `fornecedorRepository`, 7 `contratoRepository`, 4 `parecerRepository`, 3 `marcaSugeridaRepository`, 3 `opmeRepository`, 5 `histOcRepository`, mais os que já existiam) cobrindo defaults de mapeamento pra campos nullable do schema gerado — total do projeto: **81 testes**. **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária em nenhuma etapa desta fase |
