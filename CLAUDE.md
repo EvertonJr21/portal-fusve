@@ -60,6 +60,9 @@ fusve-portal/
 ├── CLAUDE.md                        ← este arquivo
 ├── .env.local                       ← credenciais reais (gitignored, nunca commitar)
 ├── .env.example                     ← placeholders, este SIM é commitado
+├── .env.test                        ← valores fictícios (não são credenciais reais) só pra `npm test`
+│                                        não quebrar — `src/lib/supabase.ts` lança erro se as env vars
+│                                        estiverem ausentes, e os testes nunca chamam a rede de verdade
 ├── .gitignore
 ├── .claude/launch.json              ← config do preview (npm run dev)
 ├── _legacy/                         ← projetos antigos extraídos, só leitura/referência
@@ -77,10 +80,16 @@ fusve-portal/
     ├── lib/
     │   ├── supabase.ts              ← cliente Supabase tipado [pronto — falta o genérico <Database>]
     │   └── queryClient.ts           ← configuração TanStack Query [pronto]
+    ├── repositories/
+    │   └── ocRepository.ts          ← acesso Supabase + mapeamento snake↔camel de `ocs` (novo, 16/09/2026 —
+    │                                  Hardening P2, primeira entidade migrada do padrão "hook faz tudo" pro
+    │                                  padrão repository/hook-adaptador; as outras tabelas continuam com
+    │                                  Supabase direto no hook por enquanto, migração é gradual) [pronto]
     ├── hooks/
     │   ├── useHospital.ts           ← contexto de hospital ativo [pronto]
     │   ├── useToast.ts              ← contexto de toast [pronto]
-    │   ├── useOCs.ts                ← useOCs, useSalvarOC, useAtualizarSituacaoOC, useExcluirOC [pronto — cobrança/vínculo/histórico ficam em hooks próprios na Fase 3]
+    │   ├── useOCs.ts                ← useOCs, useSalvarOC, useAtualizarSituacaoOC, useExcluirOC — adaptador
+    │   │                              fino sobre `ocRepository.ts`, sem SQL/mapeamento aqui [pronto — cobrança/vínculo/histórico ficam em hooks próprios na Fase 3]
     │   ├── useSols.ts               ← useSols (só leitura nesta fase) [pronto]
     │   ├── useFornecedores.ts       ← useFornecedores (só leitura nesta fase) [pronto]
     │   ├── useHistOC.ts             ← useHistOC, useRegistrarCobranca [pronto]
@@ -534,8 +543,16 @@ Rodar sempre que o schema mudar. **Ainda não rodado neste projeto** — `src/ty
 ### 4. Um hook por entidade
 Todo acesso ao Supabase passa por um hook TanStack Query. Nenhum componente faz fetch diretamente.
 
+> **Padrão-alvo desde 16/09/2026 (Hardening P2):** SQL e mapeamento snake↔camel
+> vão em `src/repositories/<entidade>Repository.ts`; o hook vira um adaptador
+> fino que só chama o repository dentro de `queryFn`/`mutationFn` (ver
+> `ocRepository.ts` + `useOCs.ts` como referência). Migração é gradual
+> (Strangler Pattern, CLAUDE_ENGINEERING.md seção 64) — só `ocs` foi migrada
+> até agora. O exemplo abaixo (Supabase direto no hook) ainda é o padrão
+> válido pras entidades que não foram migradas ainda.
+
 ```typescript
-// Exemplo correto
+// Exemplo do padrão antigo (ainda válido pras entidades não migradas)
 export function useOCs(hospitalId: HospitalId) {
   return useQuery({
     queryKey: ['ocs', hospitalId],
@@ -927,3 +944,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 25 | Novo módulo OPME — calendário de cirurgias com controle de entrega | OPME | Alta | ✅ Feito (15/09/2026) — tabela `opmes` criada e confirmada pelo Everton em produção, hook `useOpmes.ts`, calendário mensal em `/opmes` com KPIs e lista de pendentes nos próximos 7 dias. Reaproveita `forns` pra fornecedor, sem campo de material (decisão consciente do Everton) |
 | 26 | **Hardening v1.0 (fase 1 — P0)** — recebi `CLAUDE_ENGINEERING.md` (agora versionado no repo) com padrões de engenharia/testes/schema. Diagnóstico completo + Top 10 riscos + plano P0-P3 entregues no chat antes de mexer em código (regra 62/63 do doc de engenharia); esta linha registra o que já foi implementado da fatia P0 | Base | **Alta** | ✅ Feito (15/09/2026): **(1)** Vitest configurado (`vitest.config.ts`, `tsconfig.test.json` separado do app pra não vazar tipos `node` pro bundle do navegador) com 32 testes — regressão dos 2 bugs reais já documentados do parser CSV (vírgula decimal entre aspas, dois layouts de coluna) usando fixtures sintéticas em `tests/fixtures/` (não os CSVs reais), e cobertura de `statusPrazo`/`riscoOC`/`diasSemMovimentacao`/`previsaoAtiva`/`isPrevisaoDescumprida`/`dataPrazo` com datas relativas a `getHoje()` (sem precisar de um `Clock` injetável ainda — isso é P2/P3 se algum dia os testes precisarem de data fixa). **(2)** Schema versionado em `supabase/migrations/` — 0001 a 0005 são reconstruções do histórico já aplicado (não rodar de novo; ver `supabase/migrations/README.md` pra a ressalva de que não são um dump exato da CLI, é o que o CLAUDE.md já documentava em prosa, agora em SQL). **(3)** Nova migration `202609150002_check_constraints.sql` com `CHECK ... NOT VALID` (não valida dado histórico, só passa a proteger escritas novas) pra `hospital_id`/`status`/`tipo`/`qtd >= 0`/`preco_unitario >= 0` — **deliberadamente sem CHECK em `ocs.sit`/`sols.sit`**, porque `normalizeSit()` tem fallback intencional pra situação não reconhecida do SoulMV, e uma CHECK estrita transformaria isso em erro de importação (decisão de produto separada, não uma migration). **Aplicada em produção em 16/09/2026** — Everton rodou no SQL Editor, Success em todas as `ALTER TABLE`. `VALIDATE CONSTRAINT` retroativo (cobrir dado histórico) ficou como opcional, não confirmado se foi rodado — as constraints já protegem escritas novas independente disso. **(4)** CI mínimo (`.github/workflows/ci.yml`): lint + typecheck + testes + build em todo push/PR — **sem branch protection ainda**, não bloqueia push direto em main, só dá visibilidade; ativar proteção de branch é decisão do Everton, muda o fluxo de trabalho atual. **Não implementado ainda desta fase P0** (fica pro próximo ciclo): nada mais — repositories/services (P2), migração de datas texto→date (P2, maior risco do plano), Storage pra PDF (P2), Sentry/staging (P3) ficam pra quando o Everton pedir, conforme o roadmap apresentado no chat |
 | 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
+| 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs | Média | ✅ Feito parcialmente (16/09/2026), por design — `src/repositories/ocRepository.ts` (novo) concentra todo SQL/mapeamento snake↔camel de `ocs` (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `excluirOC`, `toOC`); `src/hooks/useOCs.ts` virou um adaptador fino (só `useQuery`/`useMutation` chamando o repository, zero SQL/mapeamento) — mesma interface pública de antes, os 17 componentes/páginas que importam `useOCs` não mudaram nada. **`ocs` foi a única tabela migrada** — escolhida por ser a mais crítica e mais testada (CLAUDE_ENGINEERING.md seção 64, Strangler Pattern: migrar 1 entidade, testar, continuar, nunca big-bang). `sols`/`forns`/`contratos`/`pareceres`/`marcas_sugeridas`/`opmes`/`hist_oc` continuam com Supabase direto dentro do hook — migrar as outras fica pro próximo ciclo, quando fizer sentido. 6 testes novos em `src/repositories/ocRepository.test.ts` cobrindo os defaults de `toOC` pra campos nullable do schema gerado (`sit`/`cobrado`/`fornecedor_nome`/`dias_atraso`/`previsao_descumprida`) — motivo pra usar `Database['public']['Tables']['ocs']['Row']` em vez de reescrever a interface da linha à mão (regra 43 do doc de engenharia: tipo derivado do schema). **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária |
