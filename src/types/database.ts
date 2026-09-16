@@ -231,6 +231,7 @@ export interface Database {
         Row: {
           id: number
           data_solic: string | null
+          data_solic_date: string | null
           fornecedor_nome: string | null
           fornecedor_id: number | null
           sit: string | null
@@ -238,7 +239,9 @@ export interface Database {
           solicitacao_id: number | null
           cobrado: boolean | null
           previsao_forn: string | null
+          previsao_forn_date: string | null
           data_entrega_real: string | null
+          data_entrega_real_date: string | null
           dias_atraso: number | null
           created_at: string | null
           updated_at: string | null
@@ -246,13 +249,16 @@ export interface Database {
           proxima_acao: string | null
           motivo_atraso: string | null
           ultima_movimentacao: string | null
+          ultima_movimentacao_date: string | null
           previsao_descumprida: boolean | null
           deleted_at: string | null
           previsao_forn2: string | null
+          previsao_forn2_date: string | null
         }
         Insert: {
           id: number
           data_solic?: string | null
+          data_solic_date?: string | null
           fornecedor_nome?: string | null
           fornecedor_id?: number | null
           sit?: string | null
@@ -260,7 +266,9 @@ export interface Database {
           solicitacao_id?: number | null
           cobrado?: boolean | null
           previsao_forn?: string | null
+          previsao_forn_date?: string | null
           data_entrega_real?: string | null
+          data_entrega_real_date?: string | null
           dias_atraso?: number | null
           created_at?: string | null
           updated_at?: string | null
@@ -268,13 +276,16 @@ export interface Database {
           proxima_acao?: string | null
           motivo_atraso?: string | null
           ultima_movimentacao?: string | null
+          ultima_movimentacao_date?: string | null
           previsao_descumprida?: boolean | null
           deleted_at?: string | null
           previsao_forn2?: string | null
+          previsao_forn2_date?: string | null
         }
         Update: {
           id?: number
           data_solic?: string | null
+          data_solic_date?: string | null
           fornecedor_nome?: string | null
           fornecedor_id?: number | null
           sit?: string | null
@@ -282,7 +293,9 @@ export interface Database {
           solicitacao_id?: number | null
           cobrado?: boolean | null
           previsao_forn?: string | null
+          previsao_forn_date?: string | null
           data_entrega_real?: string | null
+          data_entrega_real_date?: string | null
           dias_atraso?: number | null
           created_at?: string | null
           updated_at?: string | null
@@ -290,9 +303,11 @@ export interface Database {
           proxima_acao?: string | null
           motivo_atraso?: string | null
           ultima_movimentacao?: string | null
+          ultima_movimentacao_date?: string | null
           previsao_descumprida?: boolean | null
           deleted_at?: string | null
           previsao_forn2?: string | null
+          previsao_forn2_date?: string | null
         }
         Relationships: [
           {
