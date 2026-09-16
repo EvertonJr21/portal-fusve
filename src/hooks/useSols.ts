@@ -1,75 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { HospitalId } from '@/constants'
-import { supabase } from '@/lib/supabase'
-import type { Solicitacao } from '@/types'
+import * as solRepository from '@/repositories/solRepository'
 
-interface SolRow {
-  id: number
-  data: string | null
-  produto: string
-  motivo: string
-  solicitante: string
-  qtd: number
-  sit: string
-  hospital_id: string
-}
+export type { SalvarSolInput } from '@/repositories/solRepository'
 
-function toSolicitacao(row: SolRow): Solicitacao {
-  return {
-    id: row.id,
-    data: row.data,
-    produto: row.produto,
-    motivo: row.motivo,
-    solicitante: row.solicitante,
-    qtd: row.qtd,
-    sit: row.sit,
-    hospitalId: row.hospital_id as HospitalId,
-  }
-}
-
+/** Adaptador React pro `solRepository` — sem SQL/mapeamento aqui (ver ocRepository.ts/useOCs.ts como referência). */
 export function useSols(hospitalId: HospitalId) {
   return useQuery({
     queryKey: ['sols', hospitalId],
-    queryFn: async (): Promise<Solicitacao[]> => {
-      const { data, error } = await supabase
-        .from('sols')
-        .select('*')
-        .eq('hospital_id', hospitalId)
-        .is('deleted_at', null)
-        .order('id', { ascending: false })
-      if (error) throw error
-      return (data as SolRow[]).map(toSolicitacao)
-    },
+    queryFn: () => solRepository.listarSols(hospitalId),
   })
-}
-
-export interface SalvarSolInput {
-  id: number
-  data: string
-  produto: string
-  motivo: string
-  solicitante: string
-  qtd: number
-  sit: string
-  hospitalId: HospitalId
 }
 
 export function useSalvarSol(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: SalvarSolInput) => {
-      const { error } = await supabase.from('sols').upsert({
-        id: input.id,
-        data: input.data,
-        produto: input.produto,
-        motivo: input.motivo,
-        solicitante: input.solicitante,
-        qtd: input.qtd,
-        sit: input.sit,
-        hospital_id: input.hospitalId,
-      })
-      if (error) throw error
-    },
+    mutationFn: solRepository.salvarSol,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     },
@@ -79,10 +25,7 @@ export function useSalvarSol(hospitalId: HospitalId) {
 export function useAtualizarSituacaoSol(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, sit }: { id: number; sit: string }) => {
-      const { error } = await supabase.from('sols').update({ sit }).eq('id', id)
-      if (error) throw error
-    },
+    mutationFn: ({ id, sit }: { id: number; sit: string }) => solRepository.atualizarSituacaoSol(id, sit),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     },
@@ -92,13 +35,7 @@ export function useAtualizarSituacaoSol(hospitalId: HospitalId) {
 export function useExcluirSol(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (id: number) => {
-      const { error } = await supabase
-        .from('sols')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
-      if (error) throw error
-    },
+    mutationFn: solRepository.excluirSol,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     },

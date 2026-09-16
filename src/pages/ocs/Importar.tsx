@@ -5,8 +5,9 @@ import { SIT_RANK } from '@/constants'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
-import { supabase } from '@/lib/supabase'
-import type { Database } from '@/types/database'
+import * as ocRepository from '@/repositories/ocRepository'
+import * as solRepository from '@/repositories/solRepository'
+import type { OC, Solicitacao } from '@/types'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 import { ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
@@ -75,40 +76,34 @@ export default function Importar() {
         const item = itens[i]
         const existente = ocs.find((o) => o.id === item.id)
         if (existente) {
-          const patch: Database['public']['Tables']['ocs']['Update'] = {}
-          if (sitAvancou(existente.sit, item.sit)) patch.sit = item.sit
+          const patch: Partial<OC> = {}
+          if (sitAvancou(existente.sit, item.sit)) patch.sit = item.sit as OC['sit']
           if (item.fornecedorNome && existente.fornecedorNome !== item.fornecedorNome) {
-            patch.fornecedor_nome = item.fornecedorNome
-            patch.fornecedor_id = item.fornecedorId
+            patch.fornecedorNome = item.fornecedorNome
+            patch.fornecedorId = item.fornecedorId
           }
-          if (item.previsaoForn && !existente.previsaoForn) patch.previsao_forn = item.previsaoForn
+          if (item.previsaoForn && !existente.previsaoForn) patch.previsaoForn = item.previsaoForn
           if (Object.keys(patch).length) {
-            const { error } = await supabase.from('ocs').update(patch).eq('id', item.id)
-            if (error) throw error
+            await ocRepository.atualizarCamposOC(item.id, patch)
             updated++
             addLog(`OC ${item.id} — ${item.sit}`)
           } else {
             skipped++
           }
         } else {
-          const { error } = await supabase.from('ocs').insert({
+          await ocRepository.criarOCImportada({
             id: item.id,
-            data_solic: item.dataSolic,
-            fornecedor_nome: item.fornecedorNome,
-            fornecedor_id: item.fornecedorId,
+            dataSolic: item.dataSolic,
+            fornecedorNome: item.fornecedorNome,
+            fornecedorId: item.fornecedorId,
             sit: item.sit,
             estoque: item.estoque || 'SUP CAF',
-            solicitacao_id: null,
-            cobrado: false,
-            previsao_forn: item.previsaoForn,
-            dias_atraso: item.diasAtraso,
-            hospital_id: hospitalId,
-            proxima_acao: '',
-            motivo_atraso: '',
-            ultima_movimentacao: item.dataSolic,
-            previsao_descumprida: false,
+            solicitacaoId: null,
+            previsaoForn: item.previsaoForn,
+            diasAtraso: item.diasAtraso,
+            hospitalId,
+            ultimaMovimentacao: item.dataSolic,
           })
-          if (error) throw error
           added++
           addLog(`OC ${item.id} — ${item.sit} (nova)`)
         }
@@ -144,22 +139,21 @@ export default function Importar() {
         const item = itens[i]
         const existente = sols.find((s) => s.id === item.id)
         if (existente) {
-          const patch: Database['public']['Tables']['sols']['Update'] = {}
+          const patch: Partial<Solicitacao> = {}
           if (!existente.motivo && item.motivo) patch.motivo = item.motivo
           if (!existente.solicitante && item.solicitante) patch.solicitante = item.solicitante
           if ((!existente.produto || existente.produto.includes('verificar')) && item.produto) {
             patch.produto = item.produto
           }
           if (Object.keys(patch).length) {
-            const { error } = await supabase.from('sols').update(patch).eq('id', item.id)
-            if (error) throw error
+            await solRepository.atualizarCamposSol(item.id, patch)
             updated++
             addLog(`Solicitação ${item.id} — ${item.sit}`)
           } else {
             skipped++
           }
         } else {
-          const { error } = await supabase.from('sols').insert({
+          await solRepository.salvarSol({
             id: item.id,
             data: item.data,
             produto: item.produto,
@@ -167,9 +161,8 @@ export default function Importar() {
             solicitante: item.solicitante,
             qtd: item.qtd,
             sit: item.sit,
-            hospital_id: hospitalId,
+            hospitalId,
           })
-          if (error) throw error
           added++
           addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
         }
@@ -212,28 +205,22 @@ export default function Importar() {
         const v = vinculos[i]
         const existente = ocs.find((o) => o.id === v.ocId)
         if (!existente) {
-          const { error } = await supabase.from('ocs').insert({
+          await ocRepository.criarOCImportada({
             id: v.ocId,
-            data_solic: v.dataOC,
-            fornecedor_nome: v.fornecedorNome.toUpperCase(),
-            fornecedor_id: 0,
+            dataSolic: v.dataOC,
+            fornecedorNome: v.fornecedorNome.toUpperCase(),
+            fornecedorId: 0,
             sit: 'Autorizada',
             estoque: 'SUP CAF',
-            solicitacao_id: v.solicitacaoId,
-            cobrado: false,
-            previsao_forn: null,
-            dias_atraso: 0,
-            hospital_id: hospitalId,
-            proxima_acao: '',
-            motivo_atraso: '',
-            ultima_movimentacao: v.dataOC,
-            previsao_descumprida: false,
+            solicitacaoId: v.solicitacaoId,
+            previsaoForn: null,
+            diasAtraso: 0,
+            hospitalId,
+            ultimaMovimentacao: v.dataOC,
           })
-          if (error) throw error
           criadas++
         } else if (existente.solicitacaoId !== v.solicitacaoId) {
-          const { error } = await supabase.from('ocs').update({ solicitacao_id: v.solicitacaoId }).eq('id', v.ocId)
-          if (error) throw error
+          await ocRepository.atualizarCamposOC(v.ocId, { solicitacaoId: v.solicitacaoId })
           vinculados++
         } else {
           continue

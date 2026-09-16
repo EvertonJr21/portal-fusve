@@ -97,6 +97,48 @@ export async function atualizarSituacaoOC(id: number, sit: SituacaoOC): Promise<
   if (error) throw error
 }
 
+export interface OCImportadaInput {
+  id: number
+  dataSolic: string | null
+  fornecedorNome: string
+  fornecedorId: number
+  sit: string
+  estoque: string
+  solicitacaoId: number | null
+  previsaoForn: string | null
+  diasAtraso: number
+  hospitalId: HospitalId
+  ultimaMovimentacao: string | null
+}
+
+/**
+ * Cria uma OC a partir de importação (CSV novo ou vínculo do PDF de
+ * Acompanhamento) — defaults (`cobrado: false`, `proxima_acao`/`motivo_atraso`
+ * vazios, `previsao_descumprida: false`) são intencionalmente diferentes dos
+ * de `salvarOC` (formulário manual usa `null`), então não reaproveita
+ * `toRow`/`salvarOC` pra não mudar esse comportamento silenciosamente.
+ */
+export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
+  const { error } = await supabase.from('ocs').insert({
+    id: input.id,
+    data_solic: input.dataSolic,
+    fornecedor_nome: input.fornecedorNome,
+    fornecedor_id: input.fornecedorId,
+    sit: input.sit,
+    estoque: input.estoque,
+    solicitacao_id: input.solicitacaoId,
+    cobrado: false,
+    previsao_forn: input.previsaoForn,
+    dias_atraso: input.diasAtraso,
+    hospital_id: input.hospitalId,
+    proxima_acao: '',
+    motivo_atraso: '',
+    ultima_movimentacao: input.ultimaMovimentacao,
+    previsao_descumprida: false,
+  })
+  if (error) throw error
+}
+
 const PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
   solicitacaoId: 'solicitacao_id',
   cobrado: 'cobrado',
@@ -109,6 +151,8 @@ const PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
   ultimaMovimentacao: 'ultima_movimentacao',
   previsaoDescumprida: 'previsao_descumprida',
   sit: 'sit',
+  fornecedorNome: 'fornecedor_nome',
+  fornecedorId: 'fornecedor_id',
 }
 
 /** Atualização parcial de campos operacionais (histórico, vínculo, cobrança) — não é o form de criar/editar. */
