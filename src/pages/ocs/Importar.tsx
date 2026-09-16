@@ -8,6 +8,7 @@ import { useSols } from '@/hooks/useSols'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
+import { ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
 type Relatorio = 'ocs' | 'sols' | 'acomp'
 
@@ -62,7 +63,10 @@ export default function Importar() {
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
-      const itens = parseOCsCSV(texto)
+      const { validos: itens, invalidos } = validarLote(parseOCsCSV(texto), ocImportadaSchema)
+      for (const { item, erros } of invalidos) {
+        addLog(`⚠ OC ${item.id || '?'} ignorada — ${erros.join('; ')}`)
+      }
       let added = 0
       let updated = 0
       let skipped = 0
@@ -109,7 +113,7 @@ export default function Importar() {
           addLog(`OC ${item.id} — ${item.sit} (nova)`)
         }
       }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança`
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ OCs CSV: ${resumo}`)
       setCardStatus('ocs', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
@@ -128,7 +132,10 @@ export default function Importar() {
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
-      const itens = parseSolsCSV(texto, hospitalId)
+      const { validos: itens, invalidos } = validarLote(parseSolsCSV(texto, hospitalId), solImportadaSchema)
+      for (const { item, erros } of invalidos) {
+        addLog(`⚠ Solicitação ${item.id || '?'} ignorada — ${erros.join('; ')}`)
+      }
       let added = 0
       let updated = 0
       let skipped = 0
@@ -167,7 +174,7 @@ export default function Importar() {
           addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
         }
       }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança`
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ Solicitações CSV: ${resumo}`)
       setCardStatus('sols', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
@@ -187,7 +194,10 @@ export default function Importar() {
     try {
       const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
       const linhas = await extractPdfLines(file)
-      const vinculos = parseAcompPDF(linhas)
+      const { validos: vinculos, invalidos } = validarLote(parseAcompPDF(linhas), vinculoAcompSchema)
+      for (const { item, erros } of invalidos) {
+        addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
+      }
       if (!vinculos.length) {
         const msg = 'Nenhum vínculo encontrado. Verifique se é um relatório de Acompanhamento de Compras válido.'
         addLog(`⚠ ${msg}`)
@@ -230,7 +240,7 @@ export default function Importar() {
         }
         addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
       }
-      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)`
+      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)${invalidos.length ? ` | ${invalidos.length} ignorado(s) (formato inválido)` : ''}`
       addLog(`─ Acompanhamento: ${resumo}`)
       setCardStatus('acomp', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })

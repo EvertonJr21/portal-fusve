@@ -141,7 +141,10 @@ fusve-portal/
         ├── scoreFornecedor.ts        ← calcularScoreFornecedor(Todos), fornecedoresProblematicos, filtrarDesdeReset [pronto]
         ├── contrato.ts               ← diasParaVencer, statusVigencia (vencido/critico/atencao/ok) [pronto]
         ├── cnpj.ts                   ← consultarCNPJ (BrasilAPI), formatarCNPJ [pronto]
-        ├── validators.ts            [a fazer]
+        ├── validators.ts            ← validação Zod na fronteira da importação (ocImportadaSchema,
+        │                              solImportadaSchema, vinculoAcompSchema, validarLote) — separa
+        │                              itens válidos dos inválidos em vez de travar o lote inteiro
+        │                              [pronto, 16/09/2026 — Hardening P1]
         └── formatters.ts            [a fazer]
 
     src/data/                        ← PRODUTOS_SOULMV (4.579 itens), dynamic import em useProdutos.ts —
@@ -613,7 +616,28 @@ Já implementado em `src/utils/date.ts`. Nunca `new Date()` diretamente para com
 
 ### 3. Acompanhamento de Compras (PDF obrigatório)
 - Vincula OCs às Solicitações de origem automaticamente
-- Parser usa PDF.js — a lógica de referência é `_legacy/controle-ocs/controle-ocs-huv-main/src/js/pdf.js` (`parseAcomp`), ainda não portada para `src/utils/pdf.ts`
+- Parser usa PDF.js, portado pra `src/utils/pdf.ts` (`parseAcompPDF`) a partir da lógica de referência em `_legacy/controle-ocs/controle-ocs-huv-main/src/js/pdf.js` (`parseAcomp`)
+
+### 4. Validação antes de gravar (Hardening P1, 16/09/2026)
+
+O que sai de `parseOCsCSV`/`parseSolsCSV`/`parseAcompPDF` passa por `validarLote()`
+(`src/utils/validators.ts`, Zod) antes de qualquer `insert`/`update` no Supabase —
+`Importar.tsx` chama isso logo depois do parse, nos três fluxos. Checa formato
+estrutural mínimo (id positivo, data em `DD/MM/AAAA`, quantidade/dias de atraso
+não-negativos, nome de fornecedor não vazio, `hospital_id` em `huv`/`mkr`) — **não**
+julga plausibilidade de negócio (ex: não rejeita um atraso de 300 dias, só um
+negativo, que é impossível por definição).
+
+Uma linha inválida no meio de centenas não trava as outras: `validarLote` separa
+válidas de inválidas, e cada inválida vira uma linha `⚠` no log de importação com
+o motivo, sem interromper o processamento das demais (mesmo princípio do log de
+progresso item a item já existente). O resumo final de cada card mostra quantas
+foram ignoradas, se houver alguma.
+
+Deliberadamente **sem** validar `sit`/`situação` contra uma lista fechada — mesmo
+motivo da migration de `CHECK` constraints (`normalizeSit()` tem fallback
+intencional pra situação não reconhecida do SoulMV; travar isso quebraria
+importação real por um valor novo/inesperado do export).
 
 ---
 
@@ -828,6 +852,7 @@ if (error) return <ErrorMessage message={error.message} />
 - [ ] `npm test` sem falhas (Vitest — cobre parsers de importação e regras de prazo)
 - [ ] `npm run build` sem erros
 - [ ] Alteração de schema tem migration em `supabase/migrations/` (ver README lá dentro)
+- [ ] Dado vindo de CSV/PDF/input externo passa por validação (`src/utils/validators.ts`) antes de persistir
 - [ ] Nenhuma variável no escopo global
 - [ ] Nenhuma magic string fora de `constants/`
 - [ ] Todo acesso ao Supabase dentro de um hook
@@ -901,3 +926,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 24 | Expandir base de produtos do módulo Pareceres com `R_PRODUTO.csv` (export completo do SoulMV) | Pareceres | Média | ✅ Feito (15/09/2026) — 4.579 → 17.733 produtos em `src/data/produtos.json`, cobrindo 14 categorias além de material médico (medicamentos, laboratório, odontologia, manutenção, limpeza, químicos, segurança do trabalho, rouparia/uniformes, gases, terapia nutricional, informática, acessórios/equipamentos, oncológicos, doados). Só amplia a base de busca estática (`useProdutos`/`SearchProduto`) — não criou registros na tabela `pareceres`, já que o CSV não tem informação de marca (decisão do Everton, ver seção "Módulo Pareceres" acima) |
 | 25 | Novo módulo OPME — calendário de cirurgias com controle de entrega | OPME | Alta | ✅ Feito (15/09/2026) — tabela `opmes` criada e confirmada pelo Everton em produção, hook `useOpmes.ts`, calendário mensal em `/opmes` com KPIs e lista de pendentes nos próximos 7 dias. Reaproveita `forns` pra fornecedor, sem campo de material (decisão consciente do Everton) |
 | 26 | **Hardening v1.0 (fase 1 — P0)** — recebi `CLAUDE_ENGINEERING.md` (agora versionado no repo) com padrões de engenharia/testes/schema. Diagnóstico completo + Top 10 riscos + plano P0-P3 entregues no chat antes de mexer em código (regra 62/63 do doc de engenharia); esta linha registra o que já foi implementado da fatia P0 | Base | **Alta** | ✅ Feito (15/09/2026): **(1)** Vitest configurado (`vitest.config.ts`, `tsconfig.test.json` separado do app pra não vazar tipos `node` pro bundle do navegador) com 32 testes — regressão dos 2 bugs reais já documentados do parser CSV (vírgula decimal entre aspas, dois layouts de coluna) usando fixtures sintéticas em `tests/fixtures/` (não os CSVs reais), e cobertura de `statusPrazo`/`riscoOC`/`diasSemMovimentacao`/`previsaoAtiva`/`isPrevisaoDescumprida`/`dataPrazo` com datas relativas a `getHoje()` (sem precisar de um `Clock` injetável ainda — isso é P2/P3 se algum dia os testes precisarem de data fixa). **(2)** Schema versionado em `supabase/migrations/` — 0001 a 0005 são reconstruções do histórico já aplicado (não rodar de novo; ver `supabase/migrations/README.md` pra a ressalva de que não são um dump exato da CLI, é o que o CLAUDE.md já documentava em prosa, agora em SQL). **(3)** Nova migration `202609150002_check_constraints.sql` com `CHECK ... NOT VALID` (não valida dado histórico, só passa a proteger escritas novas) pra `hospital_id`/`status`/`tipo`/`qtd >= 0`/`preco_unitario >= 0` — **deliberadamente sem CHECK em `ocs.sit`/`sols.sit`**, porque `normalizeSit()` tem fallback intencional pra situação não reconhecida do SoulMV, e uma CHECK estrita transformaria isso em erro de importação (decisão de produto separada, não uma migration). **Aplicada em produção em 16/09/2026** — Everton rodou no SQL Editor, Success em todas as `ALTER TABLE`. `VALIDATE CONSTRAINT` retroativo (cobrir dado histórico) ficou como opcional, não confirmado se foi rodado — as constraints já protegem escritas novas independente disso. **(4)** CI mínimo (`.github/workflows/ci.yml`): lint + typecheck + testes + build em todo push/PR — **sem branch protection ainda**, não bloqueia push direto em main, só dá visibilidade; ativar proteção de branch é decisão do Everton, muda o fluxo de trabalho atual. **Não implementado ainda desta fase P0** (fica pro próximo ciclo): nada mais — repositories/services (P2), migração de datas texto→date (P2, maior risco do plano), Storage pra PDF (P2), Sentry/staging (P3) ficam pra quando o Everton pedir, conforme o roadmap apresentado no chat |
+| 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
