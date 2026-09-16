@@ -16,6 +16,7 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     observacao: 'Observação técnica',
     responsavel: 'FULANO',
     data_parecer: '10/09/2026',
+    data_parecer_date: '2026-09-10',
     parecer: 'Texto do parecer',
     pdf_data_url: null,
     created_at: null,
@@ -33,6 +34,16 @@ describe('toParecer', () => {
     expect(p.dataParecer).toBe('10/09/2026')
   })
 
+  it('prefere data_parecer_date (Fase 2 da migração de datas) sobre o texto legado', () => {
+    const p = toParecer(rowBase({ data_parecer: '01/01/2000', data_parecer_date: '2026-09-10' }))
+    expect(p.dataParecer).toBe('10/09/2026')
+  })
+
+  it('cai pro texto legado quando data_parecer_date ainda não foi backfillada', () => {
+    const p = toParecer(rowBase({ data_parecer: '10/09/2026', data_parecer_date: null }))
+    expect(p.dataParecer).toBe('10/09/2026')
+  })
+
   it('usa array vazio como padrão pras marcas nulas', () => {
     // @ts-expect-error o schema marca como NOT NULL, mas o mapeamento é defensivo
     const p = toParecer(rowBase({ padrao: null, permitidas: null, restritas: null, proibidas: null }))
@@ -43,8 +54,10 @@ describe('toParecer', () => {
   })
 
   it('usa string vazia como padrão pros campos de texto nulos', () => {
-    // @ts-expect-error o schema marca como NOT NULL, mas o mapeamento é defensivo
-    const p = toParecer(rowBase({ observacao: null, responsavel: null, data_parecer: null, parecer: null }))
+    const p = toParecer(
+      // @ts-expect-error o schema marca como NOT NULL, mas o mapeamento é defensivo
+      rowBase({ observacao: null, responsavel: null, data_parecer: null, data_parecer_date: null, parecer: null }),
+    )
     expect(p.observacao).toBe('')
     expect(p.responsavel).toBe('')
     expect(p.dataParecer).toBe('')

@@ -379,6 +379,7 @@ export interface Database {
           observacao: string
           responsavel: string
           data_parecer: string
+          data_parecer_date: string | null
           parecer: string
           pdf_data_url: string | null
           created_at: string | null
@@ -395,6 +396,7 @@ export interface Database {
           observacao?: string
           responsavel?: string
           data_parecer?: string
+          data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
           created_at?: string | null
@@ -411,6 +413,7 @@ export interface Database {
           observacao?: string
           responsavel?: string
           data_parecer?: string
+          data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
           created_at?: string | null
