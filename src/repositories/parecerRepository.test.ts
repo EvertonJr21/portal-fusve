@@ -18,6 +18,7 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     data_parecer_date: '2026-09-10',
     parecer: 'Texto do parecer',
     pdf_data_url: null,
+    pdf_path: null,
     created_at: null,
     updated_at: null,
     ...overrides,
@@ -65,5 +66,11 @@ describe('toParecer', () => {
 
   it('preserva pdfDataUrl nulo (nem todo parecer tem PDF anexado)', () => {
     expect(toParecer(rowBase({ pdf_data_url: null })).pdfDataUrl).toBeNull()
+  })
+
+  it('preserva pdfPath (Storage) separado de pdfDataUrl (base64 legado)', () => {
+    const p = toParecer(rowBase({ pdf_path: '22045/123-parecer.pdf', pdf_data_url: 'data:application/pdf;base64,xxx' }))
+    expect(p.pdfPath).toBe('22045/123-parecer.pdf')
+    expect(p.pdfDataUrl).toBe('data:application/pdf;base64,xxx')
   })
 })

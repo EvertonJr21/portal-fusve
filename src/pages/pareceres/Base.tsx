@@ -5,10 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
-import { useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
+import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Parecer } from '@/types'
-import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 
 function validadeInfo(dataISO: string): { texto: string; classe: string } | null {
   if (!dataISO) return null
@@ -24,6 +23,7 @@ function validadeInfo(dataISO: string): { texto: string; classe: string } | null
 export default function Base() {
   const { data: pareceres = [], isLoading } = usePareceres()
   const excluir = useExcluirParecer()
+  const abrirPdf = useAbrirPdfParecer()
   const toast = useToast()
 
   const [categoria, setCategoria] = useState('')
@@ -149,10 +149,10 @@ export default function Base() {
                       >
                         ✏
                       </button>
-                      {p.pdfDataUrl && (
+                      {(p.pdfPath || p.pdfDataUrl) && (
                         <button
                           type="button"
-                          onClick={() => abrirPdfDataUrl(p.pdfDataUrl!)}
+                          onClick={() => abrirPdf.abrir(p)}
                           title="Ver PDF"
                           className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                         >

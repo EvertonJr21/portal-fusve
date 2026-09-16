@@ -294,6 +294,12 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 > `ocs`) — confirmado, sem perda real: os 98 pareceres históricos migrados
 > do Firebase já tinham esse campo vazio na fonte original, ver item 29 do
 > backlog.
+>
+> **PDF pra Storage (16/09/2026)**: PDF novo vai pro Supabase Storage
+> (bucket `pareceres-pdfs`, privado) em vez de base64 no Postgres — ver
+> seção "Storage pra PDF" e backlog item 30. `pdf_data_url` (base64) fica
+> só como fallback de leitura pra parecer antigo que ainda não migrou
+> (`pdf_path` nulo) — nenhum dado existente foi tocado, migration é aditiva.
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
@@ -307,10 +313,46 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 | `observacao` | text | Observação técnica livre |
 | `responsavel` | text | Nome do responsável pelo parecer |
 | `data_parecer_date` | date | Data do parecer (era `data_parecer` text DD/MM/YYYY) |
-| `parecer` | text | Texto livre do parecer |
-| `pdf_data_url` | text | PDF do parecer em base64 (pode ser null) |
+| `parecer` | text | Texto livre do parecer (nome do arquivo do PDF, hoje) |
+| `pdf_data_url` | text | PDF em base64 — **legado**, só fallback de leitura, não escrito mais em parecer novo |
+| `pdf_path` | text | Caminho do PDF no bucket `pareceres-pdfs` do Storage (novo) |
 | `created_at` | timestamptz | Auto |
 | `updated_at` | timestamptz | Auto |
+
+---
+
+## STORAGE PRA PDF (Hardening, CLAUDE_ENGINEERING.md seção 12)
+
+`pareceres.pdf_data_url` guardava o PDF inteiro em base64 dentro do Postgres —
+viola a regra de que binário grande não deve morar em coluna de banco
+relacional (infla o tamanho da tabela/backup, não tem CDN/cache). Trocado
+por Supabase Storage, seguindo o mesmo espírito aditivo/sem-big-bang da
+migração de datas:
+
+- **Migration `202609160005_storage_pareceres_pdf.sql`** — cria o bucket
+  `pareceres-pdfs` (privado) com policies de RLS pra usuário autenticado
+  (select/insert/update/delete, mesmo padrão do resto do banco) e adiciona
+  `pareceres.pdf_path` (coluna nova, aditiva). **Pendente de execução por
+  Everton no SQL Editor.**
+- **`parecerRepository.ts`** ganhou `uploadPdf(cod, file)` (sobe o arquivo
+  pro bucket, devolve o `path`) e `obterUrlAssinadaPdf(path)` (URL temporária
+  de 5 min pra abrir/baixar — bucket é privado, não tem URL pública fixa).
+  `toParecer`/`toRow` passam os dois campos (`pdfPath`/`pdfDataUrl`) sem
+  escolher um — quem decide qual usar é a UI.
+- **`ParecerForm.tsx`** não lê mais o arquivo como base64 (`FileReader` +
+  `readAsDataURL`) — o arquivo escolhido fica em memória (`File`) até o
+  submit, aí sobe pro Storage via `uploadPdf`. Editar um parecer sem trocar o PDF preserva o
+  que já estava salvo (path ou base64 legado), nunca apaga.
+- **`useAbrirPdfParecer()`** (`usePareceres.ts`) centraliza a lógica de abrir
+  o PDF — prefere `pdfPath` (gera URL assinada), cai pro `pdfDataUrl` legado
+  (`abrirPdfDataUrl`, que já resolvia o bloqueio do Chrome pra `data:` URL
+  em nova aba) só pra parecer que ainda não migrou. Usado em `ParecerCard`,
+  `Base.tsx` e no próprio `ParecerForm`.
+- **Backfill opcional** — `scripts/backfill-pareceres-pdf-storage.ts`
+  (`npm run backfill:pareceres-pdf-storage`, dry-run por padrão, `--apply`
+  grava) migra pareceres que já tinham PDF em base64 pro Storage, sem apagar
+  `pdf_data_url` (compatibilidade temporária). Não é obrigatório rodar agora
+  — os PDFs antigos continuam abrindo normalmente pelo fallback.
 
 ### Tabela `marcas_sugeridas`
 
@@ -952,3 +994,4 @@ if (error) return <ErrorMessage message={error.message} />
 | 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
 | 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs, Contratos, Pareceres, OPME | Média | ✅ **Completo (16/09/2026)** — as 8 tabelas do projeto migradas do padrão "hook faz SQL + mapeamento + tudo" pro padrão repository/hook-adaptador: **`ocRepository.ts`** (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `criarOCImportada`, `excluirOC`, `toOC`), **`solRepository.ts`** (`listarSols`, `salvarSol`, `atualizarSituacaoSol`, `atualizarCamposSol`, `excluirSol`, `toSolicitacao`), **`fornecedorRepository.ts`** (`listarFornecedores`, `salvarFornecedor`, `excluirFornecedor`, `toFornecedor`), **`contratoRepository.ts`** (`listarContratos`, `listarContratoProdutos`, `salvarContrato`, `salvarProdutosContrato`, `excluirContrato`, `toContrato`, `toContratoProduto`), **`parecerRepository.ts`** (`listarPareceres`, `buscarParecer`, `salvarParecer`, `excluirParecer`, `toParecer`), **`marcaSugeridaRepository.ts`** (`listarMarcasSugeridas`, `salvarMarcasSugeridas`, `excluirMarcasSugeridas`, `toMapa`), **`opmeRepository.ts`** (`listarOpmes`, `salvarOpme`, `alternarStatusOpme`, `excluirOpme`, `toOpme`), **`histOcRepository.ts`** (`listarHistOC`, `listarHistoricoRecentePorOC`, `listarHistoricoTodos`, `registrarCobranca`, `marcarRespondida`, `toHistOC`). Todos os 8 hooks correspondentes (`useOCs`/`useSols`/`useFornecedores`/`useContratos`/`usePareceres`/`useMarcasSugeridas`/`useOpmes`/`useHistOC`) viraram adaptadores finos — mesma interface pública de antes em todos, nenhum componente/página mudou. `contratoRepository.ts` foi o primeiro a testar o padrão contra sub-tabela relacionada (1 contrato : N produtos, diff/soft-delete preservado). **Achado na migração de pareceres**: `excluirParecer` já usava `DELETE` físico, não soft delete — violação pré-existente da regra 6, documentada no cabeçalho do repository e preservada tal como estava (mudar é decisão de produto separada). **`Importar.tsx` também deixou de acessar o Supabase direto** (violava a regra 4 desde sempre): patch parcial de OC/Solicitação existente usa `atualizarCamposOC`/`atualizarCamposSol`; criação de OC nova (CSV e vínculo do PDF de Acompanhamento) usa `ocRepository.criarOCImportada()`, que **preserva exatamente os mesmos defaults de antes** em vez de reaproveitar `salvarOC`, pra não mudar comportamento de produção silenciosamente. Migração sempre gradual, uma entidade por vez, nunca big-bang (CLAUDE_ENGINEERING.md seção 64). 41 testes novos no total (6 `ocRepository`, 4 `solRepository`, 2 `fornecedorRepository`, 7 `contratoRepository`, 4 `parecerRepository`, 3 `marcaSugeridaRepository`, 3 `opmeRepository`, 5 `histOcRepository`, mais os que já existiam) cobrindo defaults de mapeamento pra campos nullable do schema gerado — total do projeto: **81 testes**. **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária em nenhuma etapa desta fase |
 | 29 | **Hardening v1.0 — migração de datas texto→date, processo completo (Fases 1, 2 e Passo 6)** | Base, OCs, Pareceres | Média | Ver seção "Migração de Datas Texto → Date" pro detalhe completo do processo de 6 passos. **Fase 1 (backfill aditivo)** ✅ aplicada em produção (16/09/2026) nas 3 tabelas (`ocs`, `sols`, `pareceres`), verificações deram 0 discrepâncias. **Fase 2 (troca de código pra ler/escrever as duas colunas)** ✅ completa (16/09/2026), uma coluna por vez, começando pelas de menor risco: `pareceres.data_parecer` → `sols.data` → as 5 colunas de `ocs` por último (`dataSolic`/`previsaoForn`/`previsaoForn2`/`dataEntregaReal`/`ultimaMovimentacao`, que alimentam `src/utils/oc.ts`). Tipo de domínio de cada campo continuou `string`/`string | null` em `DD/MM/YYYY` o tempo todo — nenhuma mudança em formulários/telas/`src/utils/oc.ts`, só nos repositories (`parecerRepository.ts`/`solRepository.ts`/`ocRepository.ts`). **Passo 6 (remover as 7 colunas texto)** — código pronto (16/09/2026): os 3 repositories pararam de vez de ler/escrever as colunas texto (agora só tocam `data_parecer_date`/`data_date`/as 5 `*_date` de `ocs`), `src/types/database.ts` teve as 7 colunas texto removidas dos tipos `Row`/`Insert`/`Update`, `ocRepository.ts` ganhou `deColunaDate()` (inverso de `paraColunaDate()`, preserva `null` em vez de virar `''`) pra manter `OC.previsaoForn`/`dataEntregaReal`/etc. como `null` quando a `_date` correspondente não existe (fallback pro texto removido). Testes de fallback trocados por testes de conversão/null (`ocRepository.test.ts`: 4, `solRepository.test.ts`: 2, `parecerRepository.test.ts`: 2) — total do projeto continua em **87 testes**. Migration `202609160004_remove_colunas_texto_datas.sql` — **✅ executada em produção (16/09/2026)** por Everton, depois de confirmar o deploy no ar. **Incidente investigado e encerrado sem perda de dado real**: verificação pós-`DROP` mostrou `0/98` pareceres com `data_parecer_date`, parecendo backfill falho + dado perdido; criado `scripts/repair-pareceres-data-parecer-date.ts` (busca a fonte original no Firestore via REST API, não o SDK client — que quebra com erro de gRPC em Node fora de Cloud Function) pra investigar/recuperar — resultado: o campo `data_parecer` já estava vazio (`""`) na própria fonte original do Firebase pros 98 registros, não é bug de conversão, nunca teve dado. Nenhuma perda real, script de reparo mantido no repo como ferramenta pra casos futuros (`npm run repair:pareceres-data`, dry-run por padrão). Documentação das 3 tabelas em "BANCO DE DADOS" atualizada pro schema pós-`DROP` |
+| 30 | **Hardening — Storage pra PDF** (item 1 do plano de conclusão do Hardening, `CLAUDE_ENGINEERING.md` seção 12) | Pareceres | Média | ✅ **Código pronto (16/09/2026), migration pendente de execução.** Ver seção "Storage pra PDF" acima pro detalhe completo. Migration `202609160005_storage_pareceres_pdf.sql` (bucket `pareceres-pdfs` privado + RLS autenticado + `pareceres.pdf_path`, aditiva) — **Everton precisa rodar no SQL Editor**. `parecerRepository.ts` ganhou `uploadPdf`/`obterUrlAssinadaPdf`; `ParecerForm.tsx` sobe o arquivo pro Storage no submit em vez de ler como base64; `useAbrirPdfParecer()` (novo, `usePareceres.ts`) centraliza a lógica de abrir PDF preferindo `pdfPath` com fallback pro `pdfDataUrl` legado, usado em `ParecerCard`/`Base.tsx`/`ParecerForm`. `pdf_data_url` mantido só como fallback de leitura — nenhum dado existente tocado, PDF novo já não escreve mais nele. Script opcional `scripts/backfill-pareceres-pdf-storage.ts` (`npm run backfill:pareceres-pdf-storage`, dry-run por padrão) migra PDFs antigos em base64 pro Storage, não obrigatório rodar agora. 1 teste novo em `parecerRepository.test.ts` (`pdfPath` separado de `pdfDataUrl`) — total do projeto: **88 testes**. Como bônus, resolve de forma mais robusta o bug de "Chrome bloqueia abrir PDF novo em aba" que existia com `data:` URL (URL assinada do Storage é uma URL `https://` de verdade, sem a limitação de navegação de nível superior pra `data:`) |

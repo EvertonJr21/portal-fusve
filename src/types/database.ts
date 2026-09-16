@@ -381,6 +381,7 @@ export interface Database {
           data_parecer_date: string | null
           parecer: string
           pdf_data_url: string | null
+          pdf_path: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -397,6 +398,7 @@ export interface Database {
           data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
+          pdf_path?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -413,6 +415,7 @@ export interface Database {
           data_parecer_date?: string | null
           parecer?: string
           pdf_data_url?: string | null
+          pdf_path?: string | null
           created_at?: string | null
           updated_at?: string | null
         }

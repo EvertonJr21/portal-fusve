@@ -72,6 +72,7 @@ export interface Parecer {
   dataParecer: string
   parecer: string
   pdfDataUrl: string | null
+  pdfPath: string | null
 }
 
 export interface Opme {
