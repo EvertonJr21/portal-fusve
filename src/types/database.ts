@@ -425,6 +425,7 @@ export interface Database {
         Row: {
           id: number
           data: string | null
+          data_date: string | null
           produto: string | null
           solicitante: string | null
           qtd: number | null
@@ -438,6 +439,7 @@ export interface Database {
         Insert: {
           id: number
           data?: string | null
+          data_date?: string | null
           produto?: string | null
           solicitante?: string | null
           qtd?: number | null
@@ -451,6 +453,7 @@ export interface Database {
         Update: {
           id?: number
           data?: string | null
+          data_date?: string | null
           produto?: string | null
           solicitante?: string | null
           qtd?: number | null

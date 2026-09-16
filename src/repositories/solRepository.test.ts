@@ -8,6 +8,7 @@ function rowBase(overrides: Partial<SolRow> = {}): SolRow {
   return {
     id: 54321,
     data: '15/08/2026',
+    data_date: '2026-08-15',
     produto: 'SERINGA DESCARTAVEL 10ML',
     motivo: 'COMPRA NORMAL',
     solicitante: 'MARIA DA SILVA',
@@ -27,6 +28,16 @@ describe('toSolicitacao', () => {
     expect(sol.id).toBe(54321)
     expect(sol.produto).toBe('SERINGA DESCARTAVEL 10ML')
     expect(sol.hospitalId).toBe('huv')
+  })
+
+  it('prefere data_date (Fase 2 da migração de datas) sobre o texto legado', () => {
+    const sol = toSolicitacao(rowBase({ data: '01/01/2000', data_date: '2026-08-15' }))
+    expect(sol.data).toBe('15/08/2026')
+  })
+
+  it('cai pro texto legado quando data_date ainda não foi backfillada', () => {
+    const sol = toSolicitacao(rowBase({ data: '15/08/2026', data_date: null }))
+    expect(sol.data).toBe('15/08/2026')
   })
 
   it('usa string vazia como padrão pra produto/motivo/solicitante nulos', () => {

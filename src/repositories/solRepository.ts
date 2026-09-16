@@ -1,9 +1,20 @@
 import type { HospitalId } from '@/constants'
+import { fromInput, toInput } from '@/utils/date'
 import { supabase } from '@/lib/supabase'
 import type { Solicitacao } from '@/types'
 import type { Database } from '@/types/database'
 
-/** Acesso ao Supabase pra `sols` — mesmo padrão de `ocRepository.ts` (Hardening P2). */
+/**
+ * Acesso ao Supabase pra `sols` — mesmo padrão de `ocRepository.ts` (Hardening P2).
+ *
+ * Fase 2 da migração de datas texto→date (CLAUDE.md, "Migração de Datas Texto
+ * → Date"): leitura prefere `data_date` (coluna `date` nativa, backfillada e
+ * validada em produção), com fallback pro texto legado `data` só pra linha
+ * que porventura não tenha backfillado. Escrita grava as duas colunas —
+ * `data` (texto) mantida por compatibilidade temporária (passo 5 do processo
+ * de 6 passos), até confirmar que nada mais lê ela e removê-la (passo 6,
+ * etapa futura separada). Mesmo padrão já aplicado em `parecerRepository.ts`.
+ */
 
 type SolRow = Database['public']['Tables']['sols']['Row']
 type SolUpdate = Database['public']['Tables']['sols']['Update']
@@ -11,7 +22,7 @@ type SolUpdate = Database['public']['Tables']['sols']['Update']
 export function toSolicitacao(row: SolRow): Solicitacao {
   return {
     id: row.id,
-    data: row.data,
+    data: row.data_date ? fromInput(row.data_date) : row.data,
     produto: row.produto ?? '',
     motivo: row.motivo ?? '',
     solicitante: row.solicitante ?? '',
@@ -47,6 +58,7 @@ export async function salvarSol(input: SalvarSolInput): Promise<void> {
   const { error } = await supabase.from('sols').upsert({
     id: input.id,
     data: input.data,
+    data_date: input.data ? toInput(input.data) || null : null,
     produto: input.produto,
     motivo: input.motivo,
     solicitante: input.solicitante,
@@ -78,6 +90,7 @@ export async function atualizarCamposSol(id: number, patch: Partial<Solicitacao>
     const column = PATCH_FIELD_MAP[key as keyof Solicitacao]
     if (column) (row as Record<string, unknown>)[column] = value
   }
+  if ('data' in patch) row.data_date = patch.data ? toInput(patch.data) || null : null
   const { error } = await supabase.from('sols').update(row).eq('id', id)
   if (error) throw error
 }
