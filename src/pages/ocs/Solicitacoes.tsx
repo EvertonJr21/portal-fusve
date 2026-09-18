@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { SolForm } from '@/components/ocs/SolForm'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -130,7 +131,7 @@ export default function Solicitacoes() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={8} />
       ) : (
         <Table>
           <TableHead>

@@ -1,4 +1,5 @@
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { PRAZO } from '@/constants'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
@@ -92,7 +93,7 @@ export default function Metricas() {
     })
     .sort((a, b) => b.foraPrazo / b.linhas.length - a.foraPrazo / a.linhas.length)
 
-  if (isLoading) return <p className="text-sm text-slate-400">Carregando...</p>
+  if (isLoading) return <SkeletonRows colunas={5} />
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,7 +120,7 @@ export default function Metricas() {
 
       <div className="flex flex-col gap-3">
         {grupos.map((g) => (
-          <div key={g.fornecedorId} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div key={g.fornecedorId} className="rounded-lg border border-slate-200 bg-white shadow-soft-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
               <span className="font-semibold text-slate-800">{g.nome}</span>
               <div className="flex items-center gap-3 text-xs text-slate-500">

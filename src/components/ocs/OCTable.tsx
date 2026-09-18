@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Dropdown, DropdownItem } from '@/components/ui/Dropdown'
 import { IconButton } from '@/components/ui/IconButton'
 import { Pagination } from '@/components/ui/Pagination'
 import { StatusDot, type StatusDotTone } from '@/components/ui/StatusDot'
@@ -218,23 +219,22 @@ export function OCTable({
                     <IconButton title="Cobrar por WhatsApp" onClick={() => onCobrar(o, 'wpp')}>
                       💬
                     </IconButton>
-                    <IconButton title="Histórico e previsão" onClick={() => onHistorico(o)}>
-                      📋
-                    </IconButton>
-                    {solVinculada && (
-                      <IconButton
-                        title={`Ver parecer do produto — ${solVinculada.produto}`}
-                        onClick={() => navigate(`/pareceres?produto=${encodeURIComponent(solVinculada.produto)}`)}
-                      >
-                        🩺
-                      </IconButton>
-                    )}
                     <IconButton title="Editar" onClick={() => onEditar(o)}>
                       ✏
                     </IconButton>
-                    <IconButton title="Excluir" tone="danger" onClick={() => onExcluir(o)}>
-                      ✕
-                    </IconButton>
+                    <Dropdown trigger={<IconButton title="Mais ações">⋮</IconButton>}>
+                      <DropdownItem onClick={() => onHistorico(o)}>📋 Histórico e previsão</DropdownItem>
+                      {solVinculada && (
+                        <DropdownItem
+                          onClick={() => navigate(`/pareceres?produto=${encodeURIComponent(solVinculada.produto)}`)}
+                        >
+                          🩺 Ver parecer do produto
+                        </DropdownItem>
+                      )}
+                      <DropdownItem tone="danger" onClick={() => onExcluir(o)}>
+                        ✕ Excluir
+                      </DropdownItem>
+                    </Dropdown>
                   </div>
                 </td>
               </tr>

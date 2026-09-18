@@ -47,7 +47,7 @@ export default function Consultar() {
       )}
 
       {produto && editando && (
-        <div className="max-w-2xl rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="max-w-2xl rounded-lg border border-slate-200 bg-white p-4 shadow-soft-sm">
           <ParecerForm produto={produto} parecerExistente={parecer} onSalvo={() => setEditando(false)} />
         </div>
       )}

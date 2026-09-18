@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { FornecedorForm } from '@/components/ocs/FornecedorForm'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -49,7 +50,7 @@ export default function Fornecedores() {
       />
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={5} />
       ) : (
         <Table>
           <TableHead>

@@ -56,7 +56,7 @@ export function SearchProduto({ onSelect, placeholder, valorInicial = '' }: Sear
         onBlur={() => setTimeout(() => setAberto(false), 150)}
       />
       {aberto && resultados.length > 0 && (
-        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-soft-lg">
           {resultados.map((p) => (
             <button
               key={p.cod}

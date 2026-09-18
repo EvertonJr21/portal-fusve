@@ -4,6 +4,7 @@ import { OpmeForm } from '@/components/opmes/OpmeForm'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useOpmes } from '@/hooks/useOpmes'
@@ -118,7 +119,7 @@ export default function Calendario() {
       </div>
 
       {isLoading ? (
-        <p className="py-12 text-center text-sm text-slate-400">Carregando…</p>
+        <SkeletonRows linhas={5} colunas={7} />
       ) : (
         <OpmeCalendario
           mesReferencia={mesReferencia}

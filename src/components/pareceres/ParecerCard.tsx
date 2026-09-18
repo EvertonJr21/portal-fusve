@@ -15,7 +15,7 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
   const abrirPdf = useAbrirPdfParecer()
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-soft-sm">
       <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
         <span className="rounded bg-status-blue-bg px-2 py-1 font-mono text-xs font-bold text-status-blue">
           {produto.cod}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { FINAL_SIT, HOSPITAIS } from '@/constants'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
@@ -164,7 +165,7 @@ export default function PorFornecedor() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <SkeletonRows colunas={4} />
       ) : (
         <div className="flex flex-col gap-2">
           {grupos.length === 0 && (
@@ -177,7 +178,7 @@ export default function PorFornecedor() {
             const urgentes = g.ocs.filter((o) => statusPrazo(dataPrazo(o, sols), o.sit) === 'urgente').length
             const aberto = abertos.has(g.fornecedorId)
             return (
-              <div key={g.fornecedorId} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div key={g.fornecedorId} className="rounded-lg border border-slate-200 bg-white shadow-soft-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                   <button type="button" className="flex items-center gap-2 text-left text-sm" onClick={() => toggle(g.fornecedorId)}>
                     <span className="text-slate-400">{aberto ? '▾' : '▸'}</span>

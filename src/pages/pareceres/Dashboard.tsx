@@ -37,10 +37,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-soft-sm">
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Top categorias</h3>
           {top7.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">Nenhum dado.</p>
+            <p className="py-6 text-center text-sm text-slate-400">📭 Nenhuma categoria com parecer cadastrado ainda.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {top7.map(([cat, n], i) => (
@@ -59,10 +59,10 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-soft-sm">
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Consultas recentes (sessão)</h3>
           {entradas.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">Sem consultas ainda.</p>
+            <p className="py-6 text-center text-sm text-slate-400">🕓 Nenhuma consulta feita nesta sessão ainda.</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {entradas.slice(0, 6).map((h, i) => (
