@@ -9,6 +9,7 @@ import * as ocRepository from '@/repositories/ocRepository'
 import * as solRepository from '@/repositories/solRepository'
 import type { OC, Solicitacao } from '@/types'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
+import { fmt, getHoje } from '@/utils/date'
 import { ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
 type Relatorio = 'ocs' | 'sols' | 'acomp'
@@ -83,14 +84,22 @@ export default function Importar() {
             patch.fornecedorId = item.fornecedorId
           }
           if (item.previsaoForn && !existente.previsaoForn) patch.previsaoForn = item.previsaoForn
+          // O relatório do SoulMV não traz data de entrega real — quando a OC vira
+          // "Atendida" nesta importação, registra a data de hoje como aproximação
+          // (é a única informação real que temos: "quando ficamos sabendo que foi
+          // entregue"). Só dispara na transição, nunca sobrescreve entrega já registrada.
+          if (patch.sit === 'Atendida' && !existente.dataEntregaReal) {
+            patch.dataEntregaReal = fmt(getHoje())
+          }
           if (Object.keys(patch).length) {
             await ocRepository.atualizarCamposOC(item.id, patch)
             updated++
-            addLog(`OC ${item.id} — ${item.sit}`)
+            addLog(`OC ${item.id} — ${item.sit}${patch.dataEntregaReal ? ' (entrega registrada hoje)' : ''}`)
           } else {
             skipped++
           }
         } else {
+          const entregaNaChegada = item.sit === 'Atendida' ? fmt(getHoje()) : null
           await ocRepository.criarOCImportada({
             id: item.id,
             dataSolic: item.dataSolic,
@@ -99,13 +108,16 @@ export default function Importar() {
             sit: item.sit,
             estoque: item.estoque || 'SUP CAF',
             solicitacaoId: null,
-            previsaoForn: item.previsaoForn,
+            // Previsão do relatório não é confiável (nem sempre bate) — deixa em
+            // branco pro Everton registrar manualmente pelo formulário da OC.
+            previsaoForn: null,
             diasAtraso: item.diasAtraso,
             hospitalId,
             ultimaMovimentacao: item.dataSolic,
+            dataEntregaReal: entregaNaChegada,
           })
           added++
-          addLog(`OC ${item.id} — ${item.sit} (nova)`)
+          addLog(`OC ${item.id} — ${item.sit} (nova)${entregaNaChegada ? ' (entrega registrada hoje)' : ''}`)
         }
       }
       const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
@@ -252,7 +264,7 @@ export default function Importar() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <UploadCard
           title="OCs"
-          description="R_ORD_COM_FOR.csv — nunca regride a situação de uma OC existente."
+          description="R_ORD_COM_FOR.csv — nunca regride situação; registra a entrega automaticamente quando a OC vira Atendida; previsão fica em branco pra você registrar."
           filenameHint="Arquivo .csv"
           accept=".csv"
           accentClass="border-status-blue/30 bg-status-blue-bg text-status-blue"

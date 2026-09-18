@@ -133,6 +133,7 @@ export interface OCImportadaInput {
   diasAtraso: number
   hospitalId: HospitalId
   ultimaMovimentacao: string | null
+  dataEntregaReal?: string | null
 }
 
 /**
@@ -159,6 +160,7 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
     motivo_atraso: '',
     ultima_movimentacao_date: paraColunaDate(input.ultimaMovimentacao),
     previsao_descumprida: false,
+    data_entrega_real_date: paraColunaDate(input.dataEntregaReal ?? null),
   })
   if (error) throw error
 }

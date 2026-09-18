@@ -18,6 +18,7 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     data_parecer_date: '2026-09-10',
     parecer: 'Texto do parecer',
     pdf_data_url: null,
+    pdf_path: null,
     created_at: null,
     updated_at: null,
     ...overrides,
