@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { useSalvarParecer } from '@/hooks/usePareceres'
+import { useObterUrlPdfParecer, useSalvarParecer, useUploadPdfParecer } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Produto } from '@/data/produtos'
 import type { Parecer } from '@/types'
@@ -18,6 +18,8 @@ const MARCAS_VAZIAS: MarcasPorCategoria = { padrao: [], permitidas: [], restrita
 
 export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormProps) {
   const salvar = useSalvarParecer()
+  const uploadPdf = useUploadPdfParecer()
+  const obterUrlPdf = useObterUrlPdfParecer()
   const toast = useToast()
 
   const [marcas, setMarcas] = useState<MarcasPorCategoria>(
@@ -33,18 +35,30 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
   const [observacao, setObservacao] = useState(parecerExistente?.observacao ?? '')
   const [responsavel, setResponsavel] = useState(parecerExistente?.responsavel ?? '')
   const [data, setData] = useState(toInput(parecerExistente?.dataParecer))
-  const [pdf, setPdf] = useState<{ nome: string; dataUrl: string } | null>(
-    parecerExistente?.pdfDataUrl ? { nome: parecerExistente.parecer, dataUrl: parecerExistente.pdfDataUrl } : null,
-  )
+  // PDF: `pdfPathExistente`/`pdfDataUrlExistente` só existem se o parecer já tinha um
+  // arquivo salvo (Storage ou o base64 legado) — preservados até um arquivo NOVO ser
+  // escolhido, pra editar outro campo não apagar o PDF já vinculado.
+  const [nomeArquivo, setNomeArquivo] = useState(parecerExistente?.parecer ?? '')
+  const [arquivoNovo, setArquivoNovo] = useState<File | null>(null)
+  const [pdfPathExistente] = useState(parecerExistente?.pdfPath ?? null)
+  const [pdfDataUrlExistente] = useState(parecerExistente?.pdfDataUrl ?? null)
 
   const handlePdf = (file: File | undefined) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setPdf({ nome: file.name, dataUrl: e.target?.result as string })
-      toast.show('PDF vinculado')
+    setArquivoNovo(file)
+    setNomeArquivo(file.name)
+    toast.show('PDF vinculado')
+  }
+
+  const handleAbrirPdf = async () => {
+    if (arquivoNovo) {
+      window.open(URL.createObjectURL(arquivoNovo), '_blank', 'noopener')
+    } else if (pdfPathExistente) {
+      const url = await obterUrlPdf.mutateAsync(pdfPathExistente)
+      window.open(url, '_blank', 'noopener')
+    } else if (pdfDataUrlExistente) {
+      abrirPdfDataUrl(pdfDataUrlExistente)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +69,11 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
       return
     }
     try {
+      // Novo arquivo escolhido → sobe pro Storage e substitui o base64 legado, se houver.
+      // Sem arquivo novo → mantém o que já estava salvo (path ou base64), não apaga nada.
+      const pdfPath = arquivoNovo ? await uploadPdf.mutateAsync({ cod: produto.cod, file: arquivoNovo }) : pdfPathExistente
+      const pdfDataUrl = arquivoNovo ? null : pdfDataUrlExistente
+
       await salvar.mutateAsync({
         cod: produto.cod,
         nome: produto.nome,
@@ -63,8 +82,9 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         observacao,
         responsavel,
         dataParecer: data ? fromInput(data) : '',
-        parecer: pdf?.nome ?? '',
-        pdfDataUrl: pdf?.dataUrl ?? null,
+        parecer: nomeArquivo,
+        pdfPath,
+        pdfDataUrl,
       })
       toast.show(parecerExistente ? 'Parecer atualizado!' : 'Produto cadastrado!')
       onSalvo()
@@ -125,14 +145,14 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
           className="text-xs"
           onChange={(e) => handlePdf(e.target.files?.[0])}
         />
-        {pdf && (
-          <button type="button" onClick={() => abrirPdfDataUrl(pdf.dataUrl)} className="self-start text-xs text-blue-700 hover:underline">
-            📄 {pdf.nome}
+        {(arquivoNovo || pdfPathExistente || pdfDataUrlExistente) && (
+          <button type="button" onClick={handleAbrirPdf} className="self-start text-xs text-blue-700 hover:underline">
+            📄 {nomeArquivo}
           </button>
         )}
       </label>
 
-      <Button type="submit" loading={salvar.isPending} className="self-start">
+      <Button type="submit" loading={salvar.isPending || uploadPdf.isPending} className="self-start">
         {parecerExistente ? 'Atualizar parecer' : 'Cadastrar parecer'}
       </Button>
     </form>

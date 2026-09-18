@@ -17,9 +17,19 @@ import type { Database } from '@/types/database'
  * nativa) — a coluna texto legada `data_parecer` não é mais tocada por este
  * repository, só fica de fora no banco até a migration de `DROP COLUMN`
  * (passo 6) rodar.
+ *
+ * Storage pra PDF (CLAUDE_ENGINEERING.md seção 12, "PDF não deve ser
+ * armazenado em base64 no Postgres"): PDF novo vai pro bucket
+ * `pareceres-pdfs` do Supabase Storage (`uploadPdf`/`obterUrlAssinadaPdf`),
+ * e o caminho fica em `pdf_path`. `pdf_data_url` (base64) é mantido como
+ * fallback de leitura só pra pareceres antigos que ainda não migraram —
+ * `toParecer` não escolhe um dos dois, devolve os dois campos, quem decide
+ * qual usar é a UI (prefere `pdfPath`, cai pro `pdfDataUrl` se não tiver).
  */
 
 type ParecerRow = Database['public']['Tables']['pareceres']['Row']
+
+const BUCKET_PDFS = 'pareceres-pdfs'
 
 export function toParecer(row: ParecerRow): Parecer {
   return {
@@ -35,6 +45,7 @@ export function toParecer(row: ParecerRow): Parecer {
     dataParecer: row.data_parecer_date ? fromInput(row.data_parecer_date) : '',
     parecer: row.parecer ?? '',
     pdfDataUrl: row.pdf_data_url,
+    pdfPath: row.pdf_path,
   }
 }
 
@@ -52,7 +63,26 @@ function toRow(p: Parecer) {
     data_parecer_date: p.dataParecer ? toInput(p.dataParecer) || null : null,
     parecer: p.parecer,
     pdf_data_url: p.pdfDataUrl,
+    pdf_path: p.pdfPath,
   }
+}
+
+/** Envia o PDF pro Storage e devolve o `path` pra gravar em `pareceres.pdf_path`. */
+export async function uploadPdf(cod: string, file: File): Promise<string> {
+  const path = `${cod}/${Date.now()}-${file.name}`
+  const { error } = await supabase.storage.from(BUCKET_PDFS).upload(path, file, {
+    contentType: 'application/pdf',
+    upsert: false,
+  })
+  if (error) throw error
+  return path
+}
+
+/** URL temporária (5 min) pra abrir/baixar um PDF do bucket privado. */
+export async function obterUrlAssinadaPdf(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET_PDFS).createSignedUrl(path, 300)
+  if (error) throw error
+  return data.signedUrl
 }
 
 /** Pareceres são compartilhados entre hospitais — sem filtro de hospital_id. */

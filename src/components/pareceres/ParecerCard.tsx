@@ -1,7 +1,7 @@
 import type { Produto } from '@/data/produtos'
+import { useAbrirPdfParecer } from '@/hooks/usePareceres'
 import type { Parecer } from '@/types'
 import { CATEGORIAS_MARCA, temAlgumaMarca } from '@/utils/marcas'
-import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 import { MarcasBadge } from './MarcasBadge'
 
 interface ParecerCardProps {
@@ -12,6 +12,7 @@ interface ParecerCardProps {
 
 export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardProps) {
   const semParecer = !parecer || !temAlgumaMarca(parecer)
+  const abrirPdf = useAbrirPdfParecer()
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -23,10 +24,10 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
           <div className="text-sm font-semibold text-slate-800">{produto.nome}</div>
           <div className="text-xs text-slate-400">{produto.cat}</div>
         </div>
-        {parecer?.pdfDataUrl && (
+        {parecer && (parecer.pdfPath || parecer.pdfDataUrl) && (
           <button
             type="button"
-            onClick={() => abrirPdfDataUrl(parecer.pdfDataUrl!)}
+            onClick={() => abrirPdf.abrir(parecer)}
             className="ml-auto rounded border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
           >
             📄 Ver Parecer

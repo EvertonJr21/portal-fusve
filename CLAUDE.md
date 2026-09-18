@@ -325,7 +325,15 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 > `data_parecer` (text), ver nota na tabela `ocs` acima. `DROP COLUMN` de
 > `data_parecer` já foi executado em produção (migration
 > `202609160004_remove_colunas_texto_datas.sql`, confirmado via auditoria
-> do schema live em 17/09/2026).
+> do schema live em 17/09/2026) — sem perda real, os 98 pareceres históricos
+> migrados do Firebase já tinham esse campo vazio na fonte original, ver
+> item 29 do backlog.
+>
+> **PDF pra Storage (16/09/2026)**: PDF novo vai pro Supabase Storage
+> (bucket `pareceres-pdfs`, privado) em vez de base64 no Postgres — ver
+> seção "Storage pra PDF" e backlog item 31. `pdf_data_url` (base64) fica
+> só como fallback de leitura pra parecer antigo que ainda não migrou
+> (`pdf_path` nulo) — nenhum dado existente foi tocado, migration é aditiva.
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
@@ -339,11 +347,46 @@ tests/fixtures/                      ← fixtures sintéticas (não são os CSVs
 | `observacao` | text | Observação técnica livre |
 | `responsavel` | text | Nome do responsável pelo parecer |
 | `data_parecer_date` | date | Data do parecer (era `data_parecer` text DD/MM/YYYY) |
-| `parecer` | text | Texto livre do parecer |
-| `pdf_data_url` | text | PDF do parecer em base64 (pode ser null) |
-| `pdf_path` | text | **Órfã, ainda não usada pelo app nem por nenhum repository** — caminho pro objeto no Supabase Storage, resquício de um plano (confirmado pelo Everton em 17/09/2026, ver item 31 do backlog) de tirar o PDF do base64 em `pdf_data_url` e mover pra Storage. Não escrever/ler essa coluna até o item 31 ser retomado com bucket/estratégia definidos |
+| `parecer` | text | Texto livre do parecer (nome do arquivo do PDF, hoje) |
+| `pdf_data_url` | text | PDF em base64 — **legado**, só fallback de leitura, não escrito mais em parecer novo |
+| `pdf_path` | text | Caminho do PDF no bucket `pareceres-pdfs` do Storage (novo, ver item 31 do backlog) |
 | `created_at` | timestamptz | Auto |
 | `updated_at` | timestamptz | Auto |
+
+---
+
+## STORAGE PRA PDF (Hardening, CLAUDE_ENGINEERING.md seção 12)
+
+`pareceres.pdf_data_url` guardava o PDF inteiro em base64 dentro do Postgres —
+viola a regra de que binário grande não deve morar em coluna de banco
+relacional (infla o tamanho da tabela/backup, não tem CDN/cache). Trocado
+por Supabase Storage, seguindo o mesmo espírito aditivo/sem-big-bang da
+migração de datas:
+
+- **Migration `202609160005_storage_pareceres_pdf.sql`** — cria o bucket
+  `pareceres-pdfs` (privado) com policies de RLS pra usuário autenticado
+  (select/insert/update/delete, mesmo padrão do resto do banco) e adiciona
+  `pareceres.pdf_path` (coluna nova, aditiva). **Pendente de execução por
+  Everton no SQL Editor.**
+- **`parecerRepository.ts`** ganhou `uploadPdf(cod, file)` (sobe o arquivo
+  pro bucket, devolve o `path`) e `obterUrlAssinadaPdf(path)` (URL temporária
+  de 5 min pra abrir/baixar — bucket é privado, não tem URL pública fixa).
+  `toParecer`/`toRow` passam os dois campos (`pdfPath`/`pdfDataUrl`) sem
+  escolher um — quem decide qual usar é a UI.
+- **`ParecerForm.tsx`** não lê mais o arquivo como base64 (`FileReader` +
+  `readAsDataURL`) — o arquivo escolhido fica em memória (`File`) até o
+  submit, aí sobe pro Storage via `uploadPdf`. Editar um parecer sem trocar o PDF preserva o
+  que já estava salvo (path ou base64 legado), nunca apaga.
+- **`useAbrirPdfParecer()`** (`usePareceres.ts`) centraliza a lógica de abrir
+  o PDF — prefere `pdfPath` (gera URL assinada), cai pro `pdfDataUrl` legado
+  (`abrirPdfDataUrl`, que já resolvia o bloqueio do Chrome pra `data:` URL
+  em nova aba) só pra parecer que ainda não migrou. Usado em `ParecerCard`,
+  `Base.tsx` e no próprio `ParecerForm`.
+- **Backfill opcional** — `scripts/backfill-pareceres-pdf-storage.ts`
+  (`npm run backfill:pareceres-pdf-storage`, dry-run por padrão, `--apply`
+  grava) migra pareceres que já tinham PDF em base64 pro Storage, sem apagar
+  `pdf_data_url` (compatibilidade temporária). Não é obrigatório rodar agora
+  — os PDFs antigos continuam abrindo normalmente pelo fallback.
 
 ### Tabela `marcas_sugeridas`
 
@@ -471,113 +514,18 @@ CREATE POLICY "auth_opmes" ON opmes
 
 ### SQL de migração completo
 
-```sql
--- ── OCs ──────────────────────────────────────────────────────────────
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS previsao_forn2    text;
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS deleted_at        timestamptz DEFAULT NULL;
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS created_at        timestamptz DEFAULT now();
-ALTER TABLE ocs ADD COLUMN IF NOT EXISTS updated_at        timestamptz DEFAULT now();
+O bloco de SQL do setup inicial (29/08/2026, antes de `supabase/migrations/`
+existir como fonte de verdade) foi **removido daqui em 16/09/2026** — regra 42
+do `CLAUDE_ENGINEERING.md` ("SQL antigo não pode permanecer como instrução
+ativa"): continha as policies antigas de RLS anônimo (`USING (true)`, já
+substituídas — ver backlog item 12) e a coluna `pareceres.data_parecer` como
+`text` (já removida — ver "Migração de Datas Texto → Date"). Rodar aquele
+bloco de novo reabriria acesso anônimo e recriaria uma coluna obsoleta.
 
--- ── Solicitações ─────────────────────────────────────────────────────
-ALTER TABLE sols ADD COLUMN IF NOT EXISTS deleted_at       timestamptz DEFAULT NULL;
-ALTER TABLE sols ADD COLUMN IF NOT EXISTS created_at       timestamptz DEFAULT now();
-
--- ── Fornecedores ─────────────────────────────────────────────────────
-ALTER TABLE forns ADD COLUMN IF NOT EXISTS deleted_at      timestamptz DEFAULT NULL;
-
--- ── Pareceres (nova tabela) ───────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pareceres (
-  cod           text PRIMARY KEY,
-  nome          text NOT NULL DEFAULT '',
-  cat           text NOT NULL DEFAULT '',
-  padrao        text[] NOT NULL DEFAULT '{}',
-  permitidas    text[] NOT NULL DEFAULT '{}',
-  restritas     text[] NOT NULL DEFAULT '{}',
-  proibidas     text[] NOT NULL DEFAULT '{}',
-  observacao    text NOT NULL DEFAULT '',
-  responsavel   text NOT NULL DEFAULT '',
-  data_parecer  text NOT NULL DEFAULT '',
-  parecer       text NOT NULL DEFAULT '',
-  pdf_data_url  text,
-  created_at    timestamptz DEFAULT now(),
-  updated_at    timestamptz DEFAULT now()
-);
-
--- ── Contratos (novo desenho — Fase 5, 2 tabelas) ────────────────────────
-CREATE TABLE IF NOT EXISTS contratos (
-  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tipo                    text NOT NULL DEFAULT 'Contrato',
-  status                  text NOT NULL DEFAULT 'Ativo',
-  fornecedor_nome         text NOT NULL,
-  fornecedor_cnpj         text DEFAULT '',
-  contato_nome            text DEFAULT '',
-  contato_email           text DEFAULT '',
-  contato_whatsapp        text DEFAULT '',
-  frete_tipo              text DEFAULT '',
-  prazo_medio_dias        integer,
-  origem_embarque         text DEFAULT '',
-  tolerancia_atraso_dias  integer,
-  horario_cutoff          text DEFAULT '',
-  gatilho_desconto        text DEFAULT '',
-  reajuste_regra          text DEFAULT '',
-  vigencia_inicio         date,
-  vigencia_fim            date,
-  aviso_renovacao_dias    integer DEFAULT 60,
-  renovacao_automatica    boolean DEFAULT false,
-  hospital_id             text NOT NULL DEFAULT 'ambos',
-  classificacao           text DEFAULT '',
-  observacoes             text DEFAULT '',
-  deleted_at              timestamptz DEFAULT NULL,
-  created_at              timestamptz DEFAULT now(),
-  updated_at              timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS contrato_produtos (
-  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contrato_id               uuid NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
-  sku                       text DEFAULT '',
-  descricao                 text NOT NULL,
-  cod_soulmv                text DEFAULT '',
-  preco_unitario            numeric(12,2) NOT NULL DEFAULT 0,
-  unidade                   text DEFAULT 'UNIDADE',
-  moq                       integer,
-  capacidade_fornecimento   integer,
-  capacidade_periodo        text DEFAULT 'mes',
-  meio_pagamento            text DEFAULT '',
-  deleted_at                timestamptz DEFAULT NULL,
-  created_at                timestamptz DEFAULT now(),
-  updated_at                timestamptz DEFAULT now()
-);
-
--- ── Índices ───────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_ocs_hospital        ON ocs(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_ocs_deleted         ON ocs(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sols_hospital       ON sols(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_hospital  ON contratos(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_contratos_vigencia  ON contratos(vigencia_fim);
-CREATE INDEX IF NOT EXISTS idx_contrato_produtos_contrato ON contrato_produtos(contrato_id);
-CREATE INDEX IF NOT EXISTS idx_pareceres_cat       ON pareceres(cat);
-
--- ── RLS ──────────────────────────────────────────────────────────────
--- ATENÇÃO: policies abaixo liberam tudo para o role anon. Ver aviso no
--- topo da seção "BANCO DE DADOS" — trocar por policies reais antes do
--- deploy público.
-ALTER TABLE ocs        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sols       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE forns      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hist_oc    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pareceres        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contratos        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contrato_produtos ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "anon_ocs"             ON ocs             FOR ALL USING (true);
-CREATE POLICY "anon_sols"            ON sols            FOR ALL USING (true);
-CREATE POLICY "anon_forns"           ON forns           FOR ALL USING (true);
-CREATE POLICY "anon_hist_oc"         ON hist_oc         FOR ALL USING (true);
-CREATE POLICY "anon_pareceres"       ON pareceres       FOR ALL USING (true);
-CREATE POLICY "anon_contratos"       ON contratos       FOR ALL USING (true);
-CREATE POLICY "anon_contrato_produtos" ON contrato_produtos FOR ALL USING (true);
-```
+Preservado só como registro histórico em
+[`docs/history/202608290001_setup_inicial_pre_migrations.sql`](../docs/history/202608290001_setup_inicial_pre_migrations.sql)
+(marcado como "NÃO EXECUTAR" no cabeçalho). A fonte de verdade real do schema
+é `supabase/migrations/` — ver `supabase/migrations/README.md`.
 
 ---
 
@@ -696,7 +644,7 @@ Já implementado em `src/utils/date.ts`. Nunca `new Date()` diretamente para com
 - Encoding: `latin-1` (detectar automaticamente)
 - Campos: id, data_ordem, situação, fornecedor_id, fornecedor_nome, estoque, previsão, dias_atraso
 - Nunca regredir situação (usar `SIT_RANK`)
-- **Entrega real (18/09/2026, item 32 do backlog):** o relatório não tem campo de entrega
+- **Entrega real (18/09/2026, item 34 do backlog):** o relatório não tem campo de entrega
   efetiva — quando uma OC vira `Atendida` nesta importação (nova ou transição de OC
   existente) e ainda não tem `dataEntregaReal`, o import registra a data de hoje como
   aproximação. Só daqui pra frente, sem backfill retroativo. Previsão do fornecedor
@@ -823,14 +771,38 @@ nas duas colunas — texto (compatibilidade temporária, passo 5) e `_date` (via
 ler/escrever de vez as 7 colunas texto (5 de `ocs`, 1 de `sols`, 1 de
 `pareceres`) — agora só tocam as colunas `_date`. `src/types/database.ts`
 também teve as colunas texto removidas dos tipos `Row`/`Insert`/`Update` das
-3 tabelas. A migration `202609160004_remove_colunas_texto_datas.sql` fez o
-`DROP COLUMN IF EXISTS` das 7 colunas — **confirmado via auditoria direta do
-schema live em 17/09/2026** (inspeção por MCP do Supabase: as 7 colunas
-texto não existem mais em nenhuma das 3 tabelas). Não ficou registrado no
-histórico de quem/quando exatamente rodou no SQL Editor (era antes do
-rastreio real de migrations existir, ver nota de RLS/advisor em "Banco de
-Dados"), mas o estado final bate 100% com o que a migration descreve. **O
-processo de 6 passos está completo.**
+3 tabelas. Everton rodou a migration `202609160004_remove_colunas_texto_datas.sql`
+(`DROP COLUMN IF EXISTS` das 7 colunas) no SQL Editor em 16/09/2026, depois
+de confirmar o deploy no ar — **confirmado via auditoria direta do schema
+live em 17/09/2026** (inspeção por MCP do Supabase: as 7 colunas texto não
+existem mais em nenhuma das 3 tabelas). Não ficou registrado no histórico de
+quem/quando exatamente rodou no SQL Editor (era antes do rastreio real de
+migrations existir, ver nota de RLS/advisor em "Banco de Dados"), mas o
+estado final bate 100% com o que a migration descreve.
+
+**Incidente durante a execução, investigado e encerrado sem perda de dado real**: a
+query de verificação pós-`DROP` mostrou `0/98` pareceres com `data_parecer_date`
+preenchida — parecia que o backfill da Fase 1 tinha falhado silenciosamente pra
+`pareceres` (hipótese inicial: formato de data do Firebase diferente de `DD/MM/AAAA`)
+e que o `DROP` teria apagado esse dado sem chance de recuperação, já que a coluna
+texto `data_parecer` não existe mais. Investigação: como a migração original de
+pareceres (`scripts/migrate-pareceres.ts`, item 4 do backlog) só **leu** do Firestore
+(`parecer-tecnico-huv`, coleção `pareceres`) e nunca apagou nada de lá, dava pra
+conferir a fonte original — criado `scripts/repair-pareceres-data-parecer-date.ts`
+(dry-run por padrão, `--apply` grava) pra buscar o campo direto no Firestore via REST
+API v1 (`fetch`, não o SDK client — o SDK abre um canal de listen via gRPC mesmo em
+leitura única e isso quebra com erro enganoso em ambientes tipo Codespaces,
+independente de `experimentalForceLongPolling`) e recuperar `data_parecer_date` por
+`cod`. **Resultado da investigação**: rodado com `--debug` contra os documentos reais,
+o campo `data_parecer` já estava **vazio (`""`) na própria fonte original do Firebase**
+— não é bug de formato, o dado nunca foi preenchido nesses 98 registros históricos.
+Confirmado: **nenhum dado real foi perdido no `DROP`**, a coluna já não carregava
+nenhuma informação útil pra nenhum dos 98 pareceres migrados. Script de reparo mantido
+no repositório (`npm run repair:pareceres-data`) como ferramenta, embora não tenha
+sido necessário desta vez — serve de referência se um caso parecido aparecer numa
+tabela diferente. Pareceres criados/editados depois desta mudança já gravam
+`data_parecer_date` normalmente pelo formulário. **O processo de 6 passos está
+completo.**
 
 ---
 
@@ -1068,7 +1040,9 @@ if (error) return <ErrorMessage message={error.message} />
 | 26 | **Hardening v1.0 (fase 1 — P0)** — recebi `CLAUDE_ENGINEERING.md` (agora versionado no repo) com padrões de engenharia/testes/schema. Diagnóstico completo + Top 10 riscos + plano P0-P3 entregues no chat antes de mexer em código (regra 62/63 do doc de engenharia); esta linha registra o que já foi implementado da fatia P0 | Base | **Alta** | ✅ Feito (15/09/2026): **(1)** Vitest configurado (`vitest.config.ts`, `tsconfig.test.json` separado do app pra não vazar tipos `node` pro bundle do navegador) com 32 testes — regressão dos 2 bugs reais já documentados do parser CSV (vírgula decimal entre aspas, dois layouts de coluna) usando fixtures sintéticas em `tests/fixtures/` (não os CSVs reais), e cobertura de `statusPrazo`/`riscoOC`/`diasSemMovimentacao`/`previsaoAtiva`/`isPrevisaoDescumprida`/`dataPrazo` com datas relativas a `getHoje()` (sem precisar de um `Clock` injetável ainda — isso é P2/P3 se algum dia os testes precisarem de data fixa). **(2)** Schema versionado em `supabase/migrations/` — 0001 a 0005 são reconstruções do histórico já aplicado (não rodar de novo; ver `supabase/migrations/README.md` pra a ressalva de que não são um dump exato da CLI, é o que o CLAUDE.md já documentava em prosa, agora em SQL). **(3)** Nova migration `202609150002_check_constraints.sql` com `CHECK ... NOT VALID` (não valida dado histórico, só passa a proteger escritas novas) pra `hospital_id`/`status`/`tipo`/`qtd >= 0`/`preco_unitario >= 0` — **deliberadamente sem CHECK em `ocs.sit`/`sols.sit`**, porque `normalizeSit()` tem fallback intencional pra situação não reconhecida do SoulMV, e uma CHECK estrita transformaria isso em erro de importação (decisão de produto separada, não uma migration). **Aplicada em produção em 16/09/2026** — Everton rodou no SQL Editor, Success em todas as `ALTER TABLE`. `VALIDATE CONSTRAINT` retroativo (cobrir dado histórico) ficou como opcional, não confirmado se foi rodado — as constraints já protegiam escritas novas independente disso. **Fechado em 17/09/2026 (item 30)**: auditoria via MCP achou `ocs`/`sols`/`contratos`/`contrato_produtos` já validados (`convalidated = true`), só `opmes` (criada depois, com as próprias `CHECK ... NOT VALID` em `202609150002_check_constraints.sql`) tinha ficado pra trás — rodado `VALIDATE CONSTRAINT` nas 2 checks de `opmes` (`202609170002_validate_opmes_checks.sql`, instantâneo, tabela tinha 0 linhas). Todas as CHECK constraints do projeto estão validadas agora. **(4)** CI mínimo (`.github/workflows/ci.yml`): lint + typecheck + testes + build em todo push/PR — **sem branch protection ainda**, não bloqueia push direto em main, só dá visibilidade; ativar proteção de branch é decisão do Everton, muda o fluxo de trabalho atual. **Não implementado ainda desta fase P0** (fica pro próximo ciclo): nada mais — repositories/services (P2), migração de datas texto→date (P2, maior risco do plano), Storage pra PDF (P2), Sentry/staging (P3) ficam pra quando o Everton pedir, conforme o roadmap apresentado no chat |
 | 27 | **Hardening v1.0 (fase P1 — validação Zod na importação)** | Base, OCs | Alta | ✅ Feito (16/09/2026) — `zod` instalado, `src/utils/validators.ts` (novo, tirou o `[a fazer]` que já existia no CLAUDE.md) com `ocImportadaSchema`/`solImportadaSchema`/`vinculoAcompSchema` e o helper `validarLote()`, que separa itens válidos de inválidos em vez de travar o lote inteiro por causa de 1 linha ruim. Ligado nos 3 fluxos de `Importar.tsx` (OCs CSV, Solicitações CSV, Acompanhamento PDF) — cada item inválido vira uma linha `⚠` no log com o motivo, e o resumo final do card mostra quantos foram ignorados. **Deliberadamente sem validar `sit`/`situação` contra enum fechado**, mesma decisão e mesmo motivo da migration de `CHECK` constraints do item 26 (fallback intencional do `normalizeSit()`). 14 testes novos em `src/utils/validators.test.ts` (total do projeto: 46). Nenhuma mudança de schema — não precisou de migration |
 | 28 | **Hardening v1.0 (fase P2 — repositories/services, Strangler Pattern)** | Base, OCs, Contratos, Pareceres, OPME | Média | ✅ **Completo (16/09/2026)** — as 8 tabelas do projeto migradas do padrão "hook faz SQL + mapeamento + tudo" pro padrão repository/hook-adaptador: **`ocRepository.ts`** (`listarOCs`, `salvarOC`, `atualizarSituacaoOC`, `atualizarCamposOC`, `criarOCImportada`, `excluirOC`, `toOC`), **`solRepository.ts`** (`listarSols`, `salvarSol`, `atualizarSituacaoSol`, `atualizarCamposSol`, `excluirSol`, `toSolicitacao`), **`fornecedorRepository.ts`** (`listarFornecedores`, `salvarFornecedor`, `excluirFornecedor`, `toFornecedor`), **`contratoRepository.ts`** (`listarContratos`, `listarContratoProdutos`, `salvarContrato`, `salvarProdutosContrato`, `excluirContrato`, `toContrato`, `toContratoProduto`), **`parecerRepository.ts`** (`listarPareceres`, `buscarParecer`, `salvarParecer`, `excluirParecer`, `toParecer`), **`marcaSugeridaRepository.ts`** (`listarMarcasSugeridas`, `salvarMarcasSugeridas`, `excluirMarcasSugeridas`, `toMapa`), **`opmeRepository.ts`** (`listarOpmes`, `salvarOpme`, `alternarStatusOpme`, `excluirOpme`, `toOpme`), **`histOcRepository.ts`** (`listarHistOC`, `listarHistoricoRecentePorOC`, `listarHistoricoTodos`, `registrarCobranca`, `marcarRespondida`, `toHistOC`). Todos os 8 hooks correspondentes (`useOCs`/`useSols`/`useFornecedores`/`useContratos`/`usePareceres`/`useMarcasSugeridas`/`useOpmes`/`useHistOC`) viraram adaptadores finos — mesma interface pública de antes em todos, nenhum componente/página mudou. `contratoRepository.ts` foi o primeiro a testar o padrão contra sub-tabela relacionada (1 contrato : N produtos, diff/soft-delete preservado). **Achado na migração de pareceres**: `excluirParecer` já usava `DELETE` físico, não soft delete — violação pré-existente da regra 6, documentada no cabeçalho do repository e preservada tal como estava (mudar é decisão de produto separada). **`Importar.tsx` também deixou de acessar o Supabase direto** (violava a regra 4 desde sempre): patch parcial de OC/Solicitação existente usa `atualizarCamposOC`/`atualizarCamposSol`; criação de OC nova (CSV e vínculo do PDF de Acompanhamento) usa `ocRepository.criarOCImportada()`, que **preserva exatamente os mesmos defaults de antes** em vez de reaproveitar `salvarOC`, pra não mudar comportamento de produção silenciosamente. Migração sempre gradual, uma entidade por vez, nunca big-bang (CLAUDE_ENGINEERING.md seção 64). 41 testes novos no total (6 `ocRepository`, 4 `solRepository`, 2 `fornecedorRepository`, 7 `contratoRepository`, 4 `parecerRepository`, 3 `marcaSugeridaRepository`, 3 `opmeRepository`, 5 `histOcRepository`, mais os que já existiam) cobrindo defaults de mapeamento pra campos nullable do schema gerado — total do projeto: **81 testes**. **Achado no processo**: `src/lib/supabase.ts` lança erro se as env vars do Supabase estiverem ausentes — isso quebrava `npm test` (não existe `.env.local` fora do ambiente de dev real), corrigido com `.env.test` (valores fictícios, não são credenciais, Vite carrega automaticamente em modo teste). Nenhuma mudança de schema, nenhuma migration necessária em nenhuma etapa desta fase |
-| 29 | **Hardening v1.0 — migração de datas texto→date, processo completo (Fases 1, 2 e Passo 6)** | Base, OCs, Pareceres | Média | ✅ **Completo, inclusive Passo 6, confirmado em produção (17/09/2026)**. Ver seção "Migração de Datas Texto → Date" pro detalhe completo do processo de 6 passos. **Fase 1 (backfill aditivo)** ✅ aplicada em produção (16/09/2026) nas 3 tabelas (`ocs`, `sols`, `pareceres`), verificações deram 0 discrepâncias. **Fase 2 (troca de código pra ler/escrever as duas colunas)** ✅ completa (16/09/2026), uma coluna por vez, começando pelas de menor risco: `pareceres.data_parecer` → `sols.data` → as 5 colunas de `ocs` por último (`dataSolic`/`previsaoForn`/`previsaoForn2`/`dataEntregaReal`/`ultimaMovimentacao`, que alimentam `src/utils/oc.ts`). Tipo de domínio de cada campo continuou `string`/`string | null` em `DD/MM/YYYY` o tempo todo — nenhuma mudança em formulários/telas/`src/utils/oc.ts`, só nos repositories (`parecerRepository.ts`/`solRepository.ts`/`ocRepository.ts`). **Passo 6 (remover as 7 colunas texto)** — os 3 repositories pararam de vez de ler/escrever as colunas texto (agora só tocam `data_parecer_date`/`data_date`/as 5 `*_date` de `ocs`), `src/types/database.ts` teve as 7 colunas texto removidas dos tipos `Row`/`Insert`/`Update`, `ocRepository.ts` ganhou `deColunaDate()` (inverso de `paraColunaDate()`, preserva `null` em vez de virar `''`) pra manter `OC.previsaoForn`/`dataEntregaReal`/etc. como `null` quando a `_date` correspondente não existe (fallback pro texto removido). Testes de fallback trocados por testes de conversão/null (`ocRepository.test.ts`: 4, `solRepository.test.ts`: 2, `parecerRepository.test.ts`: 2) — total do projeto continua em **87 testes**. Migration `202609160004_remove_colunas_texto_datas.sql` fez o `DROP COLUMN IF EXISTS` das 7 colunas — **confirmado via auditoria direta do schema live em 17/09/2026 (item 30)**: as 7 colunas texto não existem mais em nenhuma das 3 tabelas. Documentação das 3 tabelas em "BANCO DE DADOS" atualizada pro schema real |
-| 30 | **Auditoria + hardening do Supabase via MCP** — pedido do Everton pra "ordenar o projeto no Supabase como um sênior faria". Comparei o schema/RLS/advisories reais em produção contra o que o CLAUDE.md documentava | Base | Alta | ✅ Feito (17/09/2026). **Achados de documentação desatualizada**: o Passo 6 da migração de datas (item 29) já tinha sido executado em produção, mas o CLAUDE.md ainda dizia "pendente de execução por Everton" — corrigido. **Achado novo, sem dono claro**: `pareceres.pdf_path` (text, nullable) existe em produção mas nenhum código do projeto lê/escreve essa coluna e nenhuma migration documenta sua criação. Everton confirmou que é resquício de um plano de migrar o PDF do parecer de `pdf_data_url` (base64 no Postgres, ineficiente pra arquivo binário) pra Supabase Storage — **ainda não retomado**, ver item 31. **Achados reais do Supabase Advisor** (`mcp__supabase__get_advisors`), corrigidos em `202609170001_hardening_advisors_p0.sql`: (1) função `update_updated_at()` com `search_path` mutável (classe de risco: schema injection) — fixado com `search_path = ''`; (2) as 9 policies de RLS reavaliavam `auth.role() = 'authenticated'` **por linha** em vez de `(select auth.role())`, o que impede o Postgres de cachear como InitPlan — reescritas todas, mesma regra de acesso, só a forma de avaliação; (3) `opmes.fornecedor_id` (FK) sem índice de cobertura — criado `idx_opmes_fornecedor`. Aproveitado pra padronizar nome de policy: as 9 agora são `authenticated_<tabela>` (antes `marcas_sugeridas`/`opmes` usavam `auth_<tabela>`, as outras 7 usavam `authenticated_<tabela>` — inconsistente). Verificado via advisor de novo: os 2 warnings sumiram, sobrou só "Leaked Password Protection" (toggle de Auth no Dashboard, não é SQL — Everton precisa ativar em Authentication → Providers → Email) e os índices não usados (esperado, dataset pequeno: `ocs` tem 1051 linhas, a maioria das outras tabelas tem dezenas — não é sinal de problema, é só baixo volume de tráfego ainda). **Achado de processo**: o schema `supabase_migrations` (rastreio real de migrations do Supabase) não existia no projeto — os arquivos em `supabase/migrations/` eram só reconstrução em texto rodada manualmente no SQL Editor, nunca houve `supabase link`/`db push`. Essa migration foi a primeira aplicada via `mcp__supabase__apply_migration`, que passou a registrar de verdade em `list_migrations` — daqui pra frente essa é a fonte de verdade, junto com os arquivos locais. `supabase/config.toml` e `supabase/.gitignore` também apareceram no `git status` como untracked (não fui eu que criei, provavelmente de uma sessão anterior rodando `supabase init` local) — não commitei, sem instrução explícita do Everton; sem segredo real neles (as poucas chaves são `env(...)` placeholders), então é seguro commitar quando ele decidir habilitar o workflow local da CLI. **Continuação autorizada pelo Everton no mesmo dia** — mais 2 achados fechados: `VALIDATE CONSTRAINT` retroativo pendente em `opmes` desde o item 26 (`202609170002_validate_opmes_checks.sql`, ver item 26 atualizado) e `src/types/database.ts` regenerado de verdade via `mcp__supabase__generate_typescript_types` em vez do arquivo mantido manualmente desde 30/08 (ver item 2 atualizado) — essa troca achou que a FK `ocs.solicitacao_id → sols.id` documentada nos tipos manuais nunca existiu de fato no banco. `tsc -b`/`npm test` (87/87)/`npm run build` confirmados limpos depois das duas mudanças |
-| 31 | Migrar `pareceres.pdf_data_url` (base64 no Postgres) pra Supabase Storage, usando a coluna `pdf_path` já existente (órfã desde antes, ver item 30) | Pareceres | Baixa | ❌ Não iniciado — Everton confirmou a intenção (17/09/2026) mas os detalhes (nome do bucket, se migra os 98 PDFs já salvos em base64 ou só passa a valer pra pareceres novos, se mantém `pdf_data_url` como fallback de leitura) ainda não foram definidos. Não mexer na coluna `pdf_path` até essa decisão |
-| 32 | Importação de OCs (`Importar.tsx`) passa a registrar entrega automaticamente e parou de auto-preencher previsão em OC nova | OCs | Média | ✅ Feito (18/09/2026) — pedido do Everton: Lead Time/SLA/Score não conseguiam contar a entrega de OCs importadas porque elas já chegam "Atendida" direto do relatório do SoulMV, sem nenhum momento de "clicar em registrar entrega"; e a previsão do fornecedor vinha preenchida automaticamente do relatório mas nem sempre batia, sem espaço pra ele corrigir. **Decisões confirmadas com o Everton**: data de entrega registrada = data da importação (hoje), não a previsão do fornecedor — o relatório não tem campo de entrega real, é a melhor aproximação disponível ("quando ficamos sabendo que foi entregue"); **só daqui pra frente**, sem backfill retroativo nas OCs já "Atendida" sem `dataEntregaReal` (ficam de fora das métricas como já estavam, não inventa data histórica); previsão do relatório só parou de preencher em **OC nova** — em OC existente sem previsão, continua aceitando a do relatório como valor inicial (nunca sobrescreve o que o Everton já registrou manualmente, comportamento que já existia). Implementado em `ocRepository.ts` (`OCImportadaInput.dataEntregaReal` opcional, `criarOCImportada` grava `data_entrega_real_date`) e `Importar.tsx`/`importarOCsCSV`: no caminho de OC existente, transição pra `Atendida` sem `dataEntregaReal` prévia seta a data de hoje (log ganha "(entrega registrada hoje)"); no caminho de OC nova, `previsaoForn` vai sempre `null` (antes vinha do CSV) e, se já chega `Atendida` na primeira importação, também registra a entrega na hora. Lógica de decisão ficou inline em `Importar.tsx` (não extraída pra `src/utils/oc.ts`) pra manter consistência com o padrão do projeto — página não tem teste hoje, só utils/repositories puros são testados. `npx tsc -b --noEmit`, `npm test` (87/87) e `npm run build` confirmados limpos |
+| 29 | **Hardening v1.0 — migração de datas texto→date, processo completo (Fases 1, 2 e Passo 6)** | Base, OCs, Pareceres | Média | ✅ **Completo, inclusive Passo 6, confirmado em produção (17/09/2026)**. Ver seção "Migração de Datas Texto → Date" pro detalhe completo do processo de 6 passos, incluindo o incidente investigado (e encerrado sem perda de dado real) na execução do `DROP` em `pareceres`. **Fase 1 (backfill aditivo)** ✅ aplicada em produção (16/09/2026) nas 3 tabelas (`ocs`, `sols`, `pareceres`), verificações deram 0 discrepâncias. **Fase 2 (troca de código pra ler/escrever as duas colunas)** ✅ completa (16/09/2026), uma coluna por vez, começando pelas de menor risco: `pareceres.data_parecer` → `sols.data` → as 5 colunas de `ocs` por último (`dataSolic`/`previsaoForn`/`previsaoForn2`/`dataEntregaReal`/`ultimaMovimentacao`, que alimentam `src/utils/oc.ts`). Tipo de domínio de cada campo continuou `string`/`string | null` em `DD/MM/YYYY` o tempo todo — nenhuma mudança em formulários/telas/`src/utils/oc.ts`, só nos repositories (`parecerRepository.ts`/`solRepository.ts`/`ocRepository.ts`). **Passo 6 (remover as 7 colunas texto)** — os 3 repositories pararam de vez de ler/escrever as colunas texto (agora só tocam `data_parecer_date`/`data_date`/as 5 `*_date` de `ocs`), `src/types/database.ts` teve as 7 colunas texto removidas dos tipos `Row`/`Insert`/`Update`, `ocRepository.ts` ganhou `deColunaDate()` (inverso de `paraColunaDate()`, preserva `null` em vez de virar `''`) pra manter `OC.previsaoForn`/`dataEntregaReal`/etc. como `null` quando a `_date` correspondente não existe (fallback pro texto removido). Testes de fallback trocados por testes de conversão/null (`ocRepository.test.ts`: 4, `solRepository.test.ts`: 2, `parecerRepository.test.ts`: 2). Migration `202609160004_remove_colunas_texto_datas.sql` fez o `DROP COLUMN IF EXISTS` das 7 colunas — **confirmado via auditoria direta do schema live em 17/09/2026 (item 30)**: as 7 colunas texto não existem mais em nenhuma das 3 tabelas. Documentação das 3 tabelas em "BANCO DE DADOS" atualizada pro schema real |
+| 30 | **Auditoria + hardening do Supabase via MCP** — pedido do Everton pra "ordenar o projeto no Supabase como um sênior faria". Comparei o schema/RLS/advisories reais em produção contra o que o CLAUDE.md documentava | Base | Alta | ✅ Feito (17/09/2026). **Achados de documentação desatualizada**: o Passo 6 da migração de datas (item 29) já tinha sido executado em produção, mas o CLAUDE.md ainda dizia "pendente de execução por Everton" — corrigido. **Achado novo, sem dono claro na hora**: `pareceres.pdf_path` (text, nullable) existia em produção mas nenhum código do projeto (nesta sessão) lia/escrevia essa coluna e nenhuma migration a documentava. Everton confirmou que era resquício de um plano de migrar o PDF do parecer de `pdf_data_url` (base64 no Postgres, ineficiente pra arquivo binário) pra Supabase Storage — na hora, pareceu "ainda não retomado". **Reconciliado no merge de 18/09/2026**: uma sessão paralela (branch separada, não visível daqui até o merge) já tinha implementado esse plano em 16/09/2026, ver item 31. **Achados reais do Supabase Advisor** (`mcp__supabase__get_advisors`), corrigidos em `202609170001_hardening_advisors_p0.sql`: (1) função `update_updated_at()` com `search_path` mutável (classe de risco: schema injection) — fixado com `search_path = ''`; (2) as 9 policies de RLS reavaliavam `auth.role() = 'authenticated'` **por linha** em vez de `(select auth.role())`, o que impede o Postgres de cachear como InitPlan — reescritas todas, mesma regra de acesso, só a forma de avaliação; (3) `opmes.fornecedor_id` (FK) sem índice de cobertura — criado `idx_opmes_fornecedor`. Aproveitado pra padronizar nome de policy: as 9 agora são `authenticated_<tabela>` (antes `marcas_sugeridas`/`opmes` usavam `auth_<tabela>`, as outras 7 usavam `authenticated_<tabela>` — inconsistente). Verificado via advisor de novo: os 2 warnings sumiram, sobrou só "Leaked Password Protection" (toggle de Auth no Dashboard, não é SQL — Everton precisa ativar em Authentication → Providers → Email) e os índices não usados (esperado, dataset pequeno: `ocs` tem 1051 linhas, a maioria das outras tabelas tem dezenas — não é sinal de problema, é só baixo volume de tráfego ainda). **Achado de processo**: o schema `supabase_migrations` (rastreio real de migrations do Supabase) não existia no projeto — os arquivos em `supabase/migrations/` eram só reconstrução em texto rodada manualmente no SQL Editor, nunca houve `supabase link`/`db push`. Essa migration foi a primeira aplicada via `mcp__supabase__apply_migration`, que passou a registrar de verdade em `list_migrations` — daqui pra frente essa é a fonte de verdade, junto com os arquivos locais. `supabase/config.toml` e `supabase/.gitignore` também apareceram no `git status` como untracked — commitados no merge de 18/09/2026 (sem segredo real, só `env(...)` placeholders). **Continuação autorizada pelo Everton no mesmo dia** — mais 2 achados fechados: `VALIDATE CONSTRAINT` retroativo pendente em `opmes` desde o item 26 (`202609170002_validate_opmes_checks.sql`, ver item 26 atualizado) e `src/types/database.ts` regenerado de verdade via `mcp__supabase__generate_typescript_types` em vez do arquivo mantido manualmente desde 30/08 (ver item 2 atualizado) — essa troca achou que a FK `ocs.solicitacao_id → sols.id` documentada nos tipos manuais nunca existiu de fato no banco. `tsc -b`/`npm test`/`npm run build` confirmados limpos depois das duas mudanças |
+| 31 | **Hardening — Storage pra PDF** (item 1 do plano de conclusão do Hardening, `CLAUDE_ENGINEERING.md` seção 12) | Pareceres | Média | ✅ **Código pronto (16/09/2026), migration pendente de execução.** Ver seção "Storage pra PDF" acima pro detalhe completo. Migration `202609160005_storage_pareceres_pdf.sql` (bucket `pareceres-pdfs` privado + RLS autenticado + `pareceres.pdf_path`, aditiva) — **Everton precisa rodar no SQL Editor**. `parecerRepository.ts` ganhou `uploadPdf`/`obterUrlAssinadaPdf`; `ParecerForm.tsx` sobe o arquivo pro Storage no submit em vez de ler como base64; `useAbrirPdfParecer()` (novo, `usePareceres.ts`) centraliza a lógica de abrir PDF preferindo `pdfPath` com fallback pro `pdfDataUrl` legado, usado em `ParecerCard`/`Base.tsx`/`ParecerForm`. `pdf_data_url` mantido só como fallback de leitura — nenhum dado existente tocado, PDF novo já não escreve mais nele. Script opcional `scripts/backfill-pareceres-pdf-storage.ts` (`npm run backfill:pareceres-pdf-storage`, dry-run por padrão) migra PDFs antigos em base64 pro Storage, não obrigatório rodar agora. 1 teste novo em `parecerRepository.test.ts` (`pdfPath` separado de `pdfDataUrl`). Como bônus, resolve de forma mais robusta o bug de "Chrome bloqueia abrir PDF novo em aba" que existia com `data:` URL (URL assinada do Storage é uma URL `https://` de verdade, sem a limitação de navegação de nível superior pra `data:`). **Achado no merge de 18/09/2026**: esse trabalho foi feito numa sessão paralela (16/09/2026) que não tinha sido integrada ainda — é a origem do `pdf_path` "órfão" que o item 30 (auditoria de 17/09) encontrou sem dono claro; reconciliado, `src/types/database.ts` (regenerado no item 30/2) já reflete a coluna corretamente |
+| 32 | **Hardening — Ambiente de staging** (item 2 do plano de conclusão do Hardening, `CLAUDE_ENGINEERING.md` seção 27) | Base | Baixa | ⏸️ **Adiado (16/09/2026)** — Everton não tem mais espaço pra um projeto novo no plano free do Supabase. Tentativa alternativa: Supabase local via CLI (`supabase init` + `supabase start`, sobe Postgres+Auth+Storage local via Docker, zero custo, aplica `supabase/migrations/` automaticamente) — Docker funciona no Codespace (`docker ps` ok), mas o serviço Realtime (Elixir) trava na conexão com o Postgres local (`DBConnection.ConnectionError` depois de ~15s) mesmo depois de tentar de novo; provável limitação de recursos da máquina padrão do Codespace (poucas vCPUs pra rodar Postgres+Auth+Realtime+Storage+Studio ao mesmo tempo). Não investigado a fundo (ex: desligar `[realtime]`/`[analytics]` no `config.toml`, rodar numa máquina de Codespace maior, ou tentar localmente fora do Codespace) — Everton decidiu adiar. Retomar quando fizer sentido: opções na mesa são (a) Supabase local via CLI numa máquina com mais recursos, (b) liberar espaço apagando um projeto Supabase não usado e criar o staging cloud normal (Vercel Preview + Supabase separado, como descrito na seção "Ambiente de Staging" — a escrever quando isso avançar), ou (c) aceitar testar em produção com cautela por enquanto, como já vem sendo feito |
+| 33 | **Hardening — Proteger `main`** (item 3 do plano de conclusão do Hardening, `CLAUDE_ENGINEERING.md` seção 29) | Base | Baixa | ⏸️ **Adiado (16/09/2026)** — não tem ferramenta no GitHub MCP desta sessão pra configurar branch protection via API (só cobre PR/Issues/Actions), e o Everton não conseguiu fazer pelo Codespace agora. Passo a passo salvo aqui pra rodar de casa, direto no GitHub (`github.com/EvertonJr21/portal-fusve` → **Settings → Branches** → **Add branch protection rule**): (1) Branch name pattern: `main`; (2) marcar **Require a pull request before merging**, com "Require approvals" **desligado** (trabalha sozinho, sem outro revisor); (3) marcar **Require status checks to pass before merging** e selecionar o check **`build`** (único job do `.github/workflows/ci.yml` — roda lint + typecheck + test + build); (4) marcar **Require branches to be up to date before merging**; (5) marcar **Do not allow bypassing the above settings** (senão o dono do repo ainda consegue pular a regra); (6) **Save changes**. **Efeito colateral importante, avisado ao Everton antes de tentar**: depois disso, `git push origin main` direto passa a ser **rejeitado** — toda mudança (dele ou do Claude Code) precisa virar branch → Pull Request → CI verde (check `build`) → merge, no lugar do fluxo atual de push direto + fast-forward. Quando configurar, avisar o Claude Code pra trocar o processo de fim-de-tarefa pra "abrir PR + esperar CI + dar merge" em vez de "push direto em main" |
+| 34 | Importação de OCs (`Importar.tsx`) passa a registrar entrega automaticamente e parou de auto-preencher previsão em OC nova | OCs | Média | ✅ Feito (18/09/2026) — pedido do Everton: Lead Time/SLA/Score não conseguiam contar a entrega de OCs importadas porque elas já chegam "Atendida" direto do relatório do SoulMV, sem nenhum momento de "clicar em registrar entrega"; e a previsão do fornecedor vinha preenchida automaticamente do relatório mas nem sempre batia, sem espaço pra ele corrigir. **Decisões confirmadas com o Everton**: data de entrega registrada = data da importação (hoje), não a previsão do fornecedor — o relatório não tem campo de entrega real, é a melhor aproximação disponível ("quando ficamos sabendo que foi entregue"); **só daqui pra frente**, sem backfill retroativo nas OCs já "Atendida" sem `dataEntregaReal` (ficam de fora das métricas como já estavam, não inventa data histórica); previsão do relatório só parou de preencher em **OC nova** — em OC existente sem previsão, continua aceitando a do relatório como valor inicial (nunca sobrescreve o que o Everton já registrou manualmente, comportamento que já existia). Implementado em `ocRepository.ts` (`OCImportadaInput.dataEntregaReal` opcional, `criarOCImportada` grava `data_entrega_real_date`) e `Importar.tsx`/`importarOCsCSV`: no caminho de OC existente, transição pra `Atendida` sem `dataEntregaReal` prévia seta a data de hoje (log ganha "(entrega registrada hoje)"); no caminho de OC nova, `previsaoForn` vai sempre `null` (antes vinha do CSV) e, se já chega `Atendida` na primeira importação, também registra a entrega na hora. Lógica de decisão ficou inline em `Importar.tsx` (não extraída pra `src/utils/oc.ts`) pra manter consistência com o padrão do projeto — página não tem teste hoje, só utils/repositories puros são testados |

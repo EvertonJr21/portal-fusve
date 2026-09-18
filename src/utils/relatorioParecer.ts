@@ -48,7 +48,7 @@ export function gerarRelatorioPDF(lista: Parecer[], totalGeral?: number) {
     { label: 'Com Padrão', val: lista.filter((p) => p.padrao.length).length, fill: [240, 255, 244], border: [154, 230, 180], text: [39, 103, 73] },
     { label: 'C/ Proibida', val: lista.filter((p) => p.proibidas.length).length, fill: [255, 245, 245], border: [254, 178, 178], text: [155, 44, 44] },
     { label: 'C/ Restrita', val: lista.filter((p) => p.restritas.length).length, fill: [255, 247, 237], border: [253, 186, 116], text: [123, 52, 30] },
-    { label: 'Com PDF', val: lista.filter((p) => p.pdfDataUrl).length, fill: [250, 245, 255], border: [214, 188, 253], text: [85, 60, 154] },
+    { label: 'Com PDF', val: lista.filter((p) => p.pdfPath || p.pdfDataUrl).length, fill: [250, 245, 255], border: [214, 188, 253], text: [85, 60, 154] },
   ] as const
 
   const bw = (cW - 8) / boxes.length
