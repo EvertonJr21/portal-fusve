@@ -192,14 +192,22 @@ export default function Importar() {
     }
   }
 
-  const importarAcompPDF = async (file: File) => {
+  const importarAcomp = async (file: File) => {
     setAtivo('acomp')
     setCardStatus('acomp', { state: 'processing' })
-    setLog([`📄 ${file.name} — extraindo texto do PDF...`])
+    const ehPlanilha = /\.xlsx?$/i.test(file.name)
+    setLog([`📄 ${file.name} — ${ehPlanilha ? 'lendo planilha...' : 'extraindo texto do PDF...'}`])
     try {
-      const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
-      const linhas = await extractPdfLines(file)
-      const { validos: vinculos, invalidos } = validarLote(parseAcompPDF(linhas), vinculoAcompSchema)
+      const vinculosBrutos = ehPlanilha
+        ? await (async () => {
+            const { extractXlsRows, parseAcompXLS } = await import('@/utils/acompXls')
+            return parseAcompXLS(await extractXlsRows(file))
+          })()
+        : await (async () => {
+            const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
+            return parseAcompPDF(await extractPdfLines(file))
+          })()
+      const { validos: vinculos, invalidos } = validarLote(vinculosBrutos, vinculoAcompSchema)
       for (const { item, erros } of invalidos) {
         addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
       }
@@ -258,7 +266,7 @@ export default function Importar() {
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-lg font-semibold text-slate-800">Importar</h2>
-        <p className="text-sm text-slate-500">Relatórios do SoulMV — CSV de OCs/Solicitações e PDF de Acompanhamento</p>
+        <p className="text-sm text-slate-500">Relatórios do SoulMV — CSV de OCs/Solicitações e Acompanhamento (PDF ou planilha)</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -286,14 +294,14 @@ export default function Importar() {
         />
         <UploadCard
           title="Acompanhamento de Compras"
-          description="PDF — vincula OCs às Solicitações de origem automaticamente."
-          filenameHint="Arquivo .pdf"
-          accept=".pdf"
+          description="PDF ou planilha (.xls/.xlsx) — vincula OCs às Solicitações de origem automaticamente."
+          filenameHint="Arquivo .pdf, .xls ou .xlsx"
+          accept=".pdf,.xls,.xlsx"
           accentClass="border-status-amber/30 bg-status-amber-bg text-status-amber"
           icon={ICON_PDF}
           status={status.acomp}
           disabled={processando && ativo !== 'acomp'}
-          onFile={importarAcompPDF}
+          onFile={importarAcomp}
         />
       </div>
 
