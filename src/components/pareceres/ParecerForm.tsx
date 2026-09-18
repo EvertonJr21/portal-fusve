@@ -137,20 +137,30 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium text-slate-700">PDF do parecer</span>
-        <input
-          type="file"
-          accept="application/pdf"
-          className="text-xs"
-          onChange={(e) => handlePdf(e.target.files?.[0])}
-        />
-        {(arquivoNovo || pdfPathExistente || pdfDataUrlExistente) && (
-          <button type="button" onClick={handleAbrirPdf} className="self-start text-xs text-blue-700 hover:underline">
-            📄 {nomeArquivo}
-          </button>
-        )}
-      </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
+            </svg>
+            {nomeArquivo ? 'Trocar arquivo' : 'Escolher arquivo'}
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={(e) => handlePdf(e.target.files?.[0])}
+            />
+          </label>
+          {nomeArquivo ? (
+            <button type="button" onClick={handleAbrirPdf} className="text-xs text-blue-700 hover:underline">
+              📄 {nomeArquivo}
+            </button>
+          ) : (
+            <span className="text-xs text-slate-400">Nenhum arquivo selecionado</span>
+          )}
+        </div>
+      </div>
 
       <Button type="submit" loading={salvar.isPending || uploadPdf.isPending} className="self-start">
         {parecerExistente ? 'Atualizar parecer' : 'Cadastrar parecer'}
