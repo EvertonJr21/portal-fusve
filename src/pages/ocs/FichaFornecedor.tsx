@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
+import { StatusDot } from '@/components/ui/StatusDot'
 import { FINAL_SIT } from '@/constants'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
@@ -123,7 +124,10 @@ export default function FichaFornecedor() {
             return (
               <div key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 bg-white px-3 py-2 text-xs">
                 <span className="flex items-center gap-2">
-                  <span>{atrasada ? '🔴' : FINAL_SIT.includes(o.sit as (typeof FINAL_SIT)[number]) ? '🟢' : '⚪'}</span>
+                  <StatusDot
+                    tone={atrasada ? 'danger' : FINAL_SIT.includes(o.sit as (typeof FINAL_SIT)[number]) ? 'success' : 'neutral'}
+                    label={atrasada ? 'Atrasada' : FINAL_SIT.includes(o.sit as (typeof FINAL_SIT)[number]) ? 'Concluída' : 'Em andamento'}
+                  />
                   <span className="font-mono font-semibold">OC {o.id}</span>
                   <span className="text-slate-500">{o.sit}</span>
                 </span>

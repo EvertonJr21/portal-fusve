@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { Button } from '@/components/ui/Button'
+import { IconButton } from '@/components/ui/IconButton'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
@@ -133,8 +134,8 @@ export default function TabelaMestre() {
                 <td className="px-3 py-2"><VigenciaBadge contrato={c} /></td>
                 <td className="px-3 py-2 text-xs">
                   <div className="flex gap-1">
-                    <button type="button" title="Editar" onClick={() => setModal(c)} className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100">✏</button>
-                    <button type="button" title="Excluir" onClick={() => handleExcluir(c)} className="rounded border border-slate-200 px-1.5 py-1 text-status-red hover:bg-status-red-bg">✕</button>
+                    <IconButton title="Editar" onClick={() => setModal(c)}>✏</IconButton>
+                    <IconButton title="Excluir" tone="danger" onClick={() => handleExcluir(c)}>✕</IconButton>
                   </div>
                 </td>
               </tr>

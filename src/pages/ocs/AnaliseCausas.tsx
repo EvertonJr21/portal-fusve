@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
+import { CORES_GRAFICO as CORES } from '@/constants'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
-
-const CORES = ['#3182CE', '#DD6B20', '#E53E3E', '#805AD5', '#00B5D8', '#D69E2E', '#38A169', '#DD2C6C', '#4A5568']
 
 const PERIODOS = [
   { value: '30', label: 'Últimos 30 dias' },

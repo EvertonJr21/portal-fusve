@@ -1,9 +1,8 @@
 import { KpiCard } from '@/components/ui/KpiCard'
+import { CORES_GRAFICO as CORES } from '@/constants'
 import { useHistoricoConsultas } from '@/hooks/useHistoricoConsultas'
 import { usePareceres } from '@/hooks/usePareceres'
 import { useProdutos } from '@/hooks/useProdutos'
-
-const CORES = ['#3182CE', '#38A169', '#DD6B20', '#E53E3E', '#805AD5', '#00B5D8', '#D69E2E']
 
 export default function Dashboard() {
   const { data: pareceres = [] } = usePareceres()

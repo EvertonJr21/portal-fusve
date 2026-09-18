@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
+import { IconButton } from '@/components/ui/IconButton'
+import { StatusDot, type StatusDotTone } from '@/components/ui/StatusDot'
 import { SortableTh, Table, TableHead, type SortDir } from '@/components/ui/Table'
 import { FINAL_SIT, SITUACOES_OC } from '@/constants'
 import type { OC, Solicitacao } from '@/types'
@@ -18,7 +20,8 @@ const SEMAFORO_CLASS: Record<string, string> = {
   atendida: 'bg-status-green-bg text-status-green',
 }
 
-const RISCO_ICON: Record<string, string> = { alto: '🔴', medio: '🟡', baixo: '🟢' }
+const RISCO_TONE: Record<string, StatusDotTone> = { alto: 'danger', medio: 'warning', baixo: 'success' }
+const RISCO_LABEL: Record<string, string> = { alto: 'Risco alto', medio: 'Risco médio', baixo: 'Risco baixo' }
 
 interface OCTableProps {
   ocs: OC[]
@@ -197,7 +200,7 @@ export function OCTable({
                   </span>
                 </td>
                 <td className="px-3 py-2 text-xs">
-                  <span>{RISCO_ICON[risco]}</span>
+                  <StatusDot tone={RISCO_TONE[risco]} label={RISCO_LABEL[risco]} />
                   {dsm !== null && dsm >= 3 && (
                     <span
                       className={`ml-1 text-[11px] ${
@@ -210,56 +213,29 @@ export function OCTable({
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div className="flex gap-1">
-                    <button
-                      type="button"
-                      title="Cobrar por e-mail"
-                      onClick={() => onCobrar(o, 'mail')}
-                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
-                    >
+                    <IconButton title="Cobrar por e-mail" onClick={() => onCobrar(o, 'mail')}>
                       ✉
-                    </button>
-                    <button
-                      type="button"
-                      title="Cobrar por WhatsApp"
-                      onClick={() => onCobrar(o, 'wpp')}
-                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
-                    >
+                    </IconButton>
+                    <IconButton title="Cobrar por WhatsApp" onClick={() => onCobrar(o, 'wpp')}>
                       💬
-                    </button>
-                    <button
-                      type="button"
-                      title="Histórico e previsão"
-                      onClick={() => onHistorico(o)}
-                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
-                    >
+                    </IconButton>
+                    <IconButton title="Histórico e previsão" onClick={() => onHistorico(o)}>
                       📋
-                    </button>
+                    </IconButton>
                     {solVinculada && (
-                      <button
-                        type="button"
+                      <IconButton
                         title={`Ver parecer do produto — ${solVinculada.produto}`}
                         onClick={() => navigate(`/pareceres?produto=${encodeURIComponent(solVinculada.produto)}`)}
-                        className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                       >
                         🩺
-                      </button>
+                      </IconButton>
                     )}
-                    <button
-                      type="button"
-                      title="Editar"
-                      onClick={() => onEditar(o)}
-                      className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
-                    >
+                    <IconButton title="Editar" onClick={() => onEditar(o)}>
                       ✏
-                    </button>
-                    <button
-                      type="button"
-                      title="Excluir"
-                      onClick={() => onExcluir(o)}
-                      className="rounded border border-slate-200 px-1.5 py-1 text-status-red hover:bg-status-red-bg"
-                    >
+                    </IconButton>
+                    <IconButton title="Excluir" tone="danger" onClick={() => onExcluir(o)}>
                       ✕
-                    </button>
+                    </IconButton>
                   </div>
                 </td>
               </tr>

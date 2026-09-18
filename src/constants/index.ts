@@ -98,3 +98,20 @@ export const MOTIVOS_OCORRENCIA = [
  * ajustável aqui se o número certo for outro.
  */
 export const SLA_INTERNO_DIAS = 3
+
+/**
+ * Paleta de cores pra séries de gráfico (barras de categoria em Pareceres/Dashboard
+ * e OCs/AnaliseCausas) — antes cada tela tinha seu próprio array de hex, parcialmente
+ * sobreposto mas divergente. Union das duas paletas antigas, único ponto de verdade agora.
+ */
+export const CORES_GRAFICO = [
+  '#3182CE',
+  '#38A169',
+  '#DD6B20',
+  '#E53E3E',
+  '#805AD5',
+  '#00B5D8',
+  '#D69E2E',
+  '#DD2C6C',
+  '#4A5568',
+] as const
