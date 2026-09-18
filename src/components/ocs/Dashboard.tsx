@@ -3,6 +3,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { PRAZO } from '@/constants'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoRecentePorOC, useMarcarRespondida } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
@@ -42,6 +43,7 @@ export function Dashboard() {
   const excluir = useExcluirOC(hospitalId)
   const marcarRespondida = useMarcarRespondida()
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [filtro, setFiltro] = useState<FiltroPrioridade>('todas')
   const [modal, setModal] = useState<ModalDash>(null)
@@ -72,7 +74,7 @@ export function Dashboard() {
     .sort((a, b) => PRIORIDADE_ORDEM[a.prioridade] - PRIORIDADE_ORDEM[b.prioridade])
 
   const handleExcluir = async (oc: OC) => {
-    if (!confirm(`Excluir a OC ${oc.id}?`)) return
+    if (!(await confirmar({ message: `Excluir a OC ${oc.id}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(oc.id)
       toast.show(`OC ${oc.id} excluída`)

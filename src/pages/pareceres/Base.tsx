@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Parecer } from '@/types'
@@ -25,6 +26,7 @@ export default function Base() {
   const excluir = useExcluirParecer()
   const abrirPdf = useAbrirPdfParecer()
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [categoria, setCategoria] = useState('')
   const [busca, setBusca] = useState('')
@@ -43,7 +45,8 @@ export default function Base() {
   })
 
   const handleExcluir = async (p: Parecer) => {
-    if (!confirm(`Apagar o parecer de ${p.cod} — ${p.nome}?`)) return
+    if (!(await confirmar({ message: `Apagar o parecer de ${p.cod} — ${p.nome}? Essa ação não pode ser desfeita.`, tone: 'danger', confirmLabel: 'Apagar' })))
+      return
     try {
       await excluir.mutateAsync(p.cod)
       toast.show('Parecer removido')

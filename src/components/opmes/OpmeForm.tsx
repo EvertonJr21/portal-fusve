@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { HOSPITAIS, STATUS_OPME, type HospitalId } from '@/constants'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
@@ -36,9 +37,11 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
   const salvar = useSalvarOpme(form.hospitalId)
   const excluir = useExcluirOpme(form.hospitalId)
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const handleExcluir = async () => {
-    if (!opme || !confirm(`Excluir o OPME de ${opme.paciente}?`)) return
+    if (!opme || !(await confirmar({ message: `Excluir o OPME de ${opme.paciente}?`, tone: 'danger', confirmLabel: 'Excluir' })))
+      return
     try {
       await excluir.mutateAsync(opme.id)
       toast.show('OPME excluído')

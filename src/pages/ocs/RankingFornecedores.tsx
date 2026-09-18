@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
@@ -54,6 +55,7 @@ export default function RankingFornecedores() {
   const { data: forns = [] } = useFornecedores()
   const { data: cobrancas = [], isLoading: carregandoHist } = useHistoricoTodos()
   const { resetAt, resetar, limpar } = useScoreReset()
+  const confirmar = useConfirm()
 
   const [periodo, setPeriodo] = useState<(typeof PERIODOS)[number]['value']>('90')
   const [minOCs, setMinOCs] = useState(3)
@@ -69,8 +71,13 @@ export default function RankingFornecedores() {
     return calcularScoresTodos(forns, ocsPeriodo, sols, cobrancas).sort((a, b) => b.score - a.score)
   }, [forns, ocs, sols, cobrancas, periodo, isLoading, resetAt])
 
-  const handleResetar = () => {
-    if (!confirm('Isso faz o score e o ranking passarem a contar só as OCs solicitadas a partir de agora — OCs anteriores continuam no sistema, só saem do cálculo. Confirmar?')) return
+  const handleResetar = async () => {
+    if (
+      !(await confirmar(
+        'Isso faz o score e o ranking passarem a contar só as OCs solicitadas a partir de agora — OCs anteriores continuam no sistema, só saem do cálculo. Confirmar?',
+      ))
+    )
+      return
     resetar()
   }
 

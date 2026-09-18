@@ -4,7 +4,14 @@ import { dataPrazo, diasSemMovimentacao, previsaoAtiva, statusPrazo } from '@/ut
 
 export type FiltroPrazo = '' | 'vencida' | 'urgente' | 'ok'
 export type FiltroVinculo = '' | 'linked' | 'unlinked'
-export type FiltroRapido = 'all' | 'vencidas' | 'urgentes' | 'sem_previsao' | 'sem_movimentacao' | 'parciais'
+export type FiltroRapido =
+  | 'all'
+  | 'vencidas'
+  | 'urgentes'
+  | 'sem_previsao'
+  | 'sem_movimentacao'
+  | 'parciais'
+  | 'previsao_descumprida'
 
 export interface OCFiltroState {
   busca: string
@@ -69,6 +76,7 @@ export function filtrarOCs(ocs: OC[], sols: Solicitacao[], f: OCFiltroState): OC
       if (dsm === null || dsm < 7) return false
     }
     if (f.rapido === 'parciais' && o.sit !== 'Parcialmente Atendida') return false
+    if (f.rapido === 'previsao_descumprida' && !o.previsaoDescumprida) return false
 
     return true
   })

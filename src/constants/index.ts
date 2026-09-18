@@ -1,17 +1,17 @@
+// Cor institucional de cada hospital vive só nos tokens --color-huv/--color-hmk
+// (src/index.css) — não duplicar aqui em hex, ver classes bg-huv/bg-hmk.
 export const HOSPITAIS = {
   huv: {
     id: 'huv',
     nome: 'HUV',
     nomeCompleto: 'Hospital Universitário de Vassouras — HUV',
     sigla: 'HUV',
-    cor: '#1A4A80',
   },
   mkr: {
     id: 'mkr',
     nome: 'HMK',
     nomeCompleto: 'Hospital Mario Kroeff — HMK',
     sigla: 'HMK',
-    cor: '#196030',
   },
 } as const
 

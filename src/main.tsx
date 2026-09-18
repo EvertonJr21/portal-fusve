@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { AuthProvider } from './components/AuthProvider.tsx'
 import { HospitalProvider } from './components/HospitalProvider.tsx'
+import { ConfirmProvider } from './components/ui/ConfirmDialog.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { useAuth } from './hooks/useAuth.ts'
 import './index.css'
@@ -42,15 +43,17 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <AuthProvider>
-          <AuthGate>
-            <HospitalProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
-            </HospitalProvider>
-          </AuthGate>
-        </AuthProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <AuthGate>
+              <HospitalProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </HospitalProvider>
+            </AuthGate>
+          </AuthProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,

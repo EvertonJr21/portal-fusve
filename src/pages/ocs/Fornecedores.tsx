@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableHead } from '@/components/ui/Table'
 import { FornecedorForm } from '@/components/ocs/FornecedorForm'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useExcluirFornecedor, useFornecedores } from '@/hooks/useFornecedores'
 import { useToast } from '@/hooks/useToast'
 import type { Fornecedor } from '@/types'
@@ -10,6 +11,7 @@ export default function Fornecedores() {
   const { data: forns = [], isLoading } = useFornecedores()
   const excluir = useExcluirFornecedor()
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState<'novo' | Fornecedor | null>(null)
@@ -19,7 +21,7 @@ export default function Fornecedores() {
     : forns
 
   const handleExcluir = async (f: Fornecedor) => {
-    if (!confirm(`Excluir o fornecedor ${f.nome}?`)) return
+    if (!(await confirmar({ message: `Excluir o fornecedor ${f.nome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(f.id)
       toast.show(`Fornecedor ${f.nome} excluído`)

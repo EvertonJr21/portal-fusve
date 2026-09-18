@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Table, TableHead } from '@/components/ui/Table'
 import { SolForm } from '@/components/ocs/SolForm'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useAtualizarSituacaoSol, useExcluirSol, useSols } from '@/hooks/useSols'
@@ -26,6 +27,7 @@ export default function Solicitacoes() {
   const atualizarSituacao = useAtualizarSituacaoSol(hospitalId)
   const excluir = useExcluirSol(hospitalId)
   const toast = useToast()
+  const confirmar = useConfirm()
   const [searchParams] = useSearchParams()
 
   const [busca, setBusca] = useState(() => searchParams.get('q') ?? '')
@@ -71,7 +73,7 @@ export default function Solicitacoes() {
   }
 
   const handleExcluir = async (s: Solicitacao) => {
-    if (!confirm(`Excluir a Solicitação ${s.id}?`)) return
+    if (!(await confirmar({ message: `Excluir a Solicitação ${s.id}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(s.id)
       toast.show(`Solicitação ${s.id} excluída`)

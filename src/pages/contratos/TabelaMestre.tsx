@@ -6,6 +6,7 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useContratos, useExcluirContrato } from '@/hooks/useContratos'
 import { useHospital } from '@/hooks/useHospital'
 import { useToast } from '@/hooks/useToast'
@@ -17,6 +18,7 @@ export default function TabelaMestre() {
   const { data: contratos = [], isLoading, error } = useContratos(hospitalId)
   const excluir = useExcluirContrato(hospitalId)
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [status, setStatus] = useState('')
   const [tipo, setTipo] = useState('')
@@ -41,7 +43,7 @@ export default function TabelaMestre() {
   const vencidos = contratos.filter((c) => statusVigencia(c) === 'vencido').length
 
   const handleExcluir = async (c: ContratoHeader) => {
-    if (!confirm(`Excluir o contrato com ${c.fornecedorNome}?`)) return
+    if (!(await confirmar({ message: `Excluir o contrato com ${c.fornecedorNome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(c.id)
       toast.show('Contrato excluído')

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { OCFilters } from '@/components/ocs/OCFilters'
-import { FILTRO_INICIAL, filtrarOCs, type OCFiltroState } from '@/components/ocs/filters'
+import { FILTRO_INICIAL, filtrarOCs, type FiltroRapido, type OCFiltroState } from '@/components/ocs/filters'
 import { KpisOC } from '@/components/ocs/KpisOC'
 import { OCCobrar } from '@/components/ocs/OCCobrar'
 import { OCForm } from '@/components/ocs/OCForm'
@@ -10,6 +10,7 @@ import { OCHistorico } from '@/components/ocs/OCHistorico'
 import { OCTable } from '@/components/ocs/OCTable'
 import { OCVincular } from '@/components/ocs/OCVincular'
 import { SkeletonRows } from '@/components/ui/Skeleton'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useAtualizarSituacaoOC, useExcluirOC, useOCs } from '@/hooks/useOCs'
@@ -25,6 +26,13 @@ type Modal =
   | { tipo: 'cobrar'; oc: OC; canal: 'mail' | 'wpp' }
   | null
 
+const RAPIDOS_VALIDOS: FiltroRapido[] = ['vencidas', 'urgentes', 'sem_previsao', 'sem_movimentacao', 'parciais', 'previsao_descumprida']
+
+function rapidoDaUrl(searchParams: URLSearchParams): FiltroRapido | null {
+  const r = searchParams.get('rapido')
+  return RAPIDOS_VALIDOS.includes(r as FiltroRapido) ? (r as FiltroRapido) : null
+}
+
 export default function OrdensDeCompra() {
   const { hospitalId } = useHospital()
   const { data: ocs = [], isLoading, error } = useOCs(hospitalId)
@@ -33,16 +41,19 @@ export default function OrdensDeCompra() {
   const atualizarSituacao = useAtualizarSituacaoOC(hospitalId)
   const excluir = useExcluirOC(hospitalId)
   const toast = useToast()
+  const confirmar = useConfirm()
   const [searchParams] = useSearchParams()
 
   const [filtro, setFiltro] = useState<OCFiltroState>(() => ({
     ...FILTRO_INICIAL,
     busca: searchParams.get('q') ?? '',
+    rapido: rapidoDaUrl(searchParams) ?? FILTRO_INICIAL.rapido,
   }))
 
   useEffect(() => {
     const q = searchParams.get('q')
-    if (q) setFiltro((f) => ({ ...f, busca: q }))
+    const rapido = rapidoDaUrl(searchParams)
+    if (q || rapido) setFiltro((f) => ({ ...f, ...(q ? { busca: q } : {}), ...(rapido ? { rapido } : {}) }))
   }, [searchParams])
   const [modal, setModal] = useState<Modal>(null)
 
@@ -57,7 +68,7 @@ export default function OrdensDeCompra() {
   }
 
   const handleExcluir = async (oc: OC) => {
-    if (!confirm(`Excluir a OC ${oc.id}?`)) return
+    if (!(await confirmar({ message: `Excluir a OC ${oc.id}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(oc.id)
       toast.show(`OC ${oc.id} excluída`)

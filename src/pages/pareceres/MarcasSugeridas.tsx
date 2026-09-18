@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonRows } from '@/components/ui/Skeleton'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useExcluirMarcasSugeridas, useMarcasSugeridas, useSalvarMarcasSugeridas } from '@/hooks/useMarcasSugeridas'
 import { useToast } from '@/hooks/useToast'
 
@@ -14,6 +15,7 @@ function CategoriaCard({ cat, marcas }: CategoriaCardProps) {
   const salvar = useSalvarMarcasSugeridas()
   const excluir = useExcluirMarcasSugeridas()
   const toast = useToast()
+  const confirmar = useConfirm()
   const [input, setInput] = useState('')
 
   const adicionar = () => {
@@ -25,8 +27,9 @@ function CategoriaCard({ cat, marcas }: CategoriaCardProps) {
 
   const remover = (m: string) => salvar.mutate({ cat, marcas: marcas.filter((x) => x !== m) })
 
-  const handleExcluir = () => {
-    if (!confirm(`Remover a categoria "${cat}" da lista de recomendações?`)) return
+  const handleExcluir = async () => {
+    if (!(await confirmar({ message: `Remover a categoria "${cat}" da lista de recomendações?`, tone: 'danger', confirmLabel: 'Remover' })))
+      return
     excluir.mutate(cat, { onSuccess: () => toast.show('Categoria removida') })
   }
 

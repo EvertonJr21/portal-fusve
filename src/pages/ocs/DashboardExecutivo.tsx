@@ -54,9 +54,9 @@ export default function DashboardExecutivo() {
         <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Ordens de Compra</h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <CardLink to="/ocs/ordens" label="OCs abertas" value={pendentes.length} tone="blue" />
-          <CardLink to="/ocs" label="Atrasadas" value={vencidas.length} tone="red" />
-          <CardLink to="/ocs" label="Sem previsão" value={semPrevisao.length} tone="amber" />
-          <CardLink to="/ocs" label="Previsões descumpridas" value={descumpridas.length} tone="red" />
+          <CardLink to="/ocs/ordens?rapido=vencidas" label="Atrasadas" value={vencidas.length} tone="red" />
+          <CardLink to="/ocs/ordens?rapido=sem_previsao" label="Sem previsão" value={semPrevisao.length} tone="amber" />
+          <CardLink to="/ocs/ordens?rapido=previsao_descumprida" label="Previsões descumpridas" value={descumpridas.length} tone="red" />
         </div>
       </div>
 

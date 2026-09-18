@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import type { HospitalId } from '@/constants'
 import { FINAL_SIT, MOTIVOS_OCORRENCIA, PRAZO } from '@/constants'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useHistOC, useMarcarRespondida } from '@/hooks/useHistOC'
 import { useAtualizarOC } from '@/hooks/useOCs'
 import { useToast } from '@/hooks/useToast'
@@ -33,6 +34,7 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
   const atualizar = useAtualizarOC(hospitalId)
   const marcarRespondida = useMarcarRespondida()
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [previsaoForn, setPrevisaoForn] = useState(toInput(oc.previsaoForn))
   const [dataEntregaReal, setDataEntregaReal] = useState(toInput(oc.dataEntregaReal))
@@ -81,7 +83,7 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
 
     let novaSit = oc.sit
     if (dEntregaReal && !FINAL_SIT.includes(oc.sit as (typeof FINAL_SIT)[number])) {
-      if (confirm('Entrega registrada. Marcar a OC como "Atendida"?')) novaSit = 'Atendida'
+      if (await confirmar('Entrega registrada. Marcar a OC como "Atendida"?')) novaSit = 'Atendida'
     }
 
     try {

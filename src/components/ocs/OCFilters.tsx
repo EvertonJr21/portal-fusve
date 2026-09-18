@@ -15,6 +15,7 @@ const CHIPS: { key: FiltroRapido; label: string }[] = [
   { key: 'sem_previsao', label: 'Sem previsão' },
   { key: 'sem_movimentacao', label: 'Sem movimentação' },
   { key: 'parciais', label: 'Parciais' },
+  { key: 'previsao_descumprida', label: 'Previsão descumprida' },
 ]
 
 interface OCFiltersProps {
@@ -88,7 +89,8 @@ export function OCFilters({ ocs, filtro, onChange }: OCFiltersProps) {
 
         <input
           type="text"
-          placeholder="Buscar fornecedor ou nº OC..."
+          placeholder="Filtrar por fornecedor ou nº OC nesta lista..."
+          title="Filtra a tabela abaixo — diferente da busca global no topo, que navega para outras telas"
           className="min-w-48 flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           value={filtro.busca}
           onChange={(e) => set('busca', e.target.value)}

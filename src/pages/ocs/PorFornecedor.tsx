@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { FINAL_SIT, HOSPITAIS } from '@/constants'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useAtualizarOC, useOCs } from '@/hooks/useOCs'
@@ -28,6 +29,7 @@ export default function PorFornecedor() {
   const registrar = useRegistrarCobranca()
   const atualizar = useAtualizarOC(hospitalId)
   const toast = useToast()
+  const confirmar = useConfirm()
 
   const [prazoFiltro, setPrazoFiltro] = useState<'' | 'critico' | 'ok'>('')
   const [busca, setBusca] = useState('')
@@ -103,7 +105,7 @@ export default function PorFornecedor() {
       toast.show('Nenhum fornecedor visível com contato cadastrado', 'warn')
       return
     }
-    if (!confirm(`Enviar cobrança em lote para ${comContato.length} fornecedor(es)?`)) return
+    if (!(await confirmar(`Enviar cobrança em lote para ${comContato.length} fornecedor(es)?`))) return
     setEnviandoTodos(true)
     let enviados = 0
     for (const g of comContato) {
