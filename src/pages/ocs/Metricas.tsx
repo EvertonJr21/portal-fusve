@@ -27,8 +27,10 @@ function calcularLinha(oc: OC, sols: Solicitacao[]): LinhaMetrica | null {
 
   const dSolic = dataPrazo(oc, sols) ?? dOC
   const dPrazoInst = addDias(dSolic, PRAZO)
-  // Prazo do fornecedor: contado a partir da data da própria OC, não da Solicitação.
-  const dPrazoForn = addDias(dOC, PRAZO)
+  // Prazo do fornecedor: a previsão que o Everton registra na OC (oc.previsaoForn), não um
+  // prazo calculado — não tem por que coincidir com o institucional. Sem previsão registrada,
+  // usa a própria data de entrega como fallback (nada pra comparar, então não penaliza).
+  const dPrazoForn = (oc.previsaoForn && parseDMY(oc.previsaoForn)) || dEntrega
 
   return {
     oc,
