@@ -120,6 +120,9 @@ export default function Importar() {
           addLog(`OC ${item.id} — ${item.sit} (nova)${entregaNaChegada ? ' (entrega registrada hoje)' : ''}`)
         }
       }
+      if (added === 0 && updated === 0 && skipped > 0) {
+        addLog('ℹ Nenhuma OC nova ou alterada — esse arquivo já parece ter sido importado antes.')
+      }
       const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ OCs CSV: ${resumo}`)
       setCardStatus('ocs', { state: 'done', message: resumo })
@@ -179,6 +182,9 @@ export default function Importar() {
           addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
         }
       }
+      if (added === 0 && updated === 0 && skipped > 0) {
+        addLog('ℹ Nenhuma solicitação nova ou alterada — esse arquivo já parece ter sido importado antes.')
+      }
       const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ Solicitações CSV: ${resumo}`)
       setCardStatus('sols', { state: 'done', message: resumo })
@@ -220,6 +226,7 @@ export default function Importar() {
 
       let vinculados = 0
       let criadas = 0
+      let jaCorretas = 0
 
       for (let i = 0; i < vinculos.length; i++) {
         const v = vinculos[i]
@@ -243,11 +250,15 @@ export default function Importar() {
           await ocRepository.atualizarCamposOC(v.ocId, { solicitacaoId: v.solicitacaoId })
           vinculados++
         } else {
+          jaCorretas++
           continue
         }
         addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
       }
-      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)${invalidos.length ? ` | ${invalidos.length} ignorado(s) (formato inválido)` : ''}`
+      if (vinculados === 0 && criadas === 0 && jaCorretas > 0) {
+        addLog('ℹ Nenhum vínculo novo — esse arquivo já parece ter sido importado antes.')
+      }
+      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)${jaCorretas ? ` | ${jaCorretas} já corretas` : ''}${invalidos.length ? ` | ${invalidos.length} ignorado(s) (formato inválido)` : ''}`
       addLog(`─ Acompanhamento: ${resumo}`)
       setCardStatus('acomp', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
