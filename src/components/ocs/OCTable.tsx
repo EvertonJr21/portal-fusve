@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
+import { Pagination } from '@/components/ui/Pagination'
 import { StatusDot, type StatusDotTone } from '@/components/ui/StatusDot'
 import { SortableTh, Table, TableHead, type SortDir } from '@/components/ui/Table'
 import { FINAL_SIT, SITUACOES_OC } from '@/constants'
@@ -78,7 +78,6 @@ export function OCTable({
     return cmp * dir
   })
 
-  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / PG))
   const inicio = pagina * PG
   const pagina_atual = ordenadas.slice(inicio, inicio + PG)
 
@@ -244,25 +243,7 @@ export function OCTable({
         </tbody>
       </Table>
 
-      <div className="flex items-center justify-between text-sm text-slate-500">
-        <span>
-          {ordenadas.length === 0
-            ? '0 de 0'
-            : `${inicio + 1}–${Math.min(inicio + PG, ordenadas.length)} de ${ordenadas.length}`}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={pagina === 0} onClick={() => setPagina((p) => p - 1)}>
-            ← Anterior
-          </Button>
-          <Button
-            variant="outline"
-            disabled={pagina >= totalPaginas - 1}
-            onClick={() => setPagina((p) => p + 1)}
-          >
-            Próxima →
-          </Button>
-        </div>
-      </div>
+      <Pagination page={pagina} pageSize={PG} totalItems={ordenadas.length} onPageChange={setPagina} />
     </div>
   )
 }

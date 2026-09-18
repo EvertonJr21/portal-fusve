@@ -7,16 +7,46 @@ export interface NavItem {
   end?: boolean
 }
 
+export interface NavGroup {
+  /** Sem título = grupo "solto", sem cabeçalho (mesmo visual de antes, pra módulos com poucos itens). */
+  title?: string
+  items: NavItem[]
+}
+
 interface SidebarProps {
   title: string
-  items: NavItem[]
+  /** Lista simples (sem seção) — atalho pra `groups={[{ items }]}`, mantém compatibilidade com módulos de poucos itens. */
+  items?: NavItem[]
+  /** Menu agrupado por seção funcional — usado quando o módulo tem itens demais pra uma lista linear só (ex: OCs). */
+  groups?: NavGroup[]
   emBreve?: { title: string; items: string[] }[]
 }
 
 const STORAGE_KEY = 'fusve:sidebarColapsada'
 
+function NavItemLink({ item }: { item: NavItem }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={({ isActive }) =>
+        `relative block rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
+          isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && <span className="absolute inset-y-1.5 left-0 w-[3px] animate-scale-in rounded-full bg-blue-600" />}
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  )
+}
+
 /** Sidebar de um módulo: link "voltar aos módulos" + navegação própria do módulo. */
-export function Sidebar({ title, items, emBreve = [] }: SidebarProps) {
+export function Sidebar({ title, items, groups, emBreve = [] }: SidebarProps) {
   const [colapsada, setColapsada] = useState(() => localStorage.getItem(STORAGE_KEY) === '1')
 
   const alternar = () => {
@@ -61,30 +91,23 @@ export function Sidebar({ title, items, emBreve = [] }: SidebarProps) {
         </button>
       </div>
       <h2 className="mb-1 px-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{title}</h2>
-      <ul className="mb-4 flex flex-col gap-0.5">
-        {items.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `relative block rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ${
-                  isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <span className="absolute inset-y-1.5 left-0 w-[3px] animate-scale-in rounded-full bg-blue-600" />
-                  )}
-                  {item.label}
-                </>
-              )}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
+
+      {(groups ?? [{ items: items ?? [] }]).map((grupo, i) => (
+        <div key={grupo.title ?? i} className="mb-3">
+          {grupo.title && (
+            <h3 className="mb-1 mt-2 px-3 text-[10px] font-bold uppercase tracking-wide text-slate-400/70">
+              {grupo.title}
+            </h3>
+          )}
+          <ul className="flex flex-col gap-0.5">
+            {grupo.items.map((item) => (
+              <li key={item.to}>
+                <NavItemLink item={item} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
 
       {emBreve.map((grupo) => (
         <div key={grupo.title} className="mb-4">

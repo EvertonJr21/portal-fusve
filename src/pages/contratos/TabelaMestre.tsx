@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
@@ -13,6 +14,9 @@ import { useHospital } from '@/hooks/useHospital'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoHeader } from '@/types'
 import { statusVigencia } from '@/utils/contrato'
+
+const PG = 15
+type VigenciaFiltro = '' | 'vencendo' | 'vencido'
 
 export default function TabelaMestre() {
   const { hospitalId } = useHospital()
@@ -24,6 +28,8 @@ export default function TabelaMestre() {
   const [status, setStatus] = useState('')
   const [tipo, setTipo] = useState('')
   const [busca, setBusca] = useState('')
+  const [vigenciaFiltro, setVigenciaFiltro] = useState<VigenciaFiltro>('')
+  const [pagina, setPagina] = useState(0)
   const [modal, setModal] = useState<'novo' | ContratoHeader | null>(null)
 
   const filtrados = contratos.filter((c) => {
@@ -33,8 +39,20 @@ export default function TabelaMestre() {
       const q = busca.toLowerCase()
       if (!c.fornecedorNome.toLowerCase().includes(q) && !c.fornecedorCnpj.includes(q)) return false
     }
+    if (vigenciaFiltro) {
+      const s = statusVigencia(c)
+      if (vigenciaFiltro === 'vencendo' && s !== 'atencao' && s !== 'critico') return false
+      if (vigenciaFiltro === 'vencido' && s !== 'vencido') return false
+    }
     return true
   })
+
+  useEffect(() => {
+    setPagina(0)
+  }, [status, tipo, busca, vigenciaFiltro])
+
+  const inicio = pagina * PG
+  const paginados = filtrados.slice(inicio, inicio + PG)
 
   const ativos = contratos.filter((c) => c.status === 'Ativo').length
   const vencendoEmBreve = contratos.filter((c) => {
@@ -71,10 +89,37 @@ export default function TabelaMestre() {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiCard label="Total" value={contratos.length} tone="blue" />
-        <KpiCard label="Ativos" value={ativos} tone="green" />
-        <KpiCard label="Vencendo em breve" value={vencendoEmBreve} tone="amber" />
-        <KpiCard label="Vencidos" value={vencidos} tone="red" />
+        <KpiCard
+          label="Total"
+          value={contratos.length}
+          tone="blue"
+          active={!status && !vigenciaFiltro}
+          onClick={() => {
+            setStatus('')
+            setVigenciaFiltro('')
+          }}
+        />
+        <KpiCard
+          label="Ativos"
+          value={ativos}
+          tone="green"
+          active={status === 'Ativo'}
+          onClick={() => setStatus((s) => (s === 'Ativo' ? '' : 'Ativo'))}
+        />
+        <KpiCard
+          label="Vencendo em breve"
+          value={vencendoEmBreve}
+          tone="amber"
+          active={vigenciaFiltro === 'vencendo'}
+          onClick={() => setVigenciaFiltro((v) => (v === 'vencendo' ? '' : 'vencendo'))}
+        />
+        <KpiCard
+          label="Vencidos"
+          value={vencidos}
+          tone="red"
+          active={vigenciaFiltro === 'vencido'}
+          onClick={() => setVigenciaFiltro((v) => (v === 'vencido' ? '' : 'vencido'))}
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -122,7 +167,7 @@ export default function TabelaMestre() {
                 </td>
               </tr>
             )}
-            {filtrados.map((c) => (
+            {paginados.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-3 py-2 text-xs">
                   <div className="font-medium text-slate-800">{c.fornecedorNome}</div>
@@ -142,6 +187,10 @@ export default function TabelaMestre() {
             ))}
           </tbody>
         </Table>
+      )}
+
+      {!isLoading && filtrados.length > 0 && (
+        <Pagination page={pagina} pageSize={PG} totalItems={filtrados.length} onPageChange={setPagina} />
       )}
 
       {modal && (

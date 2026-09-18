@@ -2,7 +2,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { BuscaGlobal } from '@/components/ocs/BuscaGlobal'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
 import { PageTransition } from '@/components/ui/PageTransition'
-import { Sidebar, type NavItem } from '@/components/ui/Sidebar'
+import { Sidebar, type NavGroup, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import AnaliseCausas from '@/pages/ocs/AnaliseCausas'
 import DashboardExecutivo from '@/pages/ocs/DashboardExecutivo'
@@ -27,25 +27,47 @@ import DashboardPareceres from '@/pages/pareceres/Dashboard'
 import MarcasSugeridas from '@/pages/pareceres/MarcasSugeridas'
 import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
-const OCS_ITEMS: NavItem[] = [
-  { to: '/ocs', label: 'Central de Pendências', end: true },
-  { to: '/ocs/executivo', label: 'Dashboard Executivo' },
-  { to: '/ocs/ordens', label: 'Ordens de Compra' },
-  { to: '/ocs/solicitacoes', label: 'Solicitações' },
-  { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
-  { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
-  { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
-  { to: '/ocs/sla', label: 'SLA' },
-  { to: '/ocs/causas', label: 'Análise de Causas' },
-  { to: '/ocs/metricas', label: 'Métricas' },
-  { to: '/ocs/importar', label: 'Importar' },
-  { to: '/ocs/exportar', label: 'Exportar' },
+// Agrupado por seção funcional — 12 itens numa lista linear só era o menu mais
+// carregado do sistema, sem nenhuma hierarquia (auditoria de UX, 18/09/2026).
+const OCS_GROUPS: NavGroup[] = [
+  {
+    title: 'Operação',
+    items: [
+      { to: '/ocs', label: 'Central de Pendências', end: true },
+      { to: '/ocs/executivo', label: 'Dashboard Executivo' },
+      { to: '/ocs/ordens', label: 'Ordens de Compra' },
+      { to: '/ocs/solicitacoes', label: 'Solicitações' },
+    ],
+  },
+  {
+    title: 'Fornecedores',
+    items: [
+      { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
+      { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
+      { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
+    ],
+  },
+  {
+    title: 'Análise',
+    items: [
+      { to: '/ocs/sla', label: 'SLA' },
+      { to: '/ocs/causas', label: 'Análise de Causas' },
+      { to: '/ocs/metricas', label: 'Métricas' },
+    ],
+  },
+  {
+    title: 'Dados',
+    items: [
+      { to: '/ocs/importar', label: 'Importar' },
+      { to: '/ocs/exportar', label: 'Exportar' },
+    ],
+  },
 ]
 
 function OCsLayout() {
   return (
     <div className="flex flex-1">
-      <Sidebar title="Controle de OCs" items={OCS_ITEMS} />
+      <Sidebar title="Controle de OCs" groups={OCS_GROUPS} />
       <main className="flex-1 overflow-y-auto p-6">
         <div className="mb-4">
           <BuscaGlobal />

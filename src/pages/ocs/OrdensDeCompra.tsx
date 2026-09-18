@@ -89,7 +89,7 @@ export default function OrdensDeCompra() {
 
       {error && <p className="text-sm text-status-red">Erro ao carregar OCs: {error.message}</p>}
 
-      <KpisOC ocs={filtradas} sols={sols} />
+      <KpisOC ocs={filtradas} sols={sols} filtro={filtro} onChange={setFiltro} />
 
       <OCFilters ocs={ocs} filtro={filtro} onChange={setFiltro} />
 

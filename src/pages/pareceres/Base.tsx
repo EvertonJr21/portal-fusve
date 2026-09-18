@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MarcasBadge } from '@/components/pareceres/MarcasBadge'
 import { ParecerForm } from '@/components/pareceres/ParecerForm'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import { Modal } from '@/components/ui/Modal'
+import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -11,15 +12,17 @@ import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/use
 import { useToast } from '@/hooks/useToast'
 import type { Parecer } from '@/types'
 
-function validadeInfo(dataISO: string): { texto: string; classe: string } | null {
+const PG = 15
+
+function validadeInfo(dataISO: string): { texto: string; classe: string; revisar: boolean } | null {
   if (!dataISO) return null
   const dt = new Date(dataISO)
   if (Number.isNaN(dt.getTime())) return null
   const agora = new Date()
   const meses = (agora.getFullYear() - dt.getFullYear()) * 12 + (agora.getMonth() - dt.getMonth())
-  if (meses < 12) return { texto: `✓ ${meses}m`, classe: 'text-status-green' }
-  if (meses < 18) return { texto: `⚠ ${meses}m`, classe: 'text-status-amber' }
-  return { texto: `⚠ ${meses}m — Rever`, classe: 'text-status-red' }
+  if (meses < 12) return { texto: `✓ ${meses}m`, classe: 'text-status-green', revisar: false }
+  if (meses < 18) return { texto: `⚠ ${meses}m`, classe: 'text-status-amber', revisar: false }
+  return { texto: `⚠ ${meses}m — Rever`, classe: 'text-status-red', revisar: true }
 }
 
 export default function Base() {
@@ -31,6 +34,8 @@ export default function Base() {
 
   const [categoria, setCategoria] = useState('')
   const [busca, setBusca] = useState('')
+  const [soRevisar, setSoRevisar] = useState(false)
+  const [pagina, setPagina] = useState(0)
   const [editando, setEditando] = useState<Parecer | null>(null)
   const [gerandoPdf, setGerandoPdf] = useState(false)
 
@@ -42,8 +47,18 @@ export default function Base() {
       const q = busca.toUpperCase()
       if (!p.cod.includes(q) && !p.nome.toUpperCase().includes(q)) return false
     }
+    if (soRevisar && !validadeInfo(p.dataParecer)?.revisar) return false
     return true
   })
+
+  const aRevisar = pareceres.filter((p) => validadeInfo(p.dataParecer)?.revisar).length
+
+  useEffect(() => {
+    setPagina(0)
+  }, [categoria, busca, soRevisar])
+
+  const inicio = pagina * PG
+  const paginados = filtrados.slice(inicio, inicio + PG)
 
   const handleExcluir = async (p: Parecer) => {
     if (!(await confirmar({ message: `Apagar o parecer de ${p.cod} — ${p.nome}? Essa ação não pode ser desfeita.`, tone: 'danger', confirmLabel: 'Apagar' })))
@@ -100,6 +115,17 @@ export default function Base() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
+        <button
+          type="button"
+          onClick={() => setSoRevisar((v) => !v)}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+            soRevisar
+              ? 'border-status-red bg-status-red text-white'
+              : 'border-slate-300 text-slate-600 hover:border-status-red/50 hover:text-status-red'
+          }`}
+        >
+          ⚠ A revisar {aRevisar > 0 && `(${aRevisar})`}
+        </button>
       </div>
 
       {isLoading ? (
@@ -127,7 +153,7 @@ export default function Base() {
                 </td>
               </tr>
             )}
-            {filtrados.map((p) => {
+            {paginados.map((p) => {
               const validade = validadeInfo(p.dataParecer)
               return (
                 <tr key={p.cod} className="border-t border-slate-100 hover:bg-slate-50">
@@ -163,6 +189,10 @@ export default function Base() {
             })}
           </tbody>
         </Table>
+      )}
+
+      {!isLoading && filtrados.length > 0 && (
+        <Pagination page={pagina} pageSize={PG} totalItems={filtrados.length} onPageChange={setPagina} />
       )}
 
       {editando && (
