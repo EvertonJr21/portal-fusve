@@ -7,6 +7,34 @@ import type { FornecedorImportado } from '@/utils/fornecedoresCsv'
 
 type FornRow = Database['public']['Tables']['forns']['Row']
 
+const TAMANHO_PAGINA = 1000
+
+/**
+ * Busca todas as linhas de uma query, paginando com `.range()` — o PostgREST
+ * do Supabase limita a **1000 linhas por padrão** mesmo sem `.limit()`
+ * explícito. Bug real (21/09/2026, achado depois da importação do
+ * R_FORNEC.csv fazer `forns` passar de algumas dezenas pra ~4.446 linhas):
+ * `listarFornecedores()`/`mapaFornecedoresExistentes()` sem paginação
+ * devolviam só as primeiras ~1000 — a lista de fornecedores da tela e a
+ * comparação "já existe?" da importação ficavam incompletas em silêncio
+ * (sem erro nenhum, só menos linhas do que deveria). A query passada
+ * **precisa** ter uma ordenação com desempate único (`id`, que é PK) —
+ * `.range()` sem ordem estável pode pular ou repetir linha entre páginas.
+ */
+async function buscarTudo<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
+  const todas: T[] = []
+  let inicio = 0
+  for (;;) {
+    const { data, error } = await query(inicio, inicio + TAMANHO_PAGINA - 1)
+    if (error) throw error
+    const pagina = data ?? []
+    todas.push(...pagina)
+    if (pagina.length < TAMANHO_PAGINA) break
+    inicio += TAMANHO_PAGINA
+  }
+  return todas
+}
+
 export function toFornecedor(row: FornRow): Fornecedor {
   return {
     id: row.id,
@@ -19,13 +47,16 @@ export function toFornecedor(row: FornRow): Fornecedor {
 
 /** Fornecedores são compartilhados entre hospitais — sem filtro de hospital_id. */
 export async function listarFornecedores(): Promise<Fornecedor[]> {
-  const { data, error } = await supabase
-    .from('forns')
-    .select('*')
-    .is('deleted_at', null)
-    .order('nome', { ascending: true })
-  if (error) throw error
-  return (data as FornRow[]).map(toFornecedor)
+  const rows = await buscarTudo<FornRow>((from, to) =>
+    supabase
+      .from('forns')
+      .select('*')
+      .is('deleted_at', null)
+      .order('nome', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
+  return rows.map(toFornecedor)
 }
 
 export async function salvarFornecedor(forn: Fornecedor): Promise<void> {
@@ -46,9 +77,10 @@ export async function salvarFornecedor(forn: Fornecedor): Promise<void> {
 
 /** `id -> {nome, cnpj}` de todo fornecedor já cadastrado — usado pela importação em massa pra decidir insert (novo) vs. atualizar só o CNPJ (já existe). */
 export async function mapaFornecedoresExistentes(): Promise<Map<number, { nome: string; cnpj: string | null }>> {
-  const { data, error } = await supabase.from('forns').select('id, nome, cnpj')
-  if (error) throw error
-  return new Map((data as Pick<FornRow, 'id' | 'nome' | 'cnpj'>[]).map((r) => [r.id, { nome: r.nome, cnpj: r.cnpj }]))
+  const rows = await buscarTudo<Pick<FornRow, 'id' | 'nome' | 'cnpj'>>((from, to) =>
+    supabase.from('forns').select('id, nome, cnpj').order('id', { ascending: true }).range(from, to),
+  )
+  return new Map(rows.map((r) => [r.id, { nome: r.nome, cnpj: r.cnpj }]))
 }
 
 const TAMANHO_LOTE = 500
