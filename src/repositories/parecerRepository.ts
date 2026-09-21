@@ -29,7 +29,8 @@ import type { Database } from '@/types/database'
 
 type ParecerRow = Database['public']['Tables']['pareceres']['Row']
 
-const BUCKET_PDFS = 'pareceres-pdfs'
+/** Exportado pra `parecerAnexoRepository.ts` reusar o mesmo bucket (anexos por marca vivem nele também). */
+export const BUCKET_PDFS = 'pareceres-pdfs'
 
 export function toParecer(row: ParecerRow): Parecer {
   return {

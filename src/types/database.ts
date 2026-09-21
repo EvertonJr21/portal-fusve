@@ -379,6 +379,50 @@ export type Database = {
           },
         ]
       }
+      parecer_anexos: {
+        Row: {
+          categoria: string
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          marca: string
+          nome_arquivo: string
+          parecer_cod: string
+          pdf_path: string
+          updated_at: string | null
+        }
+        Insert: {
+          categoria: string
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          marca: string
+          nome_arquivo: string
+          parecer_cod: string
+          pdf_path: string
+          updated_at?: string | null
+        }
+        Update: {
+          categoria?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          marca?: string
+          nome_arquivo?: string
+          parecer_cod?: string
+          pdf_path?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parecer_anexos_parecer_cod_fkey"
+            columns: ["parecer_cod"]
+            isOneToOne: false
+            referencedRelation: "pareceres"
+            referencedColumns: ["cod"]
+          },
+        ]
+      }
       pareceres: {
         Row: {
           cat: string

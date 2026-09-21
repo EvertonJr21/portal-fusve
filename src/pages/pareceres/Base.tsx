@@ -8,9 +8,10 @@ import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useAbrirAnexo, useTodosAnexos } from '@/hooks/useParecerAnexos'
 import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
-import type { Parecer } from '@/types'
+import type { Parecer, ParecerAnexo } from '@/types'
 
 const PG = 15
 
@@ -27,10 +28,17 @@ function validadeInfo(dataISO: string): { texto: string; classe: string; revisar
 
 export default function Base() {
   const { data: pareceres = [], isLoading } = usePareceres()
+  const { data: todosAnexos = [] } = useTodosAnexos()
   const excluir = useExcluirParecer()
   const abrirPdf = useAbrirPdfParecer()
+  const abrirAnexo = useAbrirAnexo()
   const toast = useToast()
   const confirmar = useConfirm()
+
+  const anexosPorCod = todosAnexos.reduce<Record<string, ParecerAnexo[]>>((acc, a) => {
+    ;(acc[a.parecerCod] ??= []).push(a)
+    return acc
+  }, {})
 
   const [categoria, setCategoria] = useState('')
   const [busca, setBusca] = useState('')
@@ -162,10 +170,18 @@ export default function Base() {
                     <div className="font-medium text-slate-800">{p.nome}</div>
                     <div className="text-[11px] text-slate-400">{p.cat}</div>
                   </td>
-                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.padrao} categoria="padrao" /></td>
-                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.permitidas} categoria="permitidas" /></td>
-                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.restritas} categoria="restritas" /></td>
-                  <td className="max-w-[140px] px-3 py-2"><MarcasBadge marcas={p.proibidas} categoria="proibidas" /></td>
+                  <td className="max-w-[140px] px-3 py-2">
+                    <MarcasBadge marcas={p.padrao} categoria="padrao" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
+                  </td>
+                  <td className="max-w-[140px] px-3 py-2">
+                    <MarcasBadge marcas={p.permitidas} categoria="permitidas" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
+                  </td>
+                  <td className="max-w-[140px] px-3 py-2">
+                    <MarcasBadge marcas={p.restritas} categoria="restritas" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
+                  </td>
+                  <td className="max-w-[140px] px-3 py-2">
+                    <MarcasBadge marcas={p.proibidas} categoria="proibidas" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
+                  </td>
                   <td className="px-3 py-2 text-xs">
                     {validade ? <span className={`font-semibold ${validade.classe}`}>{validade.texto}</span> : <span className="text-slate-300">—</span>}
                   </td>

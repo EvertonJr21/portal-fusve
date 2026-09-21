@@ -1,5 +1,6 @@
 import type { Produto } from '@/data/produtos'
 import { useAbrirPdfParecer } from '@/hooks/usePareceres'
+import { useAbrirAnexo, useAnexosParecer } from '@/hooks/useParecerAnexos'
 import type { Parecer } from '@/types'
 import { CATEGORIAS_MARCA, temAlgumaMarca } from '@/utils/marcas'
 import { MarcasBadge } from './MarcasBadge'
@@ -13,6 +14,8 @@ interface ParecerCardProps {
 export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardProps) {
   const semParecer = !parecer || !temAlgumaMarca(parecer)
   const abrirPdf = useAbrirPdfParecer()
+  const { data: anexos = [] } = useAnexosParecer(produto.cod)
+  const abrirAnexo = useAbrirAnexo()
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-soft-sm">
@@ -28,9 +31,10 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
           <button
             type="button"
             onClick={() => abrirPdf.abrir(parecer)}
+            title="PDF geral do parecer — não vinculado a uma marca específica; veja o 📎 ao lado de cada marca abaixo"
             className="ml-auto rounded border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
           >
-            📄 Ver Parecer
+            📄 Parecer geral
           </button>
         )}
       </div>
@@ -65,7 +69,7 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
                   <div className="mb-1 text-xs font-semibold text-slate-600">
                     {label} <span className="font-normal text-slate-400">— {descricao}</span>
                   </div>
-                  <MarcasBadge marcas={parecer![key]} categoria={key} />
+                  <MarcasBadge marcas={parecer![key]} categoria={key} anexos={anexos} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
                 </div>
               ))}
             </div>

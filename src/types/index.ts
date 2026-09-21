@@ -75,6 +75,17 @@ export interface Parecer {
   pdfPath: string | null
 }
 
+/** PDF vinculado a uma marca específica de um parecer — um parecer pode ter vários (um por marca). */
+export interface ParecerAnexo {
+  id: string
+  parecerCod: string
+  categoria: MarcaCategoria
+  marca: string
+  pdfPath: string
+  nomeArquivo: string
+  createdAt: string
+}
+
 export interface Opme {
   id: string
   paciente: string

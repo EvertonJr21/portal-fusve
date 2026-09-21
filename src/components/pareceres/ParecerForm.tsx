@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/hooks/useConfirm'
+import { useAnexosParecer, useExcluirAnexo, useSalvarAnexo, useAbrirAnexo } from '@/hooks/useParecerAnexos'
 import { useObterUrlPdfParecer, useSalvarParecer, useUploadPdfParecer } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Produto } from '@/data/produtos'
-import type { Parecer } from '@/types'
+import type { MarcaCategoria, Parecer } from '@/types'
 import { toInput, fromInput } from '@/utils/date'
 import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
-import { MarcasEditor, type MarcasPorCategoria } from './MarcasEditor'
+import { MarcasEditor, type AnexosPendentes, type MarcasPorCategoria } from './MarcasEditor'
 
 interface ParecerFormProps {
   produto: Produto
@@ -15,12 +17,20 @@ interface ParecerFormProps {
 }
 
 const MARCAS_VAZIAS: MarcasPorCategoria = { padrao: [], permitidas: [], restritas: [], proibidas: [] }
+const ANEXOS_PENDENTES_VAZIO: AnexosPendentes = { padrao: {}, permitidas: {}, restritas: {}, proibidas: {} }
 
 export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormProps) {
   const salvar = useSalvarParecer()
   const uploadPdf = useUploadPdfParecer()
   const obterUrlPdf = useObterUrlPdfParecer()
   const toast = useToast()
+  const confirmar = useConfirm()
+
+  const { data: anexosExistentes = [] } = useAnexosParecer(produto.cod)
+  const salvarAnexo = useSalvarAnexo()
+  const excluirAnexo = useExcluirAnexo(produto.cod)
+  const abrirAnexo = useAbrirAnexo()
+  const [anexosPendentes, setAnexosPendentes] = useState<AnexosPendentes>(ANEXOS_PENDENTES_VAZIO)
 
   const [marcas, setMarcas] = useState<MarcasPorCategoria>(
     parecerExistente
@@ -61,6 +71,31 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
     }
   }
 
+  const handleAnexarPendente = (categoria: MarcaCategoria, marca: string, file: File) => {
+    setAnexosPendentes((prev) => ({
+      ...prev,
+      [categoria]: { ...prev[categoria], [marca]: [...(prev[categoria][marca] ?? []), file] },
+    }))
+  }
+
+  const handleRemoverPendente = (categoria: MarcaCategoria, marca: string, index: number) => {
+    setAnexosPendentes((prev) => ({
+      ...prev,
+      [categoria]: { ...prev[categoria], [marca]: prev[categoria][marca].filter((_, i) => i !== index) },
+    }))
+  }
+
+  const handleExcluirExistente = async (anexo: (typeof anexosExistentes)[number]) => {
+    if (!(await confirmar({ message: `Remover o PDF "${anexo.nomeArquivo}" da marca ${anexo.marca}?`, tone: 'danger', confirmLabel: 'Remover' })))
+      return
+    try {
+      await excluirAnexo.mutateAsync(anexo.id)
+      toast.show('PDF removido')
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao remover PDF', 'error')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const algumaMarca = Object.values(marcas).some((arr) => arr.length > 0)
@@ -86,6 +121,17 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         pdfPath,
         pdfDataUrl,
       })
+
+      // Parecer já existe (upsert acima garante isso) — agora sobe os PDFs pendentes por marca.
+      for (const categoria of Object.keys(anexosPendentes) as MarcaCategoria[]) {
+        for (const [marca, arquivos] of Object.entries(anexosPendentes[categoria])) {
+          for (const arquivo of arquivos) {
+            await salvarAnexo.mutateAsync({ parecerCod: produto.cod, categoria, marca, file: arquivo })
+          }
+        }
+      }
+      setAnexosPendentes(ANEXOS_PENDENTES_VAZIO)
+
       toast.show(parecerExistente ? 'Parecer atualizado!' : 'Produto cadastrado!')
       onSalvo()
     } catch (err) {
@@ -105,7 +151,16 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         </div>
       </div>
 
-      <MarcasEditor value={marcas} onChange={setMarcas} />
+      <MarcasEditor
+        value={marcas}
+        onChange={setMarcas}
+        anexosExistentes={anexosExistentes}
+        anexosPendentes={anexosPendentes}
+        onAnexarPendente={handleAnexarPendente}
+        onRemoverPendente={handleRemoverPendente}
+        onExcluirExistente={handleExcluirExistente}
+        onAbrirExistente={(a) => abrirAnexo.abrir(a.pdfPath)}
+      />
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700">Observação</span>
@@ -138,7 +193,10 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
       </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-slate-700">PDF do parecer</span>
+        <span className="font-medium text-slate-700">PDF geral do parecer</span>
+        <span className="text-xs text-slate-400">
+          Não vinculado a uma marca específica — pra isso, use o "+ PDF" de cada marca acima.
+        </span>
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
