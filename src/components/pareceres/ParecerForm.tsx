@@ -52,12 +52,23 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
   const [arquivoNovo, setArquivoNovo] = useState<File | null>(null)
   const [pdfPathExistente] = useState(parecerExistente?.pdfPath ?? null)
   const [pdfDataUrlExistente] = useState(parecerExistente?.pdfDataUrl ?? null)
+  const [pdfRemovido, setPdfRemovido] = useState(false)
 
   const handlePdf = (file: File | undefined) => {
     if (!file) return
     setArquivoNovo(file)
     setNomeArquivo(file.name)
+    setPdfRemovido(false)
     toast.show('PDF vinculado')
+  }
+
+  const handleRemoverPdf = async () => {
+    if (!(await confirmar({ message: `Remover o PDF "${nomeArquivo}" deste parecer?`, tone: 'danger', confirmLabel: 'Remover' })))
+      return
+    setArquivoNovo(null)
+    setNomeArquivo('')
+    setPdfRemovido(true)
+    toast.show('PDF removido')
   }
 
   const handleAbrirPdf = async () => {
@@ -105,9 +116,14 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
     }
     try {
       // Novo arquivo escolhido → sobe pro Storage e substitui o base64 legado, se houver.
-      // Sem arquivo novo → mantém o que já estava salvo (path ou base64), não apaga nada.
-      const pdfPath = arquivoNovo ? await uploadPdf.mutateAsync({ cod: produto.cod, file: arquivoNovo }) : pdfPathExistente
-      const pdfDataUrl = arquivoNovo ? null : pdfDataUrlExistente
+      // Removido explicitamente pelo usuário → limpa os dois campos.
+      // Nenhuma das duas coisas → mantém o que já estava salvo (path ou base64), não apaga nada.
+      const pdfPath = arquivoNovo
+        ? await uploadPdf.mutateAsync({ cod: produto.cod, file: arquivoNovo })
+        : pdfRemovido
+          ? null
+          : pdfPathExistente
+      const pdfDataUrl = arquivoNovo || pdfRemovido ? null : pdfDataUrlExistente
 
       await salvar.mutateAsync({
         cod: produto.cod,
@@ -211,9 +227,20 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
             />
           </label>
           {nomeArquivo ? (
-            <button type="button" onClick={handleAbrirPdf} className="text-xs text-blue-700 hover:underline">
-              📄 {nomeArquivo}
-            </button>
+            <>
+              <button type="button" onClick={handleAbrirPdf} className="text-xs text-blue-700 hover:underline">
+                📄 {nomeArquivo}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoverPdf}
+                title="Remover PDF"
+                aria-label="Remover PDF"
+                className="text-xs text-status-red hover:underline"
+              >
+                ✕ Remover
+              </button>
+            </>
           ) : (
             <span className="text-xs text-slate-400">Nenhum arquivo selecionado</span>
           )}

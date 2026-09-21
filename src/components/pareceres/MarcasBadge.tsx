@@ -27,35 +27,53 @@ export function MarcasBadge({ marcas, categoria, anexos = [], onAbrirAnexo }: Ma
     <div className="flex flex-wrap gap-1">
       {marcas.map((m) => {
         const anexosDaMarca = anexos.filter((a) => a.categoria === categoria && a.marca === m)
+
+        if (anexosDaMarca.length === 1) {
+          const anexo = anexosDaMarca[0]
+          return (
+            <button
+              key={m}
+              type="button"
+              title={`Abrir ${anexo.nomeArquivo}`}
+              onClick={() => onAbrirAnexo?.(anexo)}
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium underline decoration-dotted underline-offset-2 transition-colors hover:brightness-95 ${TONE_CLASS[categoria]}`}
+            >
+              {ICONE[categoria] ?? ''}
+              {m}
+              <span className="rounded-full bg-white/60 px-1 text-[10px] font-bold">📎</span>
+            </button>
+          )
+        }
+
+        if (anexosDaMarca.length > 1) {
+          return (
+            <Dropdown
+              key={m}
+              trigger={
+                <button
+                  type="button"
+                  title={`${anexosDaMarca.length} PDFs de ${m}`}
+                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium underline decoration-dotted underline-offset-2 transition-colors hover:brightness-95 ${TONE_CLASS[categoria]}`}
+                >
+                  {ICONE[categoria] ?? ''}
+                  {m}
+                  <span className="rounded-full bg-white/60 px-1 text-[10px] font-bold">📎{anexosDaMarca.length}</span>
+                </button>
+              }
+            >
+              {anexosDaMarca.map((a) => (
+                <DropdownItem key={a.id} onClick={() => onAbrirAnexo?.(a)}>
+                  📄 {a.nomeArquivo}
+                </DropdownItem>
+              ))}
+            </Dropdown>
+          )
+        }
+
         return (
           <span key={m} className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${TONE_CLASS[categoria]}`}>
             {ICONE[categoria] ?? ''}
             {m}
-            {anexosDaMarca.length === 1 && (
-              <button
-                type="button"
-                title={anexosDaMarca[0].nomeArquivo}
-                onClick={() => onAbrirAnexo?.(anexosDaMarca[0])}
-                className="rounded-full bg-white/60 px-1 text-[10px] font-bold hover:bg-white"
-              >
-                📎
-              </button>
-            )}
-            {anexosDaMarca.length > 1 && (
-              <Dropdown
-                trigger={
-                  <button type="button" className="rounded-full bg-white/60 px-1 text-[10px] font-bold hover:bg-white">
-                    📎{anexosDaMarca.length}
-                  </button>
-                }
-              >
-                {anexosDaMarca.map((a) => (
-                  <DropdownItem key={a.id} onClick={() => onAbrirAnexo?.(a)}>
-                    📄 {a.nomeArquivo}
-                  </DropdownItem>
-                ))}
-              </Dropdown>
-            )}
           </span>
         )
       })}
