@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Database } from '@/types/database'
-import { toParecer } from './parecerRepository'
+import { sanitizarParaStorage, toParecer } from './parecerRepository'
 
 type ParecerRow = Database['public']['Tables']['pareceres']['Row']
 
@@ -72,5 +72,27 @@ describe('toParecer', () => {
     const p = toParecer(rowBase({ pdf_path: '22045/123-parecer.pdf', pdf_data_url: 'data:application/pdf;base64,xxx' }))
     expect(p.pdfPath).toBe('22045/123-parecer.pdf')
     expect(p.pdfDataUrl).toBe('data:application/pdf;base64,xxx')
+  })
+})
+
+describe('sanitizarParaStorage', () => {
+  // Bug real de produção (21/09/2026): Storage do Supabase recusa a chave com
+  // "Invalid key" quando tem acento/espaço — ex: marca "BIOMEDICAL SP" e
+  // arquivo "PARECER TÉCNICO DE CATETER PERMICATH 40CM DA BIOMEDICAL-1.pdf".
+  it('remove acentos preservando a letra base', () => {
+    expect(sanitizarParaStorage('PARECER TÉCNICO')).toBe('PARECER_TECNICO')
+  })
+
+  it('troca espaço por underscore', () => {
+    expect(sanitizarParaStorage('BIOMEDICAL SP')).toBe('BIOMEDICAL_SP')
+  })
+
+  it('preserva ponto, hífen e underscore (não são o problema)', () => {
+    expect(sanitizarParaStorage('arquivo-1.pdf')).toBe('arquivo-1.pdf')
+    expect(sanitizarParaStorage('nome_com_underscore')).toBe('nome_com_underscore')
+  })
+
+  it('preserva alfanumérico puro sem alterar nada', () => {
+    expect(sanitizarParaStorage('22045')).toBe('22045')
   })
 })

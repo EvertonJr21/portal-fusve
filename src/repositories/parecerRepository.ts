@@ -32,6 +32,21 @@ type ParecerRow = Database['public']['Tables']['pareceres']['Row']
 /** Exportado pra `parecerAnexoRepository.ts` reusar o mesmo bucket (anexos por marca vivem nele também). */
 export const BUCKET_PDFS = 'pareceres-pdfs'
 
+/**
+ * O Storage do Supabase rejeita chave com acento/caractere especial ("Invalid
+ * key") — bug real achado em produção (21/09/2026): nome de marca com espaço
+ * ("BIOMEDICAL SP") e nome de arquivo com acento ("PARECER TÉCNICO...")
+ * quebravam o upload. Sanitiza só o *caminho* no Storage — o nome exibido na
+ * UI (`nome_arquivo`/`parecer`, gravado à parte no banco) continua com
+ * acento normal, sem perda de legibilidade.
+ */
+export function sanitizarParaStorage(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
 export function toParecer(row: ParecerRow): Parecer {
   return {
     cod: row.cod,
@@ -70,7 +85,7 @@ function toRow(p: Parecer) {
 
 /** Envia o PDF pro Storage e devolve o `path` pra gravar em `pareceres.pdf_path`. */
 export async function uploadPdf(cod: string, file: File): Promise<string> {
-  const path = `${cod}/${Date.now()}-${file.name}`
+  const path = `${sanitizarParaStorage(cod)}/${Date.now()}-${sanitizarParaStorage(file.name)}`
   const { error } = await supabase.storage.from(BUCKET_PDFS).upload(path, file, {
     contentType: 'application/pdf',
     upsert: false,

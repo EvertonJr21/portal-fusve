@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { BUCKET_PDFS } from './parecerRepository'
+import { BUCKET_PDFS, sanitizarParaStorage } from './parecerRepository'
 import type { ParecerAnexo, MarcaCategoria } from '@/types'
 import type { Database } from '@/types/database'
 
@@ -30,7 +30,7 @@ function toParecerAnexo(row: AnexoRow): ParecerAnexo {
 
 /** Envia o PDF pro Storage (mesmo bucket de `pareceres.pdf_path`) e devolve o `path`. */
 export async function uploadPdf(cod: string, categoria: MarcaCategoria, marca: string, file: File): Promise<string> {
-  const path = `${cod}/${categoria}/${marca}/${Date.now()}-${file.name}`
+  const path = `${sanitizarParaStorage(cod)}/${categoria}/${sanitizarParaStorage(marca)}/${Date.now()}-${sanitizarParaStorage(file.name)}`
   const { error } = await supabase.storage.from(BUCKET_PDFS).upload(path, file, {
     contentType: 'application/pdf',
     upsert: false,
