@@ -176,6 +176,7 @@ export type Database = {
       }
       forns: {
         Row: {
+          cnpj: string | null
           created_at: string | null
           deleted_at: string | null
           email: string | null
@@ -185,6 +186,7 @@ export type Database = {
           wpp: string | null
         }
         Insert: {
+          cnpj?: string | null
           created_at?: string | null
           deleted_at?: string | null
           email?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           wpp?: string | null
         }
         Update: {
+          cnpj?: string | null
           created_at?: string | null
           deleted_at?: string | null
           email?: string | null

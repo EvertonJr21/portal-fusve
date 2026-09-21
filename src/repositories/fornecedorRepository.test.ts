@@ -10,6 +10,7 @@ function rowBase(overrides: Partial<FornRow> = {}): FornRow {
     nome: 'FORNECEDOR TESTE LTDA',
     email: 'contato@fornecedor.com',
     wpp: '5524999999999',
+    cnpj: null,
     created_at: null,
     updated_at: null,
     deleted_at: null,
@@ -30,5 +31,13 @@ describe('toFornecedor', () => {
     const forn = toFornecedor(rowBase({ email: null, wpp: null }))
     expect(forn.email).toBe('')
     expect(forn.wpp).toBe('')
+  })
+
+  it('preserva cnpj nulo (fornecedor cadastrado manualmente, sem importação do SoulMV)', () => {
+    expect(toFornecedor(rowBase({ cnpj: null })).cnpj).toBeNull()
+  })
+
+  it('preserva cnpj vindo da importação do R_FORNEC.csv', () => {
+    expect(toFornecedor(rowBase({ cnpj: '27.548.227/0002-03' })).cnpj).toBe('27.548.227/0002-03')
   })
 })

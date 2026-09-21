@@ -1,0 +1,21 @@
+-- NOVA — ainda NÃO aplicada em produção. Everton precisa rodar no SQL Editor.
+--
+-- Objetivo: pedido do Everton (21/09/2026) — importar o cadastro completo de
+-- fornecedores do SoulMV (R_FORNEC.csv, ~4.447 fornecedores) pra alimentar a
+-- escolha de fornecedor em outros módulos além de OCs (a começar por OPME,
+-- cujo formulário já reaproveita a tabela `forns`, mas hoje só lista os
+-- poucos fornecedores cadastrados manualmente com e-mail/WhatsApp de
+-- cobrança). O relatório do SoulMV traz CNPJ junto do nome/código — campo
+-- novo pra guardar esse dado (identificador oficial único, útil pra
+-- deduplicar/cruzar com `contratos.fornecedor_cnpj` no futuro).
+--
+-- Aditivo: só adiciona a coluna, não mexe em `nome`/`email`/`wpp` nem em
+-- nenhuma linha existente.
+--
+-- Impacto: nenhum em dado existente.
+-- Risco: baixo.
+-- Rollback: ALTER TABLE forns DROP COLUMN IF EXISTS cnpj;
+-- Backfill necessário: não é feito por SQL — a importação em massa roda pela
+-- tela /ocs/fornecedores (upload do CSV), ver src/utils/fornecedoresCsv.ts.
+
+ALTER TABLE forns ADD COLUMN IF NOT EXISTS cnpj text;

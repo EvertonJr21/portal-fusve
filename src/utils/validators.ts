@@ -38,6 +38,12 @@ export const solImportadaSchema = z.object({
   hospitalId: hospitalIdSchema,
 })
 
+export const fornecedorImportadoSchema = z.object({
+  id: z.number().int().positive('id do fornecedor precisa ser um inteiro positivo'),
+  nome: z.string().min(2, 'nome do fornecedor muito curto ou vazio'),
+  cnpj: z.string().nullable(),
+})
+
 export const vinculoAcompSchema = z.object({
   ocId: z.number().int().positive(),
   solicitacaoId: z.number().int().positive(),

@@ -45,6 +45,8 @@ export interface Fornecedor {
   nome: string
   email: string
   wpp: string
+  /** CNPJ oficial (`00.000.000/0000-00`) — vem do cadastro do SoulMV, não do formulário manual. `undefined` = não coletado ainda. */
+  cnpj?: string | null
 }
 
 export interface HistOC {
