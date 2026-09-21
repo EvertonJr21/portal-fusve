@@ -66,10 +66,12 @@ export default function Fornecedores() {
       }
 
       setLog((l) => [...l, `${itens.length} fornecedores encontrados no arquivo — comparando com o que já está cadastrado...`])
-      const existentes = await fornecedorRepository.mapaCnpjExistentes()
+      const existentes = await fornecedorRepository.mapaFornecedoresExistentes()
 
       const novos = itens.filter((f) => !existentes.has(f.id))
-      const paraAtualizarCnpj = itens.filter((f) => existentes.has(f.id) && existentes.get(f.id) !== f.cnpj)
+      const paraAtualizarCnpj = itens
+        .filter((f) => existentes.has(f.id) && existentes.get(f.id)!.cnpj !== f.cnpj)
+        .map((f) => ({ id: f.id, nome: existentes.get(f.id)!.nome, cnpj: f.cnpj }))
       const jaCorretos = itens.length - novos.length - paraAtualizarCnpj.length
 
       if (novos.length) {
