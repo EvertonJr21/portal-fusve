@@ -12,13 +12,36 @@
 //
 // Secrets padrão de toda Edge Function do Supabase (nunca chegam ao
 // navegador): SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+//
+// Bug real corrigido (22/09/2026): a reescrita acima não tratava o preflight
+// de CORS (`OPTIONS`, que o navegador manda sozinho antes de todo POST com
+// header `Authorization`/`Content-Type: application/json`) — sem uma
+// resposta 2xx com `Access-Control-Allow-*` pra esse `OPTIONS`, o navegador
+// bloqueia a chamada real antes dela sair, e o app só via um erro genérico
+// ("Não foi possível criar o usuário"). Achado via aba Invocations do
+// Dashboard: `OPTIONS | 401 | .../create-user` — o código tentava validar
+// `Authorization` (que nunca vem num preflight) e caía no 401 de "não
+// autenticado" também pro OPTIONS. A versão anterior desta function (nunca
+// vista, só documentada em prosa) certamente já tinha esse tratamento.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Não autenticado.' }), { status: 401 })
+    return new Response(JSON.stringify({ error: 'Não autenticado.' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const supabaseAuth = createClient(
@@ -30,7 +53,10 @@ Deno.serve(async (req: Request) => {
   const jwt = authHeader.replace('Bearer ', '')
   const { data: userData, error: userError } = await supabaseAuth.auth.getUser(jwt)
   if (userError || !userData.user) {
-    return new Response(JSON.stringify({ error: 'Sessão inválida.' }), { status: 401 })
+    return new Response(JSON.stringify({ error: 'Sessão inválida.' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const { data: profile, error: profileError } = await supabaseAuth
@@ -40,12 +66,18 @@ Deno.serve(async (req: Request) => {
     .maybeSingle()
 
   if (profileError || profile?.role !== 'admin') {
-    return new Response(JSON.stringify({ error: 'Só administradores podem criar contas.' }), { status: 403 })
+    return new Response(JSON.stringify({ error: 'Só administradores podem criar contas.' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const { email, password } = await req.json()
   if (!email || !password) {
-    return new Response(JSON.stringify({ error: 'E-mail e senha são obrigatórios.' }), { status: 400 })
+    return new Response(JSON.stringify({ error: 'E-mail e senha são obrigatórios.' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   const supabaseAdmin = createClient(
@@ -60,8 +92,14 @@ Deno.serve(async (req: Request) => {
   })
 
   if (createError) {
-    return new Response(JSON.stringify({ error: createError.message }), { status: 400 })
+    return new Response(JSON.stringify({ error: createError.message }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 })
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
 })
