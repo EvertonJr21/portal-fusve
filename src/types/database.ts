@@ -532,6 +532,7 @@ export type Database = {
           id: string
           nome: string | null
           role: string
+          suspensa: boolean
           updated_at: string | null
         }
         Insert: {
@@ -540,6 +541,7 @@ export type Database = {
           id: string
           nome?: string | null
           role?: string
+          suspensa?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -548,6 +550,7 @@ export type Database = {
           id?: string
           nome?: string | null
           role?: string
+          suspensa?: boolean
           updated_at?: string | null
         }
         Relationships: []

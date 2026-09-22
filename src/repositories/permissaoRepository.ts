@@ -11,7 +11,11 @@ export interface Perfil {
   nome: string
   role: 'admin' | 'user'
   criadoEm: string | null
+  suspensa: boolean
 }
+
+/** As 5 tabelas de dado com `owner_id` isolado por usuário (item 43/47 do backlog). */
+const TABELAS_COM_DONO = ['ocs', 'sols', 'pareceres', 'contratos', 'opmes'] as const
 
 export interface PermissaoModulo {
   modulo: ModuloChave
@@ -26,6 +30,7 @@ function toPerfil(row: ProfileRow): Perfil {
     nome: row.nome ?? '',
     role: row.role === 'admin' ? 'admin' : 'user',
     criadoEm: row.created_at,
+    suspensa: row.suspensa,
   }
 }
 
@@ -93,4 +98,42 @@ export async function salvarRole(userId: string, role: 'admin' | 'user'): Promis
 export async function excluirUsuario(userId: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke('delete-user', { body: { userId } })
   if (error || data?.error) throw new Error(data?.error ?? 'Não foi possível excluir o usuário.')
+}
+
+/**
+ * Admin: move todo o dado (OCs/Sols/Pareceres/Contratos/OPMEs) que era de
+ * `deUserId` pra `paraUserId` — direto no cliente, sem Edge Function,
+ * porque `is_admin()` já dá bypass total nas policies de `UPDATE` das 5
+ * tabelas (ver migration `202609220004`). Útil antes de excluir/suspender
+ * uma conta que ainda é dona de registro (`delete-user` recusa nesse caso
+ * de propósito) ou pra trocar alguém de setor sem perder o histórico.
+ */
+export async function reatribuirDados(deUserId: string, paraUserId: string): Promise<void> {
+  for (const tabela of TABELAS_COM_DONO) {
+    const { error } = await supabase.from(tabela).update({ owner_id: paraUserId }).eq('owner_id', deUserId)
+    if (error) throw error
+  }
+}
+
+/**
+ * Admin: suspende/reativa uma conta (Edge Function `toggle-suspensao` —
+ * bloquear login via `ban_duration` só dá pra fazer com `service_role`).
+ * Alternativa mais segura que `excluirUsuario` pra afastamento temporário —
+ * não apaga nada, só impede login.
+ */
+export async function alternarSuspensao(userId: string, suspender: boolean): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('toggle-suspensao', { body: { userId, suspender } })
+  if (error || data?.error) throw new Error(data?.error ?? 'Não foi possível alterar a suspensão.')
+}
+
+/**
+ * Admin: redefine a senha de outra conta direto, sem depender do fluxo de
+ * e-mail (Edge Function `reset-password` — já esbarramos em rate limit de
+ * e-mail nesse projeto antes, ver item 13 do backlog).
+ */
+export async function resetarSenha(userId: string, novaSenha: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('reset-password', {
+    body: { userId, newPassword: novaSenha },
+  })
+  if (error || data?.error) throw new Error(data?.error ?? 'Não foi possível redefinir a senha.')
 }

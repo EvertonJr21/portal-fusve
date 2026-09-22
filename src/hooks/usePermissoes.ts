@@ -96,3 +96,29 @@ export function useExcluirUsuario() {
     },
   })
 }
+
+/** Admin: transfere OCs/Sols/Pareceres/Contratos/OPMEs de uma conta pra outra. */
+export function useReatribuirDados() {
+  return useMutation({
+    mutationFn: ({ deUserId, paraUserId }: { deUserId: string; paraUserId: string }) =>
+      permissaoRepository.reatribuirDados(deUserId, paraUserId),
+  })
+}
+
+export function useAlternarSuspensao() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, suspender }: { userId: string; suspender: boolean }) =>
+      permissaoRepository.alternarSuspensao(userId, suspender),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+    },
+  })
+}
+
+export function useResetarSenha() {
+  return useMutation({
+    mutationFn: ({ userId, novaSenha }: { userId: string; novaSenha: string }) =>
+      permissaoRepository.resetarSenha(userId, novaSenha),
+  })
+}
