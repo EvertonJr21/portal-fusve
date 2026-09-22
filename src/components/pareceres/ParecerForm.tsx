@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useAnexosParecer, useExcluirAnexo, useSalvarAnexo, useAbrirAnexo } from '@/hooks/useParecerAnexos'
-import { useObterUrlPdfParecer, useSalvarParecer, useUploadPdfParecer } from '@/hooks/usePareceres'
+import { useSalvarParecer } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Produto } from '@/data/produtos'
 import type { MarcaCategoria, Parecer } from '@/types'
 import { toInput, fromInput } from '@/utils/date'
-import { abrirPdfDataUrl } from '@/utils/pdfDataUrl'
 import { MarcasEditor, type AnexosPendentes, type MarcasPorCategoria } from './MarcasEditor'
 
 interface ParecerFormProps {
@@ -21,8 +20,6 @@ const ANEXOS_PENDENTES_VAZIO: AnexosPendentes = { padrao: {}, permitidas: {}, re
 
 export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormProps) {
   const salvar = useSalvarParecer()
-  const uploadPdf = useUploadPdfParecer()
-  const obterUrlPdf = useObterUrlPdfParecer()
   const toast = useToast()
   const confirmar = useConfirm()
 
@@ -45,42 +42,9 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
   const [observacao, setObservacao] = useState(parecerExistente?.observacao ?? '')
   const [responsavel, setResponsavel] = useState(parecerExistente?.responsavel ?? '')
   const [data, setData] = useState(toInput(parecerExistente?.dataParecer))
-  // PDF: `pdfPathExistente`/`pdfDataUrlExistente` só existem se o parecer já tinha um
-  // arquivo salvo (Storage ou o base64 legado) — preservados até um arquivo NOVO ser
-  // escolhido, pra editar outro campo não apagar o PDF já vinculado.
-  const [nomeArquivo, setNomeArquivo] = useState(parecerExistente?.parecer ?? '')
-  const [arquivoNovo, setArquivoNovo] = useState<File | null>(null)
-  const [pdfPathExistente] = useState(parecerExistente?.pdfPath ?? null)
-  const [pdfDataUrlExistente] = useState(parecerExistente?.pdfDataUrl ?? null)
-  const [pdfRemovido, setPdfRemovido] = useState(false)
-
-  const handlePdf = (file: File | undefined) => {
-    if (!file) return
-    setArquivoNovo(file)
-    setNomeArquivo(file.name)
-    setPdfRemovido(false)
-    toast.show('PDF vinculado')
-  }
-
-  const handleRemoverPdf = async () => {
-    if (!(await confirmar({ message: `Remover o PDF "${nomeArquivo}" deste parecer?`, tone: 'danger', confirmLabel: 'Remover' })))
-      return
-    setArquivoNovo(null)
-    setNomeArquivo('')
-    setPdfRemovido(true)
-    toast.show('PDF removido')
-  }
-
-  const handleAbrirPdf = async () => {
-    if (arquivoNovo) {
-      window.open(URL.createObjectURL(arquivoNovo), '_blank', 'noopener')
-    } else if (pdfPathExistente) {
-      const url = await obterUrlPdf.mutateAsync(pdfPathExistente)
-      window.open(url, '_blank', 'noopener')
-    } else if (pdfDataUrlExistente) {
-      abrirPdfDataUrl(pdfDataUrlExistente)
-    }
-  }
+  // "PDF geral do parecer" foi retirado do formulário (22/09/2026, pedido do Everton —
+  // só PDF por marca daqui pra frente). Parecer antigo que já tinha um PDF geral
+  // preserva o campo intacto (nunca apagado por aqui), só não tem mais como editar.
 
   const handleAnexarPendente = (categoria: MarcaCategoria, marca: string, file: File) => {
     setAnexosPendentes((prev) => ({
@@ -115,16 +79,6 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
       return
     }
     try {
-      // Novo arquivo escolhido → sobe pro Storage e substitui o base64 legado, se houver.
-      // Removido explicitamente pelo usuário → limpa os dois campos.
-      // Nenhuma das duas coisas → mantém o que já estava salvo (path ou base64), não apaga nada.
-      const pdfPath = arquivoNovo
-        ? await uploadPdf.mutateAsync({ cod: produto.cod, file: arquivoNovo })
-        : pdfRemovido
-          ? null
-          : pdfPathExistente
-      const pdfDataUrl = arquivoNovo || pdfRemovido ? null : pdfDataUrlExistente
-
       await salvar.mutateAsync({
         cod: produto.cod,
         nome: produto.nome,
@@ -133,9 +87,11 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         observacao,
         responsavel,
         dataParecer: data ? fromInput(data) : '',
-        parecer: nomeArquivo,
-        pdfPath,
-        pdfDataUrl,
+        // PDF geral não é mais editável por aqui — preserva o que já estava salvo
+        // (parecer antigo que ainda tem um), nunca apaga.
+        parecer: parecerExistente?.parecer ?? '',
+        pdfPath: parecerExistente?.pdfPath ?? null,
+        pdfDataUrl: parecerExistente?.pdfDataUrl ?? null,
       })
 
       // Parecer já existe (upsert acima garante isso) — agora sobe os PDFs pendentes por marca.
@@ -208,46 +164,7 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         </label>
       </div>
 
-      <div className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-slate-700">PDF geral do parecer</span>
-        <span className="text-xs text-slate-400">
-          Não vinculado a uma marca específica — pra isso, use o "+ PDF" de cada marca acima.
-        </span>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
-            </svg>
-            {nomeArquivo ? 'Trocar arquivo' : 'Escolher arquivo'}
-            <input
-              type="file"
-              accept="application/pdf"
-              className="sr-only"
-              onChange={(e) => handlePdf(e.target.files?.[0])}
-            />
-          </label>
-          {nomeArquivo ? (
-            <>
-              <button type="button" onClick={handleAbrirPdf} className="text-xs text-blue-700 hover:underline">
-                📄 {nomeArquivo}
-              </button>
-              <button
-                type="button"
-                onClick={handleRemoverPdf}
-                title="Remover PDF"
-                aria-label="Remover PDF"
-                className="text-xs text-status-red hover:underline"
-              >
-                ✕ Remover
-              </button>
-            </>
-          ) : (
-            <span className="text-xs text-slate-400">Nenhum arquivo selecionado</span>
-          )}
-        </div>
-      </div>
-
-      <Button type="submit" loading={salvar.isPending || uploadPdf.isPending} className="self-start">
+      <Button type="submit" loading={salvar.isPending} className="self-start">
         {parecerExistente ? 'Atualizar parecer' : 'Cadastrar parecer'}
       </Button>
     </form>

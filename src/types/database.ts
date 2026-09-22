@@ -255,16 +255,19 @@ export type Database = {
         Row: {
           cat: string
           marcas: string[]
+          owner_id: string
           updated_at: string | null
         }
         Insert: {
           cat: string
           marcas?: string[]
+          owner_id?: string
           updated_at?: string | null
         }
         Update: {
           cat?: string
           marcas?: string[]
+          owner_id?: string
           updated_at?: string | null
         }
         Relationships: []
