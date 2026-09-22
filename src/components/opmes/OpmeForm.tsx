@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { SearchFornecedor } from '@/components/ocs/SearchFornecedor'
 import { HOSPITAIS, STATUS_OPME, type HospitalId } from '@/constants'
 import { useConfirm } from '@/hooks/useConfirm'
-import { useFornecedores } from '@/hooks/useFornecedores'
 import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
@@ -33,7 +33,6 @@ const labelClass = 'flex flex-col gap-1 text-sm'
 export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }: OpmeFormProps) {
   const isNovo = !opme
   const [form, setForm] = useState<Opme>(opme ?? novoOpme(hospitalIdPadrao, dataCirurgiaPadrao ?? ''))
-  const { data: fornecedores = [] } = useFornecedores()
   const salvar = useSalvarOpme(form.hospitalId)
   const excluir = useExcluirOpme(form.hospitalId)
   const toast = useToast()
@@ -124,16 +123,10 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
         <div className="grid grid-cols-2 gap-3">
           <label className={labelClass}>
             Fornecedor
-            <select
-              className={inputClass}
-              value={form.fornecedorId ?? ''}
-              onChange={(e) => setForm({ ...form, fornecedorId: e.target.value ? Number(e.target.value) : null })}
-            >
-              <option value="">Sem fornecedor</option>
-              {fornecedores.map((f) => (
-                <option key={f.id} value={f.id}>{f.nome}</option>
-              ))}
-            </select>
+            <SearchFornecedor
+              value={form.fornecedorId}
+              onChange={(fornecedorId) => setForm({ ...form, fornecedorId })}
+            />
           </label>
           <label className={labelClass}>
             Status
