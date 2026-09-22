@@ -38,5 +38,5 @@ export const STATUS_OPME_TONE: Record<StatusOpme, 'amber' | 'green'> = {
 
 export const STATUS_OPME_LABEL: Record<StatusOpme, string> = {
   pendente: 'Pendente',
-  entregue: 'Entregue',
+  entregue: 'Finalizado',
 }

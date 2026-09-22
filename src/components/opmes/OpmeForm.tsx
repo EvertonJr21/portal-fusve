@@ -7,6 +7,7 @@ import { useConfirm } from '@/hooks/useConfirm'
 import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
+import { STATUS_OPME_LABEL } from '@/utils/opme'
 
 interface OpmeFormProps {
   opme: Opme | null
@@ -136,7 +137,7 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
               onChange={(e) => setForm({ ...form, status: e.target.value as Opme['status'] })}
             >
               {STATUS_OPME.map((s) => (
-                <option key={s} value={s}>{s === 'pendente' ? 'Pendente' : 'Entregue'}</option>
+                <option key={s} value={s}>{STATUS_OPME_LABEL[s]}</option>
               ))}
             </select>
           </label>

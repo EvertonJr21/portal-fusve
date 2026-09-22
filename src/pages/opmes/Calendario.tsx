@@ -101,7 +101,7 @@ export default function Calendario() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard label="Cirurgias no mês" value={opmesDoMes.length} tone="blue" />
         <KpiCard label="Pendentes no mês" value={pendentesDoMes} tone="amber" />
-        <KpiCard label="Entregues no mês" value={entreguesDoMes} tone="green" />
+        <KpiCard label="Finalizados no mês" value={entreguesDoMes} tone="green" />
         <KpiCard label="Pendentes nos próx. 7 dias" value={proximasPendentes.length} tone="red" />
       </div>
 

@@ -56,7 +56,7 @@ export default function Gestao() {
     const novo: StatusOpme = o.status === 'pendente' ? 'entregue' : 'pendente'
     try {
       await alternarStatus.mutateAsync({ id: o.id, status: novo })
-      toast.show(novo === 'entregue' ? 'OPME marcado como entregue' : 'OPME marcado como pendente')
+      toast.show(novo === 'entregue' ? 'OPME marcado como finalizado' : 'OPME marcado como pendente')
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao atualizar status', 'error')
     }

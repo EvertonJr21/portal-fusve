@@ -53,7 +53,7 @@ export function gerarRelatorioOpmePDF(mes: number, ano: number, hospitalId: Hosp
     body: [
       ['Cirurgias com OPME no mês', String(ordenados.length)],
       ['Pendentes', String(pendentes)],
-      ['Entregues', String(entregues)],
+      ['Finalizados', String(entregues)],
     ],
     theme: 'plain',
     styles: { fontSize: 9, cellPadding: 1.5, textColor: [26, 32, 44] },
