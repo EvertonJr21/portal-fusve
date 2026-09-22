@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AuthInput, AuthShell, IconLock, IconMail } from '@/components/ui/AuthShell'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -32,62 +33,60 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-8 shadow-soft-lg">
-        <h1 className="mb-1 text-lg font-semibold text-slate-800">Portal FUSVE</h1>
-        <p className="mb-6 text-sm text-slate-500">Setor de Compras — entre com seu e-mail e senha</p>
+    <AuthShell>
+      <h1 className="mb-1 text-lg font-semibold text-slate-800">Entrar</h1>
+      <p className="mb-6 text-sm text-slate-500">Setor de Compras — use seu e-mail e senha</p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="email">
-              E-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="password">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="email">
+            E-mail
+          </label>
+          <AuthInput
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            icon={<IconMail />}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="password">
+            Senha
+          </label>
+          <AuthInput
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            icon={<IconLock />}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
-          {erro && <p className="text-sm text-status-red">{erro}</p>}
-          {resetEnviado && !erro && (
-            <p className="text-sm text-status-green">
-              Se o e-mail existir, enviamos um link de redefinição de senha.
-            </p>
-          )}
+        {erro && <p className="text-sm text-status-red">{erro}</p>}
+        {resetEnviado && !erro && (
+          <p className="text-sm text-status-green">
+            Se o e-mail existir, enviamos um link de redefinição de senha.
+          </p>
+        )}
 
-          <Button type="submit" disabled={enviando} className="mt-2">
-            {enviando ? 'Entrando...' : 'Entrar'}
-          </Button>
+        <Button type="submit" loading={enviando} className="mt-2 w-full">
+          Entrar
+        </Button>
 
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            disabled={enviando}
-            className="mt-1 text-xs text-slate-500 hover:text-slate-700 hover:underline"
-          >
-            Esqueci minha senha
-          </button>
-        </form>
-      </div>
-    </div>
+        <button
+          type="button"
+          onClick={handleResetPassword}
+          disabled={enviando}
+          className="mt-1 self-center text-xs text-slate-500 hover:text-slate-700 hover:underline"
+        >
+          Esqueci minha senha
+        </button>
+      </form>
+    </AuthShell>
   )
 }

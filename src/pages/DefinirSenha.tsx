@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AuthInput, AuthShell, IconLock } from '@/components/ui/AuthShell'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -45,59 +46,57 @@ export default function DefinirSenha() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-8 shadow-soft-lg">
-        <h1 className="mb-1 text-lg font-semibold text-slate-800">Portal FUSVE</h1>
-        <p className="mb-6 text-sm text-slate-500">Defina a senha da sua conta</p>
+    <AuthShell>
+      <h1 className="mb-1 text-lg font-semibold text-slate-800">Definir senha</h1>
+      <p className="mb-6 text-sm text-slate-500">Escolha a senha da sua conta</p>
 
-        {sucesso ? (
-          <p className="text-sm text-status-green">Senha definida com sucesso. Entrando...</p>
-        ) : aguardandoSessao && !session ? (
-          <p className="text-sm text-slate-400">Carregando convite...</p>
-        ) : !session ? (
-          <p className="text-sm text-status-red">
-            Link de convite inválido ou expirado. Peça pra quem administra o sistema enviar um novo
-            convite.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="password">
-                Nova senha
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={password}
-                onChange={(e) => setPasswordValue(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="confirmar">
-                Confirmar senha
-              </label>
-              <input
-                id="confirmar"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={confirmar}
-                onChange={(e) => setConfirmar(e.target.value)}
-              />
-            </div>
+      {sucesso ? (
+        <p className="text-sm text-status-green">Senha definida com sucesso. Entrando...</p>
+      ) : aguardandoSessao && !session ? (
+        <p className="text-sm text-slate-400">Carregando convite...</p>
+      ) : !session ? (
+        <p className="text-sm text-status-red">
+          Link de convite inválido ou expirado. Peça pra quem administra o sistema enviar um novo
+          convite.
+        </p>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="password">
+              Nova senha
+            </label>
+            <AuthInput
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              icon={<IconLock />}
+              value={password}
+              onChange={(e) => setPasswordValue(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600" htmlFor="confirmar">
+              Confirmar senha
+            </label>
+            <AuthInput
+              id="confirmar"
+              type="password"
+              autoComplete="new-password"
+              required
+              icon={<IconLock />}
+              value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)}
+            />
+          </div>
 
-            {erro && <p className="text-sm text-status-red">{erro}</p>}
+          {erro && <p className="text-sm text-status-red">{erro}</p>}
 
-            <Button type="submit" disabled={enviando} className="mt-2">
-              {enviando ? 'Salvando...' : 'Definir senha e entrar'}
-            </Button>
-          </form>
-        )}
-      </div>
-    </div>
+          <Button type="submit" loading={enviando} className="mt-2 w-full">
+            Definir senha e entrar
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   )
 }
