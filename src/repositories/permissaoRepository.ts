@@ -10,6 +10,7 @@ export interface Perfil {
   email: string
   nome: string
   role: 'admin' | 'user'
+  criadoEm: string | null
 }
 
 export interface PermissaoModulo {
@@ -24,6 +25,7 @@ function toPerfil(row: ProfileRow): Perfil {
     email: row.email,
     nome: row.nome ?? '',
     role: row.role === 'admin' ? 'admin' : 'user',
+    criadoEm: row.created_at,
   }
 }
 
@@ -79,4 +81,16 @@ export async function salvarPermissao(userId: string, modulo: ModuloChave, podeV
 export async function salvarRole(userId: string, role: 'admin' | 'user'): Promise<void> {
   const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
   if (error) throw error
+}
+
+/**
+ * Admin: exclui a conta de vez (Edge Function `delete-user` — apagar
+ * `auth.users` só dá pra fazer com `service_role`, não é RLS comum).
+ * `profiles`/`permissoes_modulo` somem sozinhos (`ON DELETE CASCADE`); se a
+ * conta ainda for dona de OCs/Pareceres/Contratos/OPMEs, a function recusa
+ * com uma mensagem explicando o motivo em vez de apagar/orfanizar dado real.
+ */
+export async function excluirUsuario(userId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('delete-user', { body: { userId } })
+  if (error || data?.error) throw new Error(data?.error ?? 'Não foi possível excluir o usuário.')
 }

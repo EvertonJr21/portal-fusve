@@ -85,3 +85,14 @@ export function useSalvarRole() {
     },
   })
 }
+
+export function useExcluirUsuario() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => permissaoRepository.excluirUsuario(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['permissoes_modulo'] })
+    },
+  })
+}
