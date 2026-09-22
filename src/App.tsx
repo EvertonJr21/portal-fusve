@@ -20,6 +20,7 @@ import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Usuarios from '@/pages/Usuarios'
 import Calendario from '@/pages/opmes/Calendario'
+import Gestao from '@/pages/opmes/Gestao'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
@@ -118,7 +119,10 @@ function ContratosLayout() {
   )
 }
 
-const OPMES_ITEMS: NavItem[] = [{ to: '/opmes', label: 'Calendário', end: true }]
+const OPMES_ITEMS: NavItem[] = [
+  { to: '/opmes', label: 'Calendário', end: true },
+  { to: '/opmes/gestao', label: 'Gestão' },
+]
 
 function OpmesLayout() {
   return (
@@ -187,6 +191,7 @@ export default function App() {
 
           <Route path="/opmes" element={<OpmesLayout />}>
             <Route index element={<Calendario />} />
+            <Route path="gestao" element={<Gestao />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,6 +8,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useOpmes } from '@/hooks/useOpmes'
+import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
 import { fmt, parseDMY } from '@/utils/date'
 import { STATUS_OPME_LABEL, STATUS_OPME_TONE } from '@/utils/opme'
@@ -21,6 +22,7 @@ export default function Calendario() {
   const { hospitalId } = useHospital()
   const { data: opmes = [], isLoading, error } = useOpmes(hospitalId)
   const { data: fornecedores = [] } = useFornecedores()
+  const toast = useToast()
 
   const [mesReferencia, setMesReferencia] = useState(() => {
     const d = new Date()
@@ -28,6 +30,7 @@ export default function Calendario() {
     return d
   })
   const [modal, setModal] = useState<{ opme: Opme | null; data?: string } | null>(null)
+  const [exportando, setExportando] = useState(false)
 
   const nomeFornecedor = (id: number | null) => fornecedores.find((f) => f.id === id)?.nome ?? '—'
 
@@ -61,6 +64,18 @@ export default function Calendario() {
     setMesReferencia((atual) => new Date(atual.getFullYear(), atual.getMonth() + delta, 1))
   }
 
+  const handleExportarPDF = async () => {
+    setExportando(true)
+    try {
+      const { gerarRelatorioOpmePDF } = await import('@/utils/relatorioOpme')
+      gerarRelatorioOpmePDF(mesReferencia.getMonth(), mesReferencia.getFullYear(), hospitalId, opmesDoMes, fornecedores)
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao gerar PDF', 'error')
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -68,7 +83,12 @@ export default function Calendario() {
           <h2 className="text-lg font-semibold text-slate-800">Calendário de OPME</h2>
           <p className="text-sm text-slate-500">Cirurgias com OPME agendadas e status de entrega</p>
         </div>
-        <Button onClick={() => setModal({ opme: null })}>+ Novo OPME</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportarPDF} loading={exportando}>
+            📄 Exportar PDF do mês
+          </Button>
+          <Button onClick={() => setModal({ opme: null })}>+ Novo OPME</Button>
+        </div>
       </div>
 
       {error && (
