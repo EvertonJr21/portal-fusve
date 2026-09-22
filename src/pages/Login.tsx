@@ -150,9 +150,7 @@ export default function Login() {
       ) : (
         <>
           <h1 className="mb-1 text-lg font-semibold text-slate-800">Criar conta</h1>
-          <p className="mb-6 text-sm text-slate-500">
-            Sua conta nasce com todos os módulos liberados — cada um só vê o que ele mesmo cadastrar.
-          </p>
+          <p className="mb-6 text-sm text-slate-500">Leva menos de um minuto</p>
 
           {confirmeEmail ? (
             <p className="text-sm text-status-green">
