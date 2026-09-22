@@ -61,12 +61,13 @@ const TONE_CLASS = {
 } as const
 
 export default function Modulos() {
-  const { data: perfil, isLoading: carregandoPerfil } = useMeuPerfil()
-  const { data: permissoes, isLoading: carregandoPermissoes } = useMinhasPermissoes()
+  const { data: perfil, isLoading: carregandoPerfil, error: erroPerfil } = useMeuPerfil()
+  const { data: permissoes, isLoading: carregandoPermissoes, error: erroPermissoes } = useMinhasPermissoes()
   const isAdmin = perfil?.role === 'admin'
   const carregando = carregandoPerfil || carregandoPermissoes
+  const erro = erroPerfil ?? erroPermissoes
 
-  const modulosVisiveis = carregando
+  const modulosVisiveis = carregando || erro
     ? []
     : MODULOS.filter((m) => isAdmin || permissoes?.some((p) => p.modulo === m.chave && p.podeVer))
 
@@ -78,6 +79,10 @@ export default function Modulos() {
       </div>
       {carregando ? (
         <p className="text-sm text-slate-400">Carregando...</p>
+      ) : erro ? (
+        <p className="text-sm text-status-red">
+          Erro ao carregar suas permissões: {erro.message} — avise o administrador com essa mensagem.
+        </p>
       ) : modulosVisiveis.length === 0 ? (
         <p className="text-sm text-slate-400">
           Nenhum módulo liberado pra sua conta ainda. Fale com o administrador.
