@@ -15,6 +15,7 @@ function rowBase(overrides: Partial<OpmeRow> = {}): OpmeRow {
     observacao: null,
     deleted_at: null,
     created_at: null,
+    owner_id: null,
     updated_at: null,
     ...overrides,
   }

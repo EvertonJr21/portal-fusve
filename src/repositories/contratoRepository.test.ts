@@ -31,6 +31,7 @@ function contratoRowBase(overrides: Partial<ContratoRow> = {}): ContratoRow {
     observacoes: null,
     deleted_at: null,
     created_at: null,
+    owner_id: null,
     updated_at: null,
     ...overrides,
   }

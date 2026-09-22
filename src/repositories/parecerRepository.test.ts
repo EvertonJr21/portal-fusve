@@ -20,6 +20,7 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     pdf_data_url: null,
     pdf_path: null,
     created_at: null,
+    owner_id: null,
     updated_at: null,
     ...overrides,
   }

@@ -15,6 +15,7 @@ function rowBase(overrides: Partial<SolRow> = {}): SolRow {
     sit: 'Aberta',
     hospital_id: 'huv',
     created_at: null,
+    owner_id: null,
     updated_at: null,
     deleted_at: null,
     ...overrides,

@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
+import type { ModuloChave } from '@/constants'
+import { useMeuPerfil, useMinhasPermissoes } from '@/hooks/usePermissoes'
 
 const MODULOS = [
   {
     to: '/ocs',
+    chave: 'ocs' as ModuloChave,
     titulo: 'Controle de OCs',
     descricao: 'Ordens de Compra, pendências, cobrança e fornecedores.',
     icone: '📋',
@@ -10,6 +13,7 @@ const MODULOS = [
   },
   {
     to: '/pareceres',
+    chave: 'pareceres' as ModuloChave,
     titulo: 'Parecer Técnico',
     descricao: 'Marcas aprovadas, restritas e proibidas por produto.',
     icone: '🩺',
@@ -17,6 +21,7 @@ const MODULOS = [
   },
   {
     to: '/contratos',
+    chave: 'contratos' as ModuloChave,
     titulo: 'Gestão de Contratos',
     descricao: 'Fornecedores, produtos, vigência e renovação.',
     icone: '📑',
@@ -24,6 +29,7 @@ const MODULOS = [
   },
   {
     to: '/opmes',
+    chave: 'opmes' as ModuloChave,
     titulo: 'Controle de OPME',
     descricao: 'Calendário de cirurgias, fornecedor e status de entrega.',
     icone: '🗓️',
@@ -55,14 +61,30 @@ const TONE_CLASS = {
 } as const
 
 export default function Modulos() {
+  const { data: perfil, isLoading: carregandoPerfil } = useMeuPerfil()
+  const { data: permissoes, isLoading: carregandoPermissoes } = useMinhasPermissoes()
+  const isAdmin = perfil?.role === 'admin'
+  const carregando = carregandoPerfil || carregandoPermissoes
+
+  const modulosVisiveis = carregando
+    ? []
+    : MODULOS.filter((m) => isAdmin || permissoes?.some((p) => p.modulo === m.chave && p.podeVer))
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-14">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portal FUSVE — Compras</h1>
         <p className="text-sm text-slate-500">Escolha um módulo para continuar</p>
       </div>
+      {carregando ? (
+        <p className="text-sm text-slate-400">Carregando...</p>
+      ) : modulosVisiveis.length === 0 ? (
+        <p className="text-sm text-slate-400">
+          Nenhum módulo liberado pra sua conta ainda. Fale com o administrador.
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {MODULOS.map((m, i) => {
+        {modulosVisiveis.map((m, i) => {
           const t = TONE_CLASS[m.tone]
           return (
             <Link

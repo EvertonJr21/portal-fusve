@@ -18,6 +18,7 @@ function rowBase(overrides: Partial<OCRow> = {}): OCRow {
     data_entrega_real_date: null,
     dias_atraso: 0,
     created_at: null,
+    owner_id: null,
     updated_at: null,
     hospital_id: 'huv',
     proxima_acao: null,

@@ -1,9 +1,11 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { BuscaGlobal } from '@/components/ocs/BuscaGlobal'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
+import { ModuloGuard } from '@/components/ui/ModuloGuard'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavGroup, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
+import Admin from '@/pages/Admin'
 import AnaliseCausas from '@/pages/ocs/AnaliseCausas'
 import DashboardExecutivo from '@/pages/ocs/DashboardExecutivo'
 import DashboardOCs from '@/pages/ocs/Dashboard'
@@ -18,7 +20,6 @@ import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
 import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
-import Usuarios from '@/pages/Usuarios'
 import Calendario from '@/pages/opmes/Calendario'
 import Gestao from '@/pages/opmes/Gestao'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
@@ -67,17 +68,19 @@ const OCS_GROUPS: NavGroup[] = [
 
 function OCsLayout() {
   return (
-    <div className="flex flex-1">
-      <Sidebar title="Controle de OCs" groups={OCS_GROUPS} />
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="mb-4">
-          <BuscaGlobal />
-        </div>
-        <PageTransition>
-          <Outlet />
-        </PageTransition>
-      </main>
-    </div>
+    <ModuloGuard modulo="ocs">
+      <div className="flex flex-1">
+        <Sidebar title="Controle de OCs" groups={OCS_GROUPS} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <BuscaGlobal />
+          </div>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    </ModuloGuard>
   )
 }
 
@@ -91,16 +94,18 @@ const PARECERES_ITEMS: NavItem[] = [
 
 function PareceresLayout() {
   return (
-    <HistoricoConsultasProvider>
-      <div className="flex flex-1">
-        <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <PageTransition>
-          <Outlet />
-        </PageTransition>
-        </main>
-      </div>
-    </HistoricoConsultasProvider>
+    <ModuloGuard modulo="pareceres">
+      <HistoricoConsultasProvider>
+        <div className="flex flex-1">
+          <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
+          <main className="flex-1 overflow-y-auto p-6">
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          </main>
+        </div>
+      </HistoricoConsultasProvider>
+    </ModuloGuard>
   )
 }
 
@@ -108,14 +113,16 @@ const CONTRATOS_ITEMS: NavItem[] = [{ to: '/contratos', label: 'Tabela Mestre', 
 
 function ContratosLayout() {
   return (
-    <div className="flex flex-1">
-      <Sidebar title="Gestão de Contratos" items={CONTRATOS_ITEMS} />
-      <main className="flex-1 overflow-y-auto p-6">
-        <PageTransition>
-          <Outlet />
-        </PageTransition>
-      </main>
-    </div>
+    <ModuloGuard modulo="contratos">
+      <div className="flex flex-1">
+        <Sidebar title="Gestão de Contratos" items={CONTRATOS_ITEMS} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    </ModuloGuard>
   )
 }
 
@@ -126,14 +133,16 @@ const OPMES_ITEMS: NavItem[] = [
 
 function OpmesLayout() {
   return (
-    <div className="flex flex-1">
-      <Sidebar title="Controle de OPME" items={OPMES_ITEMS} />
-      <main className="flex-1 overflow-y-auto p-6">
-        <PageTransition>
-          <Outlet />
-        </PageTransition>
-      </main>
-    </div>
+    <ModuloGuard modulo="opmes">
+      <div className="flex flex-1">
+        <Sidebar title="Controle de OPME" items={OPMES_ITEMS} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    </ModuloGuard>
   )
 }
 
@@ -152,11 +161,13 @@ export default function App() {
             }
           />
 
+          <Route path="/usuarios" element={<Navigate to="/admin" replace />} />
+
           <Route
-            path="/usuarios"
+            path="/admin"
             element={
               <PageTransition>
-                <Usuarios />
+                <Admin />
               </PageTransition>
             }
           />

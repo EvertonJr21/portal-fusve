@@ -108,6 +108,7 @@ export type Database = {
           id: string
           observacoes: string | null
           origem_embarque: string | null
+          owner_id: string | null
           prazo_medio_dias: number | null
           reajuste_regra: string | null
           renovacao_automatica: boolean | null
@@ -135,6 +136,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           origem_embarque?: string | null
+          owner_id?: string | null
           prazo_medio_dias?: number | null
           reajuste_regra?: string | null
           renovacao_automatica?: boolean | null
@@ -162,6 +164,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           origem_embarque?: string | null
+          owner_id?: string | null
           prazo_medio_dias?: number | null
           reajuste_regra?: string | null
           renovacao_automatica?: boolean | null
@@ -280,6 +283,7 @@ export type Database = {
           hospital_id: string | null
           id: number
           motivo_atraso: string | null
+          owner_id: string | null
           previsao_descumprida: boolean | null
           previsao_forn_date: string | null
           previsao_forn2_date: string | null
@@ -302,6 +306,7 @@ export type Database = {
           hospital_id?: string | null
           id: number
           motivo_atraso?: string | null
+          owner_id?: string | null
           previsao_descumprida?: boolean | null
           previsao_forn_date?: string | null
           previsao_forn2_date?: string | null
@@ -324,6 +329,7 @@ export type Database = {
           hospital_id?: string | null
           id?: number
           motivo_atraso?: string | null
+          owner_id?: string | null
           previsao_descumprida?: boolean | null
           previsao_forn_date?: string | null
           previsao_forn2_date?: string | null
@@ -344,6 +350,7 @@ export type Database = {
           hospital_id: string
           id: string
           observacao: string | null
+          owner_id: string | null
           paciente: string
           status: string
           updated_at: string | null
@@ -356,6 +363,7 @@ export type Database = {
           hospital_id: string
           id?: string
           observacao?: string | null
+          owner_id?: string | null
           paciente: string
           status?: string
           updated_at?: string | null
@@ -368,6 +376,7 @@ export type Database = {
           hospital_id?: string
           id?: string
           observacao?: string | null
+          owner_id?: string | null
           paciente?: string
           status?: string
           updated_at?: string | null
@@ -434,6 +443,7 @@ export type Database = {
           data_parecer_date: string | null
           nome: string
           observacao: string
+          owner_id: string | null
           padrao: string[]
           parecer: string
           pdf_data_url: string | null
@@ -451,6 +461,7 @@ export type Database = {
           data_parecer_date?: string | null
           nome?: string
           observacao?: string
+          owner_id?: string | null
           padrao?: string[]
           parecer?: string
           pdf_data_url?: string | null
@@ -468,6 +479,7 @@ export type Database = {
           data_parecer_date?: string | null
           nome?: string
           observacao?: string
+          owner_id?: string | null
           padrao?: string[]
           parecer?: string
           pdf_data_url?: string | null
@@ -480,6 +492,63 @@ export type Database = {
         }
         Relationships: []
       }
+      permissoes_modulo: {
+        Row: {
+          created_at: string | null
+          id: string
+          modulo: string
+          pode_editar: boolean
+          pode_ver: boolean
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          modulo: string
+          pode_editar?: boolean
+          pode_ver?: boolean
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          modulo?: string
+          pode_editar?: boolean
+          pode_ver?: boolean
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          nome: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          nome?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          nome?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       sols: {
         Row: {
           created_at: string | null
@@ -488,6 +557,7 @@ export type Database = {
           hospital_id: string | null
           id: number
           motivo: string | null
+          owner_id: string | null
           produto: string | null
           qtd: number | null
           sit: string | null
@@ -501,6 +571,7 @@ export type Database = {
           hospital_id?: string | null
           id: number
           motivo?: string | null
+          owner_id?: string | null
           produto?: string | null
           qtd?: number | null
           sit?: string | null
@@ -514,6 +585,7 @@ export type Database = {
           hospital_id?: string | null
           id?: number
           motivo?: string | null
+          owner_id?: string | null
           produto?: string | null
           qtd?: number | null
           sit?: string | null

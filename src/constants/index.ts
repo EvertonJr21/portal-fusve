@@ -62,6 +62,24 @@ export const AVISO_RENOVACAO_OPCOES = [30, 60, 90] as const
 export const STATUS_OPME = ['pendente', 'entregue'] as const
 export type StatusOpme = (typeof STATUS_OPME)[number]
 
+/**
+ * Módulos isoláveis por usuário (22/09/2026) — chave usada em
+ * `permissoes_modulo.modulo` e nas policies de RLS (`pode_ver_modulo()`/
+ * `pode_editar_modulo()`). Deliberadamente uma lista TS fixa aqui pra UI da
+ * tela /admin, mas a coluna no banco é texto livre (não enum fechado) —
+ * um módulo novo no futuro ganha entrada aqui e já funciona, sem migration
+ * de schema pra "cadastrar" o módulo em si (só pras tabelas de dados dele).
+ * Fornecedores não entra aqui de propósito — fica compartilhado entre todos
+ * os módulos, sem "dono" (decisão do Everton, 22/09/2026).
+ */
+export const MODULOS = [
+  { chave: 'ocs', label: 'Controle de OCs' },
+  { chave: 'pareceres', label: 'Parecer Técnico' },
+  { chave: 'contratos', label: 'Gestão de Contratos' },
+  { chave: 'opmes', label: 'Controle de OPME' },
+] as const
+export type ModuloChave = (typeof MODULOS)[number]['chave']
+
 export const CLASSIFICACOES_CONTRATO = [
   'OPME',
   'CME',
