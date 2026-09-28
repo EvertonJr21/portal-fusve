@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import type { Parecer } from '@/types'
+import { abrirDocPdf } from './pdfDataUrl'
 
 function juntar(arr: string[]): string {
   return arr.length ? arr.join(', ') : '—'
@@ -167,5 +168,5 @@ export function gerarRelatorioPDF(lista: Parecer[], totalGeral?: number) {
 
   const docWithPutTotal = doc as unknown as { putTotalPages?: (tag: string) => void }
   docWithPutTotal.putTotalPages?.('{totalPages}')
-  doc.save(`pareceres-tecnicos-fusve-${hojeISO}${totalGeral ? '-filtrado' : ''}.pdf`)
+  abrirDocPdf(doc, `pareceres-tecnicos-fusve-${hojeISO}${totalGeral ? '-filtrado' : ''}`)
 }

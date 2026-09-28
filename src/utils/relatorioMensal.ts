@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import type { Fornecedor, HistOC, OC, Solicitacao } from '@/types'
 import { parseDMY } from './date'
+import { abrirDocPdf } from './pdfDataUrl'
 import { dataPrazo, isPrevisaoDescumprida, statusPrazo } from './oc'
 import { calcularScoresTodos, fornecedoresProblematicos } from './scoreFornecedor'
 import { slaFornecedor, slaInterno } from './sla'
@@ -158,5 +159,5 @@ export function gerarRelatorioMensalPDF(
     doc.text(`Pág. ${p} de ${totalPaginas}`, pageW - mR, pageH - 4, { align: 'right' })
   }
 
-  doc.save(`relatorio-mensal-ocs-${ano}-${String(mes + 1).padStart(2, '0')}.pdf`)
+  abrirDocPdf(doc, `relatorio-mensal-ocs-${ano}-${String(mes + 1).padStart(2, '0')}`)
 }

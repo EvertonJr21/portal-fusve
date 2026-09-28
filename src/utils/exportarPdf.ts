@@ -3,6 +3,7 @@ export async function exportarPDF(nomeArquivo: string, titulo: string, linhas: R
   if (!linhas.length) return
   const { jsPDF } = await import('jspdf')
   const { autoTable } = await import('jspdf-autotable')
+  const { abrirDocPdf } = await import('./pdfDataUrl')
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
@@ -47,5 +48,5 @@ export async function exportarPDF(nomeArquivo: string, titulo: string, linhas: R
 
   const docWithPutTotal = doc as unknown as { putTotalPages?: (tag: string) => void }
   docWithPutTotal.putTotalPages?.('{totalPages}')
-  doc.save(`${nomeArquivo}-${new Date().toISOString().slice(0, 10)}.pdf`)
+  abrirDocPdf(doc, `${nomeArquivo}-${new Date().toISOString().slice(0, 10)}`)
 }

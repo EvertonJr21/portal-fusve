@@ -4,6 +4,7 @@ import { HOSPITAIS, type HospitalId } from '@/constants'
 import type { Fornecedor, Opme } from '@/types'
 import { fmt, parseDMY } from './date'
 import { STATUS_OPME_LABEL } from './opme'
+import { abrirDocPdf } from './pdfDataUrl'
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -102,5 +103,5 @@ export function gerarRelatorioOpmePDF(mes: number, ano: number, hospitalId: Hosp
     doc.text(`Pág. ${p} de ${totalPaginas}`, pageW - mR, pageH - 4, { align: 'right' })
   }
 
-  doc.save(`relatorio-opme-${HOSPITAIS[hospitalId].sigla.toLowerCase()}-${ano}-${String(mes + 1).padStart(2, '0')}.pdf`)
+  abrirDocPdf(doc, `relatorio-opme-${HOSPITAIS[hospitalId].sigla.toLowerCase()}-${ano}-${String(mes + 1).padStart(2, '0')}`)
 }
