@@ -136,3 +136,40 @@ export interface ContratoProduto {
   capacidadePeriodo: CapacidadePeriodo
   meioPagamento: string
 }
+
+/** Setor do hospital (Centro Cirúrgico, UTI, etc.) — por hospital, editável em /catalogo/gestao. */
+export interface Area {
+  id: string
+  hospitalId: HospitalId
+  nome: string
+  ordem: number
+  ativo: boolean
+}
+
+/**
+ * Categoria/tag livre de um item do catálogo (ex: "Agulhas", "OPME — Ortopédica")
+ * — não pertence a uma área fixa, um item pode estar em vários grupos ou em nenhum
+ * (uso geral). Compartilhado entre os dois hospitais.
+ */
+export interface Grupo {
+  id: string
+  nome: string
+  ordem: number
+}
+
+/** Item do Catálogo de Materiais por Área Hospitalar — compartilhado entre HUV/HMK. */
+export interface ItemCatalogo {
+  id: string
+  nome: string
+  unidadePadrao: string
+  codSoulmv: string | null
+  sinonimos: string[]
+  observacao: string
+}
+
+/** Vínculo item↔área — N:N, `principal` marca a área de uso mais típico quando fizer sentido. */
+export interface ItemArea {
+  itemId: string
+  areaId: string
+  principal: boolean
+}

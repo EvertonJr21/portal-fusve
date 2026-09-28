@@ -77,6 +77,7 @@ export const MODULOS = [
   { chave: 'pareceres', label: 'Parecer Técnico' },
   { chave: 'contratos', label: 'Gestão de Contratos' },
   { chave: 'opmes', label: 'Controle de OPME' },
+  { chave: 'catalogo', label: 'Catálogo de Materiais' },
 ] as const
 export type ModuloChave = (typeof MODULOS)[number]['chave']
 

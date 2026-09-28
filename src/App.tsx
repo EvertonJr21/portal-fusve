@@ -22,6 +22,8 @@ import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Calendario from '@/pages/opmes/Calendario'
 import Gestao from '@/pages/opmes/Gestao'
+import CatalogoGestao from '@/pages/catalogo/Gestao'
+import CatalogoNavegar from '@/pages/catalogo/Navegar'
 import Cadastrar from '@/pages/pareceres/Cadastrar'
 import Base from '@/pages/pareceres/Base'
 import Consultar from '@/pages/pareceres/Consultar'
@@ -146,6 +148,26 @@ function OpmesLayout() {
   )
 }
 
+const CATALOGO_ITEMS: NavItem[] = [
+  { to: '/catalogo', label: 'Navegar', end: true },
+  { to: '/catalogo/gestao', label: 'Gestão' },
+]
+
+function CatalogoLayout() {
+  return (
+    <ModuloGuard modulo="catalogo">
+      <div className="flex flex-1">
+        <Sidebar title="Catálogo de Materiais" items={CATALOGO_ITEMS} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    </ModuloGuard>
+  )
+}
+
 export default function App() {
   return (
     <div className="flex min-h-svh flex-col">
@@ -203,6 +225,11 @@ export default function App() {
           <Route path="/opmes" element={<OpmesLayout />}>
             <Route index element={<Calendario />} />
             <Route path="gestao" element={<Gestao />} />
+          </Route>
+
+          <Route path="/catalogo" element={<CatalogoLayout />}>
+            <Route index element={<CatalogoNavegar />} />
+            <Route path="gestao" element={<CatalogoGestao />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

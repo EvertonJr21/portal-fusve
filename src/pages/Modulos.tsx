@@ -35,6 +35,14 @@ const MODULOS = [
     icone: '🗓️',
     tone: 'amber',
   },
+  {
+    to: '/catalogo',
+    chave: 'catalogo' as ModuloChave,
+    titulo: 'Catálogo de Materiais',
+    descricao: 'Onde cada material é usado, por área do hospital.',
+    icone: '🗃️',
+    tone: 'blue',
+  },
 ] as const
 
 const TONE_CLASS = {

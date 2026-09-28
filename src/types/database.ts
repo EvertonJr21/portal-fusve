@@ -394,6 +394,168 @@ export type Database = {
           },
         ]
       }
+      areas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          deleted_at: string | null
+          hospital_id: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          hospital_id: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          hospital_id?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      grupos: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      itens: {
+        Row: {
+          cod_soulmv: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          nome: string
+          observacao: string
+          sinonimos: string[]
+          unidade_padrao: string
+          updated_at: string
+        }
+        Insert: {
+          cod_soulmv?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          nome: string
+          observacao?: string
+          sinonimos?: string[]
+          unidade_padrao?: string
+          updated_at?: string
+        }
+        Update: {
+          cod_soulmv?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          nome?: string
+          observacao?: string
+          sinonimos?: string[]
+          unidade_padrao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      item_grupos: {
+        Row: {
+          grupo_id: string
+          item_id: string
+        }
+        Insert: {
+          grupo_id: string
+          item_id: string
+        }
+        Update: {
+          grupo_id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_grupos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_grupos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_areas: {
+        Row: {
+          area_id: string
+          created_at: string
+          item_id: string
+          principal: boolean
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          item_id: string
+          principal?: boolean
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          item_id?: string
+          principal?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_areas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parecer_anexos: {
         Row: {
           categoria: string
