@@ -105,6 +105,19 @@ function extrairProdutos(caminho: string): ProdutoExtraido[] {
     const unidade = cols[10]?.trim() ?? ''
     if (!/^\d+$/.test(codigo) || !nome || mestre === 'S') continue
 
+    // Quebra de página no meio de um registro: o relatório do SoulMV às vezes
+    // interrompe uma linha de produto bem no meio (o resto do nome/código de
+    // referência do fabricante vira uma "nova" linha logo depois do cabeçalho
+    // repetido de Espécie/Classe/Sub Classe da página seguinte) — mesmo
+    // código do produto anterior imediato, só que com um pedaço do nome.
+    // Sem isso, o script cria um item fantasma duplicado com nome truncado.
+    const anterior = produtos[produtos.length - 1]
+    if (anterior && anterior.codigo === codigo) {
+      anterior.nome = `${anterior.nome} ${nome}`.trim()
+      if (!anterior.unidade && unidade) anterior.unidade = unidade
+      continue
+    }
+
     produtos.push({
       codigo,
       nome,
