@@ -49,7 +49,7 @@ export default function Calendario() {
     return d && d.getFullYear() === mesReferencia.getFullYear() && d.getMonth() === mesReferencia.getMonth()
   })
   const pendentesDoMes = opmesDoMes.filter((o) => o.status === 'pendente').length
-  const entreguesDoMes = opmesDoMes.filter((o) => o.status === 'entregue').length
+  const entreguesDoMes = opmesDoMes.filter((o) => o.status === 'finalizado').length
 
   const hoje = new Date()
   const em7dias = new Date(hoje)

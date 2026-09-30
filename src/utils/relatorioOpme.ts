@@ -40,7 +40,7 @@ export function gerarRelatorioOpmePDF(mes: number, ano: number, hospitalId: Hosp
 
   const ordenados = [...opmesDoMes].sort((a, b) => (a.dataCirurgia < b.dataCirurgia ? -1 : a.dataCirurgia > b.dataCirurgia ? 1 : 0))
   const pendentes = ordenados.filter((o) => o.status === 'pendente').length
-  const entregues = ordenados.filter((o) => o.status === 'entregue').length
+  const entregues = ordenados.filter((o) => o.status === 'finalizado').length
 
   let y = 30
   doc.setFontSize(11)

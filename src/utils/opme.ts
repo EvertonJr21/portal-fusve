@@ -33,10 +33,10 @@ export function construirGradeCalendario(referencia: Date): CelulaCalendario[] {
 
 export const STATUS_OPME_TONE: Record<StatusOpme, 'amber' | 'green'> = {
   pendente: 'amber',
-  entregue: 'green',
+  finalizado: 'green',
 }
 
 export const STATUS_OPME_LABEL: Record<StatusOpme, string> = {
   pendente: 'Pendente',
-  entregue: 'Finalizado',
+  finalizado: 'Finalizado',
 }

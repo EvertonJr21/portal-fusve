@@ -53,10 +53,10 @@ export default function Gestao() {
   const paginados = filtrados.slice(inicio, inicio + PG)
 
   const handleAlternarStatus = async (o: Opme) => {
-    const novo: StatusOpme = o.status === 'pendente' ? 'entregue' : 'pendente'
+    const novo: StatusOpme = o.status === 'pendente' ? 'finalizado' : 'pendente'
     try {
       await alternarStatus.mutateAsync({ id: o.id, status: novo })
-      toast.show(novo === 'entregue' ? 'OPME marcado como finalizado' : 'OPME marcado como pendente')
+      toast.show(novo === 'finalizado' ? 'OPME marcado como finalizado' : 'OPME marcado como pendente')
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao atualizar status', 'error')
     }
