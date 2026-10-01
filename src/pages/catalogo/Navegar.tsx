@@ -36,7 +36,6 @@ function PainelDetalheItem({ item, areas }: { item: ItemCatalogo; areas: Area[] 
   const resumoProprio = item.resumoUso.trim()
   const grupoComResumo = gruposDoItem.find((g) => g.descricaoUso.trim())
   const resumo = resumoProprio || grupoComResumo?.descricaoUso.trim() || ''
-  const resumoEhDoGrupo = !resumoProprio && !!resumo
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-5 shadow-soft-sm">
@@ -49,12 +48,6 @@ function PainelDetalheItem({ item, areas }: { item: ItemCatalogo; areas: Area[] 
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Como é usado</p>
           <p className="text-sm text-slate-700">{resumo}</p>
-          {resumoEhDoGrupo && (
-            <p className="mt-1 text-[11px] text-slate-400">
-              Descrição geral do grupo "{grupoComResumo!.nome}" — pesquisa não validada por profissional clínico do HUV, pode não
-              se aplicar exatamente a este item. Edite em Gestão se for diferente.
-            </p>
-          )}
         </div>
       )}
 
