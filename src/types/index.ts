@@ -21,6 +21,8 @@ export interface OC {
   previsaoForn: string | null
   previsaoForn2: string | null
   dataEntregaReal: string | null
+  /** Data em que a OC entrou pela primeira vez em "Parcialmente Atendida" — nunca sobrescrita depois. */
+  dataParcial: string | null
   diasAtraso: number
   hospitalId: HospitalId
   proximaAcao: string | null

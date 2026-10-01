@@ -30,6 +30,7 @@ function ocBase(overrides: Partial<OC> = {}): OC {
     previsaoForn: null,
     previsaoForn2: null,
     dataEntregaReal: null,
+    dataParcial: null,
     diasAtraso: 0,
     hospitalId: 'huv',
     proximaAcao: null,

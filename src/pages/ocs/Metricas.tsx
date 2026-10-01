@@ -18,18 +18,31 @@ interface LinhaMetrica {
   dPrazoForn: Date
   noPrazoInst: boolean
   noPrazoForn: boolean
+  /** true = calculado pela 1ª entrega parcial (OC ainda não fechou), não pela entrega total. */
+  parcial: boolean
 }
 
+/**
+ * Usa a entrega total (`dataEntregaReal`) quando já existe; na falta dela,
+ * cai pra data da 1ª entrega parcial (`dataParcial`) — permite que uma OC
+ * com 1 item pendente de 50 já apareça nas métricas pelo que já foi
+ * entregue, em vez de ficar de fora até o último item fechar a OC (pedido
+ * do Everton, item 60 do backlog). Quando a entrega total acontecer depois,
+ * a linha passa a usar ela automaticamente (fallback só vale enquanto não
+ * há entrega total registrada).
+ */
 function calcularLinha(oc: OC, sols: Solicitacao[]): LinhaMetrica | null {
   const dOC = parseDMY(oc.dataSolic)
-  const dEntrega = parseDMY(oc.dataEntregaReal)
+  const parcial = !oc.dataEntregaReal && !!oc.dataParcial
+  const dEntrega = parseDMY(oc.dataEntregaReal) ?? parseDMY(oc.dataParcial)
   if (!dOC || !dEntrega) return null
 
   const dSolic = dataPrazo(oc, sols) ?? dOC
   const dPrazoInst = addDias(dSolic, PRAZO)
   // Prazo do fornecedor: a previsão que o Everton registra na OC (oc.previsaoForn), não um
   // prazo calculado — não tem por que coincidir com o institucional. Sem previsão registrada,
-  // usa a própria data de entrega como fallback (nada pra comparar, então não penaliza).
+  // usa a própria data de entrega (total ou parcial) como fallback (nada pra comparar, então
+  // não penaliza).
   const dPrazoForn = (oc.previsaoForn && parseDMY(oc.previsaoForn)) || dEntrega
 
   return {
@@ -41,6 +54,7 @@ function calcularLinha(oc: OC, sols: Solicitacao[]): LinhaMetrica | null {
     dPrazoForn,
     noPrazoInst: dEntrega <= dPrazoInst,
     noPrazoForn: dEntrega <= dPrazoForn,
+    parcial,
   }
 }
 
@@ -101,7 +115,11 @@ export default function Metricas() {
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-lg font-semibold text-slate-800">Métricas de Lead Time</h2>
-        <p className="text-sm text-slate-500">Desempenho por fornecedor — só OCs com entrega registrada</p>
+        <p className="text-sm text-slate-500">
+          Desempenho por fornecedor — OCs com entrega (total ou parcial) registrada. Linhas marcadas{' '}
+          <span className="font-semibold text-status-amber">Parcial</span> ainda têm itens pendentes — o lead time é
+          calculado pela 1ª entrega, não pelo fechamento total da OC.
+        </p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -116,7 +134,7 @@ export default function Metricas() {
 
       {grupos.length === 0 && (
         <p className="rounded-md border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-400">
-          Nenhuma OC com entrega registrada ainda.
+          Nenhuma OC com entrega (total ou parcial) registrada ainda.
         </p>
       )}
 
@@ -142,6 +160,7 @@ export default function Metricas() {
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
                   <tr>
                     <th className="px-3 py-1.5 text-left">OC</th>
+                    <th className="px-3 py-1.5 text-left">Tipo</th>
                     <th className="px-3 py-1.5 text-left">Data OC</th>
                     <th className="px-3 py-1.5 text-left">Entrega Real</th>
                     <th className="px-3 py-1.5 text-left">Prazo Inst.</th>
@@ -155,6 +174,17 @@ export default function Metricas() {
                   {g.linhas.map((l) => (
                     <tr key={l.oc.id} className="border-t border-slate-100">
                       <td className="px-3 py-1.5 font-mono">{l.oc.id}</td>
+                      <td className="px-3 py-1.5">
+                        {l.parcial ? (
+                          <span className="rounded-full bg-status-amber-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-amber">
+                            Parcial
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-status-green-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-green">
+                            Completa
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-1.5">{fmt(l.dOC)}</td>
                       <td className="px-3 py-1.5">{fmt(l.dEntrega)}</td>
                       <td className="px-3 py-1.5">{fmt(l.dPrazoInst)}</td>

@@ -1,4 +1,4 @@
-import { fromInput, toInput } from '@/utils/date'
+import { fmt, fromInput, getHoje, toInput } from '@/utils/date'
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
 import type { OC, SituacaoOC } from '@/types'
@@ -55,6 +55,7 @@ export function toOC(row: OCRow): OC {
     previsaoForn: deColunaDate(row.previsao_forn_date),
     previsaoForn2: deColunaDate(row.previsao_forn2_date),
     dataEntregaReal: deColunaDate(row.data_entrega_real_date),
+    dataParcial: deColunaDate(row.data_parcial_date),
     diasAtraso: row.dias_atraso ?? 0,
     hospitalId: row.hospital_id as HospitalId,
     proximaAcao: row.proxima_acao,
@@ -77,6 +78,7 @@ function toRow(oc: Partial<OC> & Pick<OC, 'id' | 'dataSolic' | 'fornecedorNome' 
     previsao_forn_date: paraColunaDate(oc.previsaoForn),
     previsao_forn2_date: paraColunaDate(oc.previsaoForn2),
     data_entrega_real_date: paraColunaDate(oc.dataEntregaReal),
+    data_parcial_date: paraColunaDate(oc.dataParcial),
     dias_atraso: oc.diasAtraso ?? 0,
     hospital_id: oc.hospitalId,
     proxima_acao: oc.proximaAcao ?? null,
@@ -116,8 +118,25 @@ export async function salvarOC(input: SalvarOCInput): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Troca a situação da OC pelo seletor rápido da tabela. Quando a nova
+ * situação é "Parcialmente Atendida" e a OC ainda não tem `dataParcial`
+ * registrada, grava a data de hoje junto — primeira vez só, nunca
+ * sobrescreve uma data já registrada (ver `OCImportadaInput.dataParcial`
+ * pro mesmo tratamento no fluxo de importação CSV).
+ */
 export async function atualizarSituacaoOC(id: number, sit: SituacaoOC): Promise<void> {
-  const { error } = await supabase.from('ocs').update({ sit }).eq('id', id)
+  const row: OCUpdate = { sit }
+  if (sit === 'Parcialmente Atendida') {
+    const { data: atual, error: erroLeitura } = await supabase
+      .from('ocs')
+      .select('data_parcial_date')
+      .eq('id', id)
+      .single()
+    if (erroLeitura) throw erroLeitura
+    if (!atual?.data_parcial_date) row.data_parcial_date = paraColunaDate(fmt(getHoje()))
+  }
+  const { error } = await supabase.from('ocs').update(row).eq('id', id)
   if (error) throw error
 }
 
@@ -134,6 +153,7 @@ export interface OCImportadaInput {
   hospitalId: HospitalId
   ultimaMovimentacao: string | null
   dataEntregaReal?: string | null
+  dataParcial?: string | null
 }
 
 /**
@@ -161,6 +181,7 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
     ultima_movimentacao_date: paraColunaDate(input.ultimaMovimentacao),
     previsao_descumprida: false,
     data_entrega_real_date: paraColunaDate(input.dataEntregaReal ?? null),
+    data_parcial_date: paraColunaDate(input.dataParcial ?? null),
   })
   if (error) throw error
 }
@@ -182,6 +203,7 @@ const DATE_PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
   previsaoForn: 'previsao_forn_date',
   previsaoForn2: 'previsao_forn2_date',
   dataEntregaReal: 'data_entrega_real_date',
+  dataParcial: 'data_parcial_date',
   ultimaMovimentacao: 'ultima_movimentacao_date',
 }
 

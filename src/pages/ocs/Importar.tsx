@@ -91,15 +91,27 @@ export default function Importar() {
           if (patch.sit === 'Atendida' && !existente.dataEntregaReal) {
             patch.dataEntregaReal = fmt(getHoje())
           }
+          // Mesma aproximação da entrega real (item 34): a primeira vez que a OC
+          // entra em Parcialmente Atendida nesta importação, registra a data de
+          // hoje — nunca sobrescreve se já tinha uma parcial registrada antes.
+          if (patch.sit === 'Parcialmente Atendida' && !existente.dataParcial) {
+            patch.dataParcial = fmt(getHoje())
+          }
           if (Object.keys(patch).length) {
             await ocRepository.atualizarCamposOC(item.id, patch)
             updated++
-            addLog(`OC ${item.id} — ${item.sit}${patch.dataEntregaReal ? ' (entrega registrada hoje)' : ''}`)
+            const marcador = patch.dataEntregaReal
+              ? ' (entrega registrada hoje)'
+              : patch.dataParcial
+                ? ' (parcial registrada hoje)'
+                : ''
+            addLog(`OC ${item.id} — ${item.sit}${marcador}`)
           } else {
             skipped++
           }
         } else {
           const entregaNaChegada = item.sit === 'Atendida' ? fmt(getHoje()) : null
+          const parcialNaChegada = item.sit === 'Parcialmente Atendida' ? fmt(getHoje()) : null
           await ocRepository.criarOCImportada({
             id: item.id,
             dataSolic: item.dataSolic,
@@ -115,9 +127,15 @@ export default function Importar() {
             hospitalId,
             ultimaMovimentacao: item.dataSolic,
             dataEntregaReal: entregaNaChegada,
+            dataParcial: parcialNaChegada,
           })
           added++
-          addLog(`OC ${item.id} — ${item.sit} (nova)${entregaNaChegada ? ' (entrega registrada hoje)' : ''}`)
+          const marcadorNova = entregaNaChegada
+            ? ' (entrega registrada hoje)'
+            : parcialNaChegada
+              ? ' (parcial registrada hoje)'
+              : ''
+          addLog(`OC ${item.id} — ${item.sit} (nova)${marcadorNova}`)
         }
       }
       if (added === 0 && updated === 0 && skipped > 0) {

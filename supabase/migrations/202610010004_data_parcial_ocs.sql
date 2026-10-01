@@ -1,0 +1,29 @@
+-- Objetivo: registrar a data em que uma OC entrou pela primeira vez em
+-- "Parcialmente Atendida", separada da data de entrega final (`data_entrega_real_date`).
+--
+-- Pedido do Everton: "quando uma OC entra no parcial, não fica registrado
+-- essa data, e só quando ela é completamente atendida que entra nas
+-- métricas... já teve situações onde a OC tem 50 itens, 49 foram atendidos,
+-- e 1 estava em falta e só iria ser entregue 2 semanas depois, fora do Lead
+-- Time, porém tendo a data da parcial, já saberíamos que uma parte entrou
+-- nas métricas dentro do prazo do Lead Time." Hoje `Metricas.tsx` só gera
+-- uma linha de Lead Time pra OC que já tem `dataEntregaReal` preenchida —
+-- uma OC parcial com só 1 item pendente fica de fora de qualquer métrica até
+-- o último item ser entregue, perdendo o sinal de que a maior parte já
+-- cumpriu o prazo.
+--
+-- Mesmo princípio já usado pra `data_entrega_real_date` (item 34 do
+-- backlog): o relatório do SoulMV não traz essa data explicitamente, então
+-- "quando a OC entrou em Parcialmente Atendida" é registrado como
+-- aproximação (quando o sistema/comprador ficou sabendo), não a data exata
+-- do evento no fornecedor — mesma limitação já aceita pro campo irmão.
+-- Gravado só na PRIMEIRA transição pra Parcialmente Atendida (nunca
+-- sobrescrito depois, mesmo se a OC voltar a mudar de situação).
+--
+-- Impacto: aditiva — 1 coluna nova (`ocs.data_parcial_date date`,
+-- nullable). Nenhum dado existente tocado, sem backfill retroativo (mesma
+-- decisão do item 34: só passa a registrar daqui pra frente, nunca inventa
+-- data histórica pra OC que já estava parcial antes desta migration).
+-- Rollback: ALTER TABLE ocs DROP COLUMN data_parcial_date.
+
+alter table ocs add column if not exists data_parcial_date date;

@@ -16,6 +16,7 @@ function rowBase(overrides: Partial<OCRow> = {}): OCRow {
     cobrado: false,
     previsao_forn_date: null,
     data_entrega_real_date: null,
+    data_parcial_date: null,
     dias_atraso: 0,
     created_at: null,
     owner_id: null,
@@ -61,6 +62,11 @@ describe('toOC', () => {
     const oc = toOC(rowBase({ previsao_forn_date: null, data_entrega_real_date: null }))
     expect(oc.previsaoForn).toBeNull()
     expect(oc.dataEntregaReal).toBeNull()
+  })
+
+  it('mapeia data_parcial_date pra dataParcial, null quando a OC nunca entrou em parcial', () => {
+    expect(toOC(rowBase({ data_parcial_date: '2026-09-08' })).dataParcial).toBe('08/09/2026')
+    expect(toOC(rowBase({ data_parcial_date: null })).dataParcial).toBeNull()
   })
 
   // O tipo gerado do schema (Database) marca sit/cobrado/fornecedor_nome como

@@ -38,6 +38,7 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
 
   const [previsaoForn, setPrevisaoForn] = useState(toInput(oc.previsaoForn))
   const [dataEntregaReal, setDataEntregaReal] = useState(toInput(oc.dataEntregaReal))
+  const [dataParcial, setDataParcial] = useState(toInput(oc.dataParcial))
   const [proximaAcao, setProximaAcao] = useState(oc.proximaAcao ?? '')
   const [motivoAtraso, setMotivoAtraso] = useState(oc.motivoAtraso ?? '')
 
@@ -73,6 +74,7 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
   const handleSalvar = async () => {
     const dEntregaReal = dataEntregaReal ? fromInput(dataEntregaReal) : null
     const dPrevisaoForn = previsaoForn ? fromInput(previsaoForn) : null
+    const dParcial = dataParcial ? fromInput(dataParcial) : null
 
     let previsaoDescumprida = oc.previsaoDescumprida
     if (dEntregaReal) previsaoDescumprida = false
@@ -92,6 +94,7 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
         patch: {
           previsaoForn: dPrevisaoForn,
           dataEntregaReal: dEntregaReal,
+          dataParcial: dParcial,
           proximaAcao: proximaAcao || null,
           motivoAtraso: motivoAtraso || null,
           previsaoDescumprida,
@@ -127,6 +130,9 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
     if (respondida && h.respondidoEm) {
       eventos.push({ data: new Date(h.respondidoEm), titulo: 'Fornecedor respondeu', icone: '✅' })
     }
+  }
+  if (oc.dataParcial) {
+    eventos.push({ data: parseDMY(oc.dataParcial), titulo: 'Entrega parcial registrada', icone: '📦' })
   }
   if (oc.dataEntregaReal) {
     eventos.push({ data: parseDMY(oc.dataEntregaReal), titulo: 'Entrega registrada', icone: '📦' })
@@ -185,13 +191,26 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-slate-700">Data de entrega real</span>
+            <span className="font-medium text-slate-700">Data de entrega real (total)</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
               value={dataEntregaReal}
               onChange={(e) => setDataEntregaReal(e.target.value)}
             />
+          </label>
+          <label className="col-span-2 flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700">Data da 1ª entrega parcial</span>
+            <input
+              type="date"
+              className="rounded-md border border-slate-300 px-2 py-1.5"
+              value={dataParcial}
+              onChange={(e) => setDataParcial(e.target.value)}
+            />
+            <span className="text-[11px] text-slate-400">
+              Quando parte dos itens já foi entregue mas a OC ainda não fechou — usado nas Métricas pra não
+              esperar a entrega total pra contar o que já cumpriu o prazo.
+            </span>
           </label>
         </div>
 

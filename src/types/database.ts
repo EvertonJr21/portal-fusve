@@ -277,6 +277,7 @@ export type Database = {
           cobrado: boolean | null
           created_at: string | null
           data_entrega_real_date: string | null
+          data_parcial_date: string | null
           data_solic_date: string | null
           deleted_at: string | null
           dias_atraso: number | null
@@ -300,6 +301,7 @@ export type Database = {
           cobrado?: boolean | null
           created_at?: string | null
           data_entrega_real_date?: string | null
+          data_parcial_date?: string | null
           data_solic_date?: string | null
           deleted_at?: string | null
           dias_atraso?: number | null
@@ -323,6 +325,7 @@ export type Database = {
           cobrado?: boolean | null
           created_at?: string | null
           data_entrega_real_date?: string | null
+          data_parcial_date?: string | null
           data_solic_date?: string | null
           deleted_at?: string | null
           dias_atraso?: number | null
