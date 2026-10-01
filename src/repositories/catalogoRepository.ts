@@ -197,23 +197,31 @@ export async function listarAreasDoItem(itemId: string): Promise<ItemArea[]> {
   return (data as ItemAreaRow[]).map(toItemArea)
 }
 
-/** Itens vinculados a uma área — usado na navegação master-detail (`/catalogo`). */
+/**
+ * Itens vinculados a uma área — usado na navegação master-detail (`/catalogo`).
+ *
+ * **Bug real corrigido (01/10/2026)**: a versão anterior buscava `item_areas`
+ * (paginado) e depois fazia `itens.select().in('id', [...milhares de ids])` —
+ * pra uma área que recebeu muitos grupos no mapeamento automático (item 53 do
+ * backlog, ex: Centro Cirúrgico Geral), esse `IN` chegava a ter milhares de
+ * UUIDs, deixando a tela extremamente lenta (payload gigante de ida e volta,
+ * sem contar múltiplas páginas de 1000 em 1000 só pra montar a lista de ids).
+ * Trocado por um único `JOIN` via embed do PostgREST (`itens!inner(*)`) —
+ * o filtro e a ordenação rodam dentro do Postgres, usando o índice
+ * `idx_item_areas_area` já existente, numa única viagem de rede.
+ */
 export async function listarItensDaArea(areaId: string): Promise<ItemCatalogo[]> {
-  const vinculos = await buscarTudo<{ item_id: string }>((from, to) =>
-    supabase.from('item_areas').select('item_id').eq('area_id', areaId).range(from, to),
+  const rows = await buscarTudo<{ itens: ItemRow }>((from, to) =>
+    supabase
+      .from('item_areas')
+      .select('itens!inner(*)')
+      .eq('area_id', areaId)
+      .is('itens.deleted_at', null)
+      .order('nome', { referencedTable: 'itens' })
+      .order('item_id')
+      .range(from, to),
   )
-  if (vinculos.length === 0) return []
-  const { data, error } = await supabase
-    .from('itens')
-    .select('*')
-    .in(
-      'id',
-      vinculos.map((v) => v.item_id),
-    )
-    .is('deleted_at', null)
-    .order('nome')
-  if (error) throw error
-  return (data as ItemRow[]).map(toItem)
+  return rows.map((r) => toItem(r.itens))
 }
 
 export async function definirAreaItem(itemId: string, areaId: string, principal: boolean): Promise<void> {
