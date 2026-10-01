@@ -129,10 +129,12 @@ export async function listarItens(): Promise<ItemCatalogo[]> {
 }
 
 /**
- * Busca server-side por nome ou sinônimo — usada no autocomplete de busca
- * (não faz sentido puxar os ~5.400 itens pra filtrar no cliente toda vez).
- * `sinonimos` é `text[]`; compara como texto porque não há necessidade de
- * full-text search pra um catálogo desse tamanho.
+ * Busca server-side por nome, sinônimo ou código SoulMV — usada no
+ * autocomplete de busca (não faz sentido puxar os ~5.400 itens pra filtrar
+ * no cliente toda vez). `sinonimos` é `text[]`; compara como texto porque
+ * não há necessidade de full-text search pra um catálogo desse tamanho.
+ * Código SoulMV adicionado a pedido do Everton (01/10/2026) — antes só
+ * nome/sinônimo casavam, busca por `cod_soulmv` não retornava nada.
  */
 export async function buscarItensPorTexto(texto: string, limite = 30): Promise<ItemCatalogo[]> {
   const termo = texto.trim()
@@ -141,7 +143,7 @@ export async function buscarItensPorTexto(texto: string, limite = 30): Promise<I
     .from('itens')
     .select('*')
     .is('deleted_at', null)
-    .or(`nome.ilike.%${termo}%,sinonimos.cs.{${termo}}`)
+    .or(`nome.ilike.%${termo}%,sinonimos.cs.{${termo}},cod_soulmv.ilike.%${termo}%`)
     .order('nome')
     .limit(limite)
   if (error) throw error
