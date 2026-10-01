@@ -37,12 +37,20 @@
 -- exclui pela tela `/catalogo/gestao` (soft delete via `excluirArea`) o que
 -- não existir de fato, em vez de eu decidir por ele.
 --
--- Impacto: aditivo, apenas INSERT, escopado só `hospital_id = 'hmk'`.
+-- Impacto: aditivo, apenas INSERT, escopado só `hospital_id = 'mkr'`.
 -- Idempotente via NOT EXISTS (seguro rodar de novo sem duplicar).
--- Rollback: DELETE FROM areas WHERE hospital_id = 'hmk' AND created_at >= 'AGORA' (ajustar).
+-- Rollback: DELETE FROM areas WHERE hospital_id = 'mkr' AND created_at >= 'AGORA' (ajustar).
+--
+-- **Correção (01/10/2026)**: a primeira versão desta migration usava
+-- `hospital_id = 'hmk'`, que não existe — o código interno do HMK no schema
+-- é `'mkr'` (ver `HOSPITAIS` em `src/constants/index.ts` e o `CHECK
+-- areas_hospital_id_check`), apesar de "HMK" ser a sigla usada em toda a
+-- documentação/UI. A tentativa de rodar a versão com `'hmk'` falhou contra a
+-- CHECK constraint em produção (nenhuma linha foi gravada) — corrigido pra
+-- `'mkr'` antes de reenviar.
 
 insert into areas (hospital_id, nome, ordem)
-select 'hmk', v.nome, v.ordem
+select 'mkr', v.nome, v.ordem
 from (values
   -- 1. Bloco Cirúrgico (estruturalmente necessário, não confirmado nomeado)
   ('Centro Cirúrgico Oncológico', 10),
@@ -84,5 +92,5 @@ from (values
   ('Comissão de Controle de Infecção Hospitalar (CCIH)', 74)
 ) as v(nome, ordem)
 where not exists (
-  select 1 from areas a where a.hospital_id = 'hmk' and a.nome = v.nome and a.deleted_at is null
+  select 1 from areas a where a.hospital_id = 'mkr' and a.nome = v.nome and a.deleted_at is null
 );
