@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useHospital } from '@/hooks/useHospital'
-import { useAreas, useBuscaItens, useGruposDoItem, useGrupos, useItensDaArea } from '@/hooks/useCatalogo'
-import type { ItemCatalogo } from '@/types'
+import { useAreas, useAreasDoItem, useBuscaItens, useGruposDoItem, useGrupos, useItensDaArea } from '@/hooks/useCatalogo'
+import type { Area, ItemCatalogo } from '@/types'
 
 function destacar(texto: string, termo: string) {
   if (!termo) return texto
@@ -19,10 +19,24 @@ function destacar(texto: string, termo: string) {
   )
 }
 
-function PainelDetalheItem({ item }: { item: ItemCatalogo }) {
+function PainelDetalheItem({ item, areas }: { item: ItemCatalogo; areas: Area[] }) {
   const { data: gruposIds = [] } = useGruposDoItem(item.id)
   const { data: todosGrupos = [] } = useGrupos()
-  const nomesGrupos = gruposIds.map((id) => todosGrupos.find((g) => g.id === id)?.nome).filter(Boolean)
+  const { data: areasDoItem = [] } = useAreasDoItem(item.id)
+  const gruposDoItem = todosGrupos.filter((g) => gruposIds.includes(g.id))
+  const nomesGrupos = gruposDoItem.map((g) => g.nome)
+  const nomesAreas = areasDoItem
+    .map((v) => areas.find((a) => a.id === v.areaId))
+    .filter((a): a is Area => !!a)
+    .map((a) => a.nome)
+
+  // Resumo próprio do item tem prioridade; na falta dele, usa a descrição
+  // geral do primeiro grupo que tiver uma preenchida — pesquisa genérica por
+  // categoria de material (item 55 do backlog), não específica deste item.
+  const resumoProprio = item.resumoUso.trim()
+  const grupoComResumo = gruposDoItem.find((g) => g.descricaoUso.trim())
+  const resumo = resumoProprio || grupoComResumo?.descricaoUso.trim() || ''
+  const resumoEhDoGrupo = !resumoProprio && !!resumo
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-5 shadow-soft-sm">
@@ -30,6 +44,19 @@ function PainelDetalheItem({ item }: { item: ItemCatalogo }) {
         <h3 className="text-base font-semibold text-slate-800">{item.nome}</h3>
         {item.codSoulmv && <p className="text-xs text-slate-400">Código SoulMV: {item.codSoulmv}</p>}
       </div>
+
+      {resumo && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Como é usado</p>
+          <p className="text-sm text-slate-700">{resumo}</p>
+          {resumoEhDoGrupo && (
+            <p className="mt-1 text-[11px] text-slate-400">
+              Descrição geral do grupo "{grupoComResumo!.nome}" — pesquisa não validada por profissional clínico do HUV, pode não
+              se aplicar exatamente a este item. Edite em Gestão se for diferente.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
@@ -39,6 +66,10 @@ function PainelDetalheItem({ item }: { item: ItemCatalogo }) {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Grupos</p>
           <p className="text-slate-700">{nomesGrupos.length > 0 ? nomesGrupos.join(', ') : 'Uso geral (sem grupo)'}</p>
+        </div>
+        <div className="col-span-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Áreas onde é usado</p>
+          <p className="text-slate-700">{nomesAreas.length > 0 ? nomesAreas.join(', ') : 'Nenhuma área vinculada ainda'}</p>
         </div>
       </div>
 
@@ -165,7 +196,7 @@ export default function Navegar() {
 
         <div>
           {itemSelecionado ? (
-            <PainelDetalheItem item={itemSelecionado} />
+            <PainelDetalheItem item={itemSelecionado} areas={areas} />
           ) : (
             <EmptyState icon="🔍" title="Selecione um item" description="Os detalhes aparecem aqui." />
           )}

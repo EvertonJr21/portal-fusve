@@ -155,6 +155,8 @@ export interface Grupo {
   id: string
   nome: string
   ordem: number
+  /** Descrição genérica de uso típico desse grupo de material — pesquisa geral, não validada clinicamente (ver item 55 do backlog). */
+  descricaoUso: string
 }
 
 /** Item do Catálogo de Materiais por Área Hospitalar — compartilhado entre HUV/HMK. */
@@ -165,6 +167,8 @@ export interface ItemCatalogo {
   codSoulmv: string | null
   sinonimos: string[]
   observacao: string
+  /** Resumo de como o item é usado — sobrescreve `Grupo.descricaoUso` quando preenchido. */
+  resumoUso: string
 }
 
 /** Vínculo item↔área — N:N, `principal` marca a área de uso mais típico quando fizer sentido. */

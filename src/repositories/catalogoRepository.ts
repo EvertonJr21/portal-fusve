@@ -52,7 +52,7 @@ export function toArea(row: AreaRow): Area {
 }
 
 export function toGrupo(row: GrupoRow): Grupo {
-  return { id: row.id, nome: row.nome, ordem: row.ordem }
+  return { id: row.id, nome: row.nome, ordem: row.ordem, descricaoUso: row.descricao_uso ?? '' }
 }
 
 export function toItem(row: ItemRow): ItemCatalogo {
@@ -63,6 +63,7 @@ export function toItem(row: ItemRow): ItemCatalogo {
     codSoulmv: row.cod_soulmv,
     sinonimos: row.sinonimos ?? [],
     observacao: row.observacao,
+    resumoUso: row.resumo_uso ?? '',
   }
 }
 
@@ -109,7 +110,9 @@ export async function listarGrupos(): Promise<Grupo[]> {
 }
 
 export async function salvarGrupo(grupo: Grupo): Promise<void> {
-  const { error } = await supabase.from('grupos').upsert({ id: grupo.id, nome: grupo.nome, ordem: grupo.ordem })
+  const { error } = await supabase
+    .from('grupos')
+    .upsert({ id: grupo.id, nome: grupo.nome, ordem: grupo.ordem, descricao_uso: grupo.descricaoUso })
   if (error) throw error
 }
 
@@ -158,6 +161,7 @@ export async function salvarItem(item: ItemCatalogo): Promise<void> {
     cod_soulmv: item.codSoulmv,
     sinonimos: item.sinonimos,
     observacao: item.observacao,
+    resumo_uso: item.resumoUso,
   })
   if (error) throw error
 }

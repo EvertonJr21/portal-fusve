@@ -431,6 +431,7 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          descricao_uso: string
           id: string
           nome: string
           ordem: number
@@ -439,6 +440,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          descricao_uso?: string
           id?: string
           nome: string
           ordem?: number
@@ -447,6 +449,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          descricao_uso?: string
           id?: string
           nome?: string
           ordem?: number
@@ -462,6 +465,7 @@ export type Database = {
           id: string
           nome: string
           observacao: string
+          resumo_uso: string
           sinonimos: string[]
           unidade_padrao: string
           updated_at: string
@@ -473,6 +477,7 @@ export type Database = {
           id?: string
           nome: string
           observacao?: string
+          resumo_uso?: string
           sinonimos?: string[]
           unidade_padrao?: string
           updated_at?: string
@@ -484,6 +489,7 @@ export type Database = {
           id?: string
           nome?: string
           observacao?: string
+          resumo_uso?: string
           sinonimos?: string[]
           unidade_padrao?: string
           updated_at?: string

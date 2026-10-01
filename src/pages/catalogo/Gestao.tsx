@@ -117,6 +117,50 @@ function AbaAreas() {
 
 // ---- Aba Grupos ----
 
+function ModalGrupo({ grupo, onClose }: { grupo: Grupo; onClose: () => void }) {
+  const toast = useToast()
+  const salvar = useSalvarGrupo()
+  const [descricaoUso, setDescricaoUso] = useState(grupo.descricaoUso)
+
+  const salvarEFechar = async () => {
+    try {
+      await salvar.mutateAsync({ ...grupo, descricaoUso: descricaoUso.trim() })
+      toast.show('Grupo salvo')
+      onClose()
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao salvar grupo', 'error')
+    }
+  }
+
+  return (
+    <Modal
+      title={grupo.nome}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+          <Button onClick={salvarEFechar} disabled={salvar.isPending}>
+            {salvar.isPending ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      }
+    >
+      <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+        Descrição de uso típico deste grupo (aparece em "Como é usado" nos itens que não tiverem resumo próprio)
+        <textarea
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          rows={3}
+          placeholder="Ex: usadas para fixação de curativos, imobilização e compressão em grandes áreas do corpo..."
+          value={descricaoUso}
+          onChange={(e) => setDescricaoUso(e.target.value)}
+        />
+      </label>
+    </Modal>
+  )
+}
+
 function AbaGrupos() {
   const toast = useToast()
   const confirmar = useConfirm()
@@ -124,11 +168,12 @@ function AbaGrupos() {
   const salvar = useSalvarGrupo()
   const excluir = useExcluirGrupo()
   const [nomeNovo, setNomeNovo] = useState('')
+  const [grupoEditando, setGrupoEditando] = useState<Grupo | null>(null)
 
   const adicionar = async () => {
     if (!nomeNovo.trim()) return
     try {
-      await salvar.mutateAsync({ id: novoId(), nome: nomeNovo.trim(), ordem: grupos.length })
+      await salvar.mutateAsync({ id: novoId(), nome: nomeNovo.trim(), ordem: grupos.length, descricaoUso: '' })
       setNomeNovo('')
       toast.show('Grupo cadastrado')
     } catch (err) {
@@ -168,14 +213,23 @@ function AbaGrupos() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {grupos.map((g) => (
           <div key={g.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-            <span className="text-slate-700">{g.nome}</span>
-            <IconButton title="Excluir grupo" tone="danger" onClick={() => handleExcluir(g)}>
-              ✕
-            </IconButton>
+            <button type="button" className="truncate text-left text-slate-700 hover:underline" onClick={() => setGrupoEditando(g)}>
+              {g.nome}
+            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <IconButton title="Editar descrição de uso" onClick={() => setGrupoEditando(g)}>
+                ✏
+              </IconButton>
+              <IconButton title="Excluir grupo" tone="danger" onClick={() => handleExcluir(g)}>
+                ✕
+              </IconButton>
+            </div>
           </div>
         ))}
         {grupos.length === 0 && <p className="col-span-full text-sm text-slate-400">Nenhum grupo cadastrado ainda.</p>}
       </div>
+
+      {grupoEditando && <ModalGrupo grupo={grupoEditando} onClose={() => setGrupoEditando(null)} />}
     </div>
   )
 }
@@ -199,6 +253,7 @@ function ModalItem({ item, onClose }: { item: ItemCatalogo; onClose: () => void 
   const [codSoulmv, setCodSoulmv] = useState(item.codSoulmv ?? '')
   const [sinonimos, setSinonimos] = useState(item.sinonimos.join(', '))
   const [observacao, setObservacao] = useState(item.observacao)
+  const [resumoUso, setResumoUso] = useState(item.resumoUso)
   const [gruposSelecionados, setGruposSelecionados] = useState<string[]>(gruposDoItem)
 
   const salvar = async () => {
@@ -213,6 +268,7 @@ function ModalItem({ item, onClose }: { item: ItemCatalogo; onClose: () => void 
           .map((s) => s.trim())
           .filter(Boolean),
         observacao: observacao.trim(),
+        resumoUso: resumoUso.trim(),
       })
       await definirGrupos.mutateAsync({ itemId: item.id, grupoIds: gruposSelecionados })
       toast.show('Item salvo')
@@ -292,6 +348,17 @@ function ModalItem({ item, onClose }: { item: ItemCatalogo; onClose: () => void 
             rows={2}
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+          Resumo de uso (como esse item é usado — deixe em branco pra usar a descrição geral do grupo)
+          <textarea
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            rows={2}
+            placeholder="Ex: usada para fixação de curativos, imobilizações e terapias compressivas em grandes áreas do corpo..."
+            value={resumoUso}
+            onChange={(e) => setResumoUso(e.target.value)}
           />
         </label>
 
