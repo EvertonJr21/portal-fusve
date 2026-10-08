@@ -13,7 +13,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
-import { useAtualizarSituacaoOC, useExcluirOC, useOCs } from '@/hooks/useOCs'
+import { useAtualizarOC, useAtualizarSituacaoOC, useExcluirOC, useOCs } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
 import { useToast } from '@/hooks/useToast'
 import type { OC, SituacaoOC } from '@/types'
@@ -39,6 +39,7 @@ export default function OrdensDeCompra() {
   const { data: sols = [] } = useSols(hospitalId)
   const { data: forns = [] } = useFornecedores()
   const atualizarSituacao = useAtualizarSituacaoOC(hospitalId)
+  const atualizarCampos = useAtualizarOC(hospitalId)
   const excluir = useExcluirOC(hospitalId)
   const toast = useToast()
   const confirmar = useConfirm()
@@ -64,6 +65,15 @@ export default function OrdensDeCompra() {
       await atualizarSituacao.mutateAsync({ id, sit: sit as SituacaoOC })
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao atualizar situação', 'error')
+    }
+  }
+
+  const handleAtualizarPrevisao = async (id: number, previsaoForn: string | null) => {
+    try {
+      await atualizarCampos.mutateAsync({ id, patch: { previsaoForn } })
+      toast.show(previsaoForn ? `Previsão da OC ${id} atualizada` : `Previsão da OC ${id} removida`)
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao atualizar previsão', 'error')
     }
   }
 
@@ -106,6 +116,7 @@ export default function OrdensDeCompra() {
           onVincular={(oc) => setModal({ tipo: 'vincular', oc })}
           onHistorico={(oc) => setModal({ tipo: 'historico', oc })}
           onCobrar={(oc, canal) => setModal({ tipo: 'cobrar', oc, canal })}
+          onAtualizarPrevisao={handleAtualizarPrevisao}
         />
       )}
 

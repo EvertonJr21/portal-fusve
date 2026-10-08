@@ -7,7 +7,7 @@ import { StatusDot, type StatusDotTone } from '@/components/ui/StatusDot'
 import { SortableTh, Table, TableHead, type SortDir } from '@/components/ui/Table'
 import { FINAL_SIT, SITUACOES_OC } from '@/constants'
 import type { OC, Solicitacao } from '@/types'
-import { fmt, parseDMY } from '@/utils/date'
+import { fmt, fromInput, parseDMY, toInput } from '@/utils/date'
 import { dataPrazo, diasRestantes, diasSemMovimentacao, previsaoAtiva, riscoOC, textoSemaforo } from '@/utils/oc'
 
 const PG = 12
@@ -34,6 +34,7 @@ interface OCTableProps {
   onVincular: (oc: OC) => void
   onHistorico: (oc: OC) => void
   onCobrar: (oc: OC, canal: 'mail' | 'wpp') => void
+  onAtualizarPrevisao: (id: number, previsaoForn: string | null) => void
 }
 
 export function OCTable({
@@ -46,10 +47,12 @@ export function OCTable({
   onVincular,
   onHistorico,
   onCobrar,
+  onAtualizarPrevisao,
 }: OCTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [dir, setDir] = useState<SortDir>(-1)
   const [pagina, setPagina] = useState(0)
+  const [editandoPrevisaoId, setEditandoPrevisaoId] = useState<number | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -176,21 +179,44 @@ export function OCTable({
                   </select>
                 </td>
                 <td className="px-3 py-2 text-xs">
-                  {FINAL_SIT.includes(o.sit as (typeof FINAL_SIT)[number]) ? (
+                  {editandoPrevisaoId === o.id ? (
+                    <input
+                      type="date"
+                      autoFocus
+                      className="rounded border border-slate-300 px-1 py-0.5 text-[11px]"
+                      defaultValue={toInput(o.previsaoForn)}
+                      onBlur={(e) => {
+                        setEditandoPrevisaoId(null)
+                        onAtualizarPrevisao(o.id, e.target.value ? fromInput(e.target.value) : null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setEditandoPrevisaoId(null)
+                        if (e.key === 'Enter') e.currentTarget.blur()
+                      }}
+                    />
+                  ) : FINAL_SIT.includes(o.sit as (typeof FINAL_SIT)[number]) ? (
                     <span className="text-slate-300">—</span>
                   ) : prev ? (
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${
+                    <button
+                      type="button"
+                      onClick={() => setEditandoPrevisaoId(o.id)}
+                      title="Clique pra editar a previsão"
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-semibold hover:ring-1 hover:ring-offset-1 ${
                         isPrev2 ? 'bg-status-amber-bg text-status-amber' : 'bg-status-purple-bg text-status-purple'
                       }`}
                     >
                       {isPrev2 ? '2ª ' : ''}
                       {prev}
-                    </span>
+                    </button>
                   ) : (
-                    <span className="rounded border border-dashed border-slate-300 px-1.5 py-0.5 text-[11px] text-slate-400">
+                    <button
+                      type="button"
+                      onClick={() => setEditandoPrevisaoId(o.id)}
+                      title="Clique pra registrar a previsão do fornecedor"
+                      className="rounded border border-dashed border-slate-300 px-1.5 py-0.5 text-[11px] text-slate-400 hover:border-status-purple hover:text-status-purple"
+                    >
                       + previsão
-                    </span>
+                    </button>
                   )}
                   {o.diasAtraso > 0 && <span className="ml-1 text-[10px] text-status-red">({o.diasAtraso}d atr.)</span>}
                 </td>

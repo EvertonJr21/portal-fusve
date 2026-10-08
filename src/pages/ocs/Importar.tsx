@@ -83,7 +83,11 @@ export default function Importar() {
             patch.fornecedorNome = item.fornecedorNome
             patch.fornecedorId = item.fornecedorId
           }
-          if (item.previsaoForn && !existente.previsaoForn) patch.previsaoForn = item.previsaoForn
+          // Previsão do relatório nunca é aplicada por importação, nem na 1ª vez
+          // (item 72) — mesmo motivo do item 34 pra OC nova: não é confiável, e
+          // reimportar o mesmo relatório periodicamente acabava preenchendo o
+          // campo de qualquer jeito 1 ciclo depois da OC entrar no sistema. Previsão
+          // é só manual (formulário ou clique direto na tabela) daqui pra frente.
           // O relatório do SoulMV não traz data de entrega real — quando a OC vira
           // "Atendida" nesta importação, registra a data de hoje como aproximação
           // (é a única informação real que temos: "quando ficamos sabendo que foi
