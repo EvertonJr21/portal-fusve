@@ -57,6 +57,8 @@ export type FreteTipo = (typeof FRETE_TIPOS)[number]
 export const CAPACIDADE_PERIODOS = ['semana', 'mes'] as const
 export type CapacidadePeriodo = (typeof CAPACIDADE_PERIODOS)[number]
 
+export const UNIDADES_PRODUTO = ['UNIDADE', 'CAIXA', 'PACOTE', 'KIT', 'PAR', 'ROLO', 'FRASCO', 'AMPOLA', 'ENVELOPE', 'LITRO'] as const
+
 export const AVISO_RENOVACAO_OPCOES = [30, 60, 90] as const
 
 export const STATUS_OPME = ['pendente', 'finalizado'] as const

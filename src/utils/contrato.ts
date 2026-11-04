@@ -25,3 +25,18 @@ export function statusVigencia(contrato: Pick<ContratoHeader, 'vigenciaFim' | 'a
   if (dias <= contrato.avisoRenovacaoDias) return 'atencao'
   return 'ok'
 }
+
+/** 387.69 → "387,69"; 0/negativo → "" (campo vazio em vez de um "0" que o usuário teria que apagar). */
+export function formatarPrecoBR(valor: number): string {
+  if (!valor || valor < 0) return ''
+  return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Aceita "1.234,56", "1234,56", "1234.56" ou "R$ 12" → número; texto inválido → 0. */
+export function parsePrecoBR(texto: string): number {
+  const limpo = texto.replace(/[^\d,.]/g, '')
+  if (!limpo) return 0
+  const normalizado = limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.') : limpo
+  const n = Number(normalizado)
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0
+}
