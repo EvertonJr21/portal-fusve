@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 
 interface ModalProps {
   title: string
@@ -6,6 +6,8 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   size?: 'md' | 'lg' | 'xl'
+  /** Formulários longos passam `false`: um clique perdido fora do modal não pode descartar o que foi digitado. */
+  closeOnBackdrop?: boolean
 }
 
 const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
@@ -14,12 +16,18 @@ const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
   xl: 'max-w-4xl',
 }
 
-export function Modal({ title, onClose, children, footer, size = 'md' }: ModalProps) {
+export function Modal({ title, onClose, children, footer, size = 'md', closeOnBackdrop = true }: ModalProps) {
+  // Só fecha se o clique COMEÇOU no fundo — apertar dentro de um campo e soltar fora
+  // (ex.: arrastando pra selecionar texto) também dispara `click` no fundo.
+  const pressionouNoFundo = useRef(false)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px] animate-fade-in"
+      onMouseDown={(e) => {
+        pressionouNoFundo.current = e.target === e.currentTarget
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (closeOnBackdrop && pressionouNoFundo.current && e.target === e.currentTarget) onClose()
       }}
     >
       <div

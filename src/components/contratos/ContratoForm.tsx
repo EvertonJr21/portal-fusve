@@ -12,6 +12,7 @@ import {
 } from '@/constants'
 import { ProdutosContratoEditor } from '@/components/contratos/ProdutosContratoEditor'
 import { useContratoProdutos, useSalvarContrato, useSalvarProdutosContrato } from '@/hooks/useContratos'
+import { useConfirm } from '@/hooks/useConfirm'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoHeader, ContratoProduto } from '@/types'
 import { consultarCNPJ, formatarCNPJ } from '@/utils/cnpj'
@@ -60,6 +61,8 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
   const [produtos, setProdutos] = useState<ContratoProduto[]>([])
   const [produtosInicializados, setProdutosInicializados] = useState(isNovo)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
+  const [headerInicial] = useState(() => JSON.stringify(header))
+  const confirmar = useConfirm()
 
   if (!produtosInicializados && !carregandoProdutos) {
     setProdutos(produtosOriginais)
@@ -108,15 +111,32 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
   }
 
   const salvando = salvarContrato.isPending || salvarProdutos.isPending
+  const alterado =
+    JSON.stringify(header) !== headerInicial ||
+    (produtosInicializados && JSON.stringify(produtos) !== JSON.stringify(produtosOriginais))
+
+  const fechar = async () => {
+    if (
+      alterado &&
+      !(await confirmar({
+        message: 'Você tem alterações não salvas neste contrato. Sair sem salvar?',
+        tone: 'danger',
+        confirmLabel: 'Descartar alterações',
+      }))
+    )
+      return
+    onClose()
+  }
 
   return (
     <Modal
       title={isNovo ? 'Novo Contrato' : `Editar Contrato — ${header.fornecedorNome}`}
-      onClose={onClose}
+      onClose={fechar}
       size="xl"
+      closeOnBackdrop={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={fechar}>
             Cancelar
           </Button>
           <Button form="contrato-form" type="submit" loading={salvando}>
