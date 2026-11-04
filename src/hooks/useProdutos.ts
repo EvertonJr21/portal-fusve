@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 
 /**
- * Base de 4.579 produtos do SoulMV — carregada via dynamic import só quando
- * o módulo Pareceres é aberto, pra não pesar no bundle principal do app.
+ * Catálogo de produtos do SoulMV (ver `src/data/produtos.ts`) — carregado via dynamic
+ * import só quando uma tela que busca produto é aberta (Pareceres, formulário de
+ * Contratos), pra não pesar no bundle principal do app.
  */
 export function useProdutos() {
   return useQuery({

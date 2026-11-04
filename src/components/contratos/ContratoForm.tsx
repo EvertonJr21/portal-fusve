@@ -12,6 +12,8 @@ import {
   type CapacidadePeriodo,
   type HospitalId,
 } from '@/constants'
+import { ProdutoAutocompleteInput } from '@/components/contratos/ProdutoAutocompleteInput'
+import type { Produto } from '@/data/produtos'
 import { useContratoProdutos, useSalvarContrato, useSalvarProdutosContrato } from '@/hooks/useContratos'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoHeader, ContratoProduto } from '@/types'
@@ -95,6 +97,22 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
 
   const adicionarProduto = () => setProdutos((prev) => [...prev, novoProduto(header.id)])
   const removerProduto = (id: string) => setProdutos((prev) => prev.filter((p) => p.id !== id))
+
+  const [buscaCatalogo, setBuscaCatalogo] = useState('')
+
+  /** Adiciona uma linha já preenchida com código + descrição do catálogo SoulMV. */
+  const adicionarDoCatalogo = (item: Produto) => {
+    setBuscaCatalogo('')
+    if (produtos.some((p) => p.codSoulmv === item.cod)) {
+      toast.show(`${item.cod} · ${item.nome} já está neste contrato`, 'warn')
+      return
+    }
+    setProdutos((prev) => [...prev, { ...novoProduto(header.id), codSoulmv: item.cod, descricao: item.nome }])
+  }
+
+  /** Escolher um item do catálogo numa linha existente preenche código e descrição juntos. */
+  const vincularCatalogo = (id: string, item: Produto) =>
+    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, codSoulmv: item.cod, descricao: item.nome } : p)))
 
   const buscarCnpj = async () => {
     setBuscandoCnpj(true)
@@ -209,7 +227,7 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
             <label className={labelClass}>
               <span className="font-medium text-slate-700">CNPJ</span>
               <div className="flex gap-1">
-                <input type="text" className={`${inputClass} flex-1`} value={header.fornecedorCnpj} onChange={(e) => set('fornecedorCnpj', e.target.value)} placeholder="00.000.000/0000-00" />
+                <input type="text" className={`${inputClass} min-w-0 flex-1`} value={header.fornecedorCnpj} onChange={(e) => set('fornecedorCnpj', e.target.value)} placeholder="00.000.000/0000-00" />
                 <Button type="button" variant="outline" onClick={buscarCnpj} disabled={buscandoCnpj || !header.fornecedorCnpj}>
                   {buscandoCnpj ? '…' : '🔍'}
                 </Button>
@@ -266,9 +284,20 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h4 className={sectionTitleClass}>Produtos</h4>
-            <Button type="button" variant="outline" onClick={adicionarProduto}>
-              + Produto
+            <Button type="button" variant="outline" onClick={adicionarProduto} title="Adicionar linha em branco (produto fora do catálogo)">
+              + Linha manual
             </Button>
+          </div>
+          <div className="mb-2">
+            <ProdutoAutocompleteInput
+              value={buscaCatalogo}
+              onChange={setBuscaCatalogo}
+              onSelect={adicionarDoCatalogo}
+              minimo={1}
+              ariaLabel="Adicionar produto do catálogo SoulMV"
+              placeholder="🔍 Adicionar do catálogo SoulMV — digite o código ou o nome (ex.: 1995, luva proc)"
+              className={`${inputClass} w-full`}
+            />
           </div>
           <div className="overflow-x-auto rounded-md border border-slate-200">
             <table className="w-full min-w-max text-xs">
@@ -290,15 +319,33 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
                 {produtos.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-2 py-4 text-center text-slate-400">
-                      Nenhum produto adicionado.
+                      Nenhum produto adicionado — use a busca acima pra puxar do catálogo SoulMV.
                     </td>
                   </tr>
                 )}
                 {produtos.map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
                     <td className="px-1 py-1"><input className="w-20 rounded border border-slate-200 px-1 py-1" value={p.sku} onChange={(e) => setProduto(p.id, 'sku', e.target.value)} /></td>
-                    <td className="px-1 py-1"><input className="w-20 rounded border border-slate-200 px-1 py-1" value={p.codSoulmv} onChange={(e) => setProduto(p.id, 'codSoulmv', e.target.value)} /></td>
-                    <td className="px-1 py-1"><input className="w-40 rounded border border-slate-200 px-1 py-1" value={p.descricao} onChange={(e) => setProduto(p.id, 'descricao', e.target.value)} /></td>
+                    <td className="px-1 py-1">
+                      <ProdutoAutocompleteInput
+                        className="w-20 rounded border border-slate-200 px-1 py-1"
+                        value={p.codSoulmv}
+                        onChange={(v) => setProduto(p.id, 'codSoulmv', v)}
+                        onSelect={(item) => vincularCatalogo(p.id, item)}
+                        minimo={3}
+                        ariaLabel="Código SoulMV"
+                      />
+                    </td>
+                    <td className="px-1 py-1">
+                      <ProdutoAutocompleteInput
+                        className="w-64 rounded border border-slate-200 px-1 py-1"
+                        value={p.descricao}
+                        onChange={(v) => setProduto(p.id, 'descricao', v)}
+                        onSelect={(item) => vincularCatalogo(p.id, item)}
+                        minimo={2}
+                        ariaLabel="Descrição do produto"
+                      />
+                    </td>
                     <td className="px-1 py-1"><input type="number" step="0.01" className="w-20 rounded border border-slate-200 px-1 py-1" value={p.precoUnitario} onChange={(e) => setProduto(p.id, 'precoUnitario', Number(e.target.value) || 0)} /></td>
                     <td className="px-1 py-1"><input className="w-20 rounded border border-slate-200 px-1 py-1" value={p.unidade} onChange={(e) => setProduto(p.id, 'unidade', e.target.value)} /></td>
                     <td className="px-1 py-1"><input type="number" className="w-16 rounded border border-slate-200 px-1 py-1" value={p.moq ?? ''} onChange={(e) => setProduto(p.id, 'moq', e.target.value ? Number(e.target.value) : null)} /></td>

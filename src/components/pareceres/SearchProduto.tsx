@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Produto } from '@/data/produtos'
 import { useProdutos } from '@/hooks/useProdutos'
+import { buscarProdutos } from '@/utils/produtos'
 
 interface SearchProdutoProps {
   onSelect: (produto: Produto) => void
@@ -26,14 +27,7 @@ export function SearchProduto({ onSelect, placeholder, valorInicial = '' }: Sear
   const [query, setQuery] = useState(valorInicial)
   const [aberto, setAberto] = useState(!!valorInicial)
 
-  const resultados = useMemo(() => {
-    const q = query.trim().toUpperCase()
-    if (q.length < 1) return []
-    const porCodigo = /^\d+$/.test(q)
-    return produtos
-      .filter((p) => (porCodigo ? p.cod.startsWith(q) : p.nome.includes(q) || p.cod.includes(q)))
-      .slice(0, 14)
-  }, [produtos, query])
+  const resultados = useMemo(() => buscarProdutos(produtos, query), [produtos, query])
 
   const selecionar = (p: Produto) => {
     setQuery(`${p.cod} · ${p.nome}`)
