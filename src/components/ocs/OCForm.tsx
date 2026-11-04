@@ -7,6 +7,7 @@ import { useSalvarOC } from '@/hooks/useOCs'
 import { useToast } from '@/hooks/useToast'
 import type { OC, SituacaoOC } from '@/types'
 import { fromInput, toInput } from '@/utils/date'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface OCFormProps {
   oc: OC | null
@@ -15,6 +16,7 @@ interface OCFormProps {
 }
 
 export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
+  const guarda = useGuardaSaida(onClose)
   const salvar = useSalvarOC(hospitalId)
   const toast = useToast()
 
@@ -54,10 +56,12 @@ export function OCForm({ oc, hospitalId, onClose }: OCFormProps) {
   return (
     <Modal
       title={oc ? `Editar OC ${oc.id}` : 'Nova Ordem de Compra'}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button form="oc-form" type="submit" loading={salvar.isPending}>

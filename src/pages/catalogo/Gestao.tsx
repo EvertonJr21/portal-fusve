@@ -24,6 +24,7 @@ import {
   useSalvarItem,
 } from '@/hooks/useCatalogo'
 import type { Area, Grupo, ItemCatalogo } from '@/types'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 const PAGE_SIZE = 20
 
@@ -118,6 +119,7 @@ function AbaAreas() {
 // ---- Aba Grupos ----
 
 function ModalGrupo({ grupo, onClose }: { grupo: Grupo; onClose: () => void }) {
+  const guarda = useGuardaSaida(onClose)
   const toast = useToast()
   const salvar = useSalvarGrupo()
   const [descricaoUso, setDescricaoUso] = useState(grupo.descricaoUso)
@@ -135,10 +137,12 @@ function ModalGrupo({ grupo, onClose }: { grupo: Grupo; onClose: () => void }) {
   return (
     <Modal
       title={grupo.nome}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Fechar
           </Button>
           <Button onClick={salvarEFechar} disabled={salvar.isPending}>
@@ -237,6 +241,7 @@ function AbaGrupos() {
 // ---- Modal de edição de item (dados + vínculos) ----
 
 function ModalItem({ item, onClose }: { item: ItemCatalogo; onClose: () => void }) {
+  const guarda = useGuardaSaida(onClose)
   const { hospitalId } = useHospital()
   const toast = useToast()
   const salvarItem = useSalvarItem()
@@ -308,11 +313,13 @@ function ModalItem({ item, onClose }: { item: ItemCatalogo; onClose: () => void 
   return (
     <Modal
       title={item.nome}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       size="lg"
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Fechar
           </Button>
           <Button onClick={salvar} disabled={!nome.trim() || salvarItem.isPending}>

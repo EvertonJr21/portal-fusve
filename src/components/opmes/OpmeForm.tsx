@@ -8,6 +8,7 @@ import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
 import { STATUS_OPME_LABEL } from '@/utils/opme'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface OpmeFormProps {
   opme: Opme | null
@@ -32,6 +33,7 @@ const inputClass = 'rounded-md border border-slate-300 px-2 py-1.5 text-sm'
 const labelClass = 'flex flex-col gap-1 text-sm'
 
 export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }: OpmeFormProps) {
+  const guarda = useGuardaSaida(onClose)
   const isNovo = !opme
   const [form, setForm] = useState<Opme>(opme ?? novoOpme(hospitalIdPadrao, dataCirurgiaPadrao ?? ''))
   const salvar = useSalvarOpme(form.hospitalId)
@@ -72,7 +74,9 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
   return (
     <Modal
       title={isNovo ? 'Novo OPME' : 'Editar OPME'}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <>
           {!isNovo && (
@@ -80,7 +84,7 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
               Excluir
             </Button>
           )}
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={guarda.fechar}>Cancelar</Button>
           <Button onClick={handleSalvar} loading={salvar.isPending}>Salvar</Button>
         </>
       }

@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import type { Fornecedor, OC, Solicitacao } from '@/types'
 import { fmt, getHoje, parseDMY } from '@/utils/date'
 import { gerarMensagemCobranca, linkOutlookCompose, linkWhatsApp } from '@/utils/cobranca'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface OCCobrarProps {
   oc: OC
@@ -19,6 +20,7 @@ interface OCCobrarProps {
 }
 
 export function OCCobrar({ oc, sols, forn, hospitalId, canalInicial, onClose }: OCCobrarProps) {
+  const guarda = useGuardaSaida(onClose)
   const atualizar = useAtualizarOC(hospitalId)
   const registrar = useRegistrarCobranca()
   const toast = useToast()
@@ -79,10 +81,12 @@ export function OCCobrar({ oc, sols, forn, hospitalId, canalInicial, onClose }: 
   return (
     <Modal
       title={`Cobrar fornecedor — OC ${oc.id}`}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button

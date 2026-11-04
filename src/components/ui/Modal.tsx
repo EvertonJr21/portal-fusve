@@ -8,6 +8,8 @@ interface ModalProps {
   size?: 'md' | 'lg' | 'xl'
   /** Formulários longos passam `false`: um clique perdido fora do modal não pode descartar o que foi digitado. */
   closeOnBackdrop?: boolean
+  /** Disparado ao digitar/escolher em qualquer campo do modal — usado por `useGuardaSaida`. */
+  onInput?: () => void
 }
 
 const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
@@ -16,7 +18,7 @@ const SIZE_CLASS: Record<NonNullable<ModalProps['size']>, string> = {
   xl: 'max-w-4xl',
 }
 
-export function Modal({ title, onClose, children, footer, size = 'md', closeOnBackdrop = true }: ModalProps) {
+export function Modal({ title, onClose, children, footer, size = 'md', closeOnBackdrop = true, onInput }: ModalProps) {
   // Só fecha se o clique COMEÇOU no fundo — apertar dentro de um campo e soltar fora
   // (ex.: arrastando pra selecionar texto) também dispara `click` no fundo.
   const pressionouNoFundo = useRef(false)
@@ -31,6 +33,7 @@ export function Modal({ title, onClose, children, footer, size = 'md', closeOnBa
       }}
     >
       <div
+        onInput={onInput}
         className={`flex max-h-[90vh] w-full ${SIZE_CLASS[size]} flex-col rounded-xl bg-white shadow-soft-lg animate-scale-in`}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">

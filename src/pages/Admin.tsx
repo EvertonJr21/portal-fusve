@@ -20,6 +20,7 @@ import {
 import type { Perfil } from '@/repositories/permissaoRepository'
 import { useToast } from '@/hooks/useToast'
 import { fmt } from '@/utils/date'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 function ModalReatribuir({ usuario, outros, onClose }: { usuario: Perfil; outros: Perfil[]; onClose: () => void }) {
   const toast = useToast()
@@ -86,6 +87,7 @@ function ModalReatribuir({ usuario, outros, onClose }: { usuario: Perfil; outros
 }
 
 function ModalResetarSenha({ usuario, onClose }: { usuario: Perfil; onClose: () => void }) {
+  const guarda = useGuardaSaida(onClose)
   const toast = useToast()
   const resetar = useResetarSenha()
   const [senha, setSenha] = useState('')
@@ -107,10 +109,12 @@ function ModalResetarSenha({ usuario, onClose }: { usuario: Perfil; onClose: () 
   return (
     <Modal
       title={`Redefinir senha de ${usuario.email}`}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button onClick={handleConfirmar} disabled={senha.length < 8 || resetar.isPending}>

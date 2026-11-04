@@ -6,6 +6,7 @@ import { useSalvarSol } from '@/hooks/useSols'
 import { useToast } from '@/hooks/useToast'
 import type { Solicitacao } from '@/types'
 import { fromInput, toInput } from '@/utils/date'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 const SITUACOES_SOL = ['Aberta', 'Parcialmente Atendida', 'Fechada', 'Cancelada']
 
@@ -16,6 +17,7 @@ interface SolFormProps {
 }
 
 export function SolForm({ sol, hospitalId, onClose }: SolFormProps) {
+  const guarda = useGuardaSaida(onClose)
   const salvar = useSalvarSol(hospitalId)
   const toast = useToast()
 
@@ -55,10 +57,12 @@ export function SolForm({ sol, hospitalId, onClose }: SolFormProps) {
   return (
     <Modal
       title={sol ? `Editar Solicitação ${sol.id}` : 'Nova Solicitação'}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button form="sol-form" type="submit" loading={salvar.isPending}>

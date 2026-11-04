@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { useSalvarFornecedor } from '@/hooks/useFornecedores'
 import { useToast } from '@/hooks/useToast'
 import type { Fornecedor } from '@/types'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface FornecedorFormProps {
   forn: Fornecedor | null
@@ -11,6 +12,7 @@ interface FornecedorFormProps {
 }
 
 export function FornecedorForm({ forn, onClose }: FornecedorFormProps) {
+  const guarda = useGuardaSaida(onClose)
   const salvar = useSalvarFornecedor()
   const toast = useToast()
 
@@ -38,10 +40,12 @@ export function FornecedorForm({ forn, onClose }: FornecedorFormProps) {
   return (
     <Modal
       title={forn ? `Editar Fornecedor ${forn.id}` : 'Novo Fornecedor'}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button form="forn-form" type="submit" loading={salvar.isPending}>

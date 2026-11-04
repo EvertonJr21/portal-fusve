@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/useToast'
 import type { HistOC, OC, Solicitacao } from '@/types'
 import { addDias, diasEntre, fmt, fromInput, getHoje, parseDMY, toInput } from '@/utils/date'
 import { dataPrazo } from '@/utils/oc'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface OCHistoricoProps {
   oc: OC
@@ -30,6 +31,7 @@ interface EventoTimeline {
 }
 
 export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps) {
+  const guarda = useGuardaSaida(onClose)
   const { data: historico = [], isLoading } = useHistOC(oc.id)
   const atualizar = useAtualizarOC(hospitalId)
   const marcarRespondida = useMarcarRespondida()
@@ -142,11 +144,13 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
   return (
     <Modal
       title={`Histórico — OC ${oc.id}`}
-      onClose={onClose}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
       size="lg"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={guarda.fechar}>
             Cancelar
           </Button>
           <Button onClick={handleSalvar} loading={atualizar.isPending}>

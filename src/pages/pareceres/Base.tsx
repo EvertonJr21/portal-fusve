@@ -8,6 +8,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 import { useAbrirAnexo, useTodosAnexos } from '@/hooks/useParecerAnexos'
 import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
@@ -24,6 +25,24 @@ function validadeInfo(dataISO: string): { texto: string; classe: string; revisar
   if (meses < 12) return { texto: `✓ ${meses}m`, classe: 'text-status-green', revisar: false }
   if (meses < 18) return { texto: `⚠ ${meses}m`, classe: 'text-status-amber', revisar: false }
   return { texto: `⚠ ${meses}m — Rever`, classe: 'text-status-red', revisar: true }
+}
+
+function ModalEditarParecer({ parecer, onClose }: { parecer: Parecer; onClose: () => void }) {
+  const guarda = useGuardaSaida(onClose)
+  return (
+    <Modal
+      title={`Editar Parecer — ${parecer.cod}`}
+      onClose={guarda.fechar}
+      onInput={guarda.marcar}
+      closeOnBackdrop={false}
+    >
+      <ParecerForm
+        produto={{ cod: parecer.cod, nome: parecer.nome, cat: parecer.cat }}
+        parecerExistente={parecer}
+        onSalvo={onClose}
+      />
+    </Modal>
+  )
 }
 
 export default function Base() {
@@ -212,13 +231,7 @@ export default function Base() {
       )}
 
       {editando && (
-        <Modal title={`Editar Parecer — ${editando.cod}`} onClose={() => setEditando(null)}>
-          <ParecerForm
-            produto={{ cod: editando.cod, nome: editando.nome, cat: editando.cat }}
-            parecerExistente={editando}
-            onSalvo={() => setEditando(null)}
-          />
-        </Modal>
+        <ModalEditarParecer parecer={editando} onClose={() => setEditando(null)} />
       )}
     </div>
   )
