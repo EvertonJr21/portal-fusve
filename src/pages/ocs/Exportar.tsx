@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/useToast'
 import { fmt, parseDMY } from '@/utils/date'
 import { exportarExcel } from '@/utils/exportar'
 import { exportarPDF } from '@/utils/exportarPdf'
-import { isPrevisaoDescumprida, ocsSemPrevisao, ocsVencidas } from '@/utils/oc'
+import { isPrevisaoDescumprida, ocsSemPrevisao } from '@/utils/oc'
 import { gerarRelatorioMensalPDF } from '@/utils/relatorioMensal'
 import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, resumir } from '@/utils/kpis'
 
@@ -58,9 +58,12 @@ export default function Exportar() {
   const categorias: Categoria[] = [
     {
       titulo: 'OCs em atraso',
-      descricao: 'Todas as OCs pendentes com prazo institucional vencido',
+      descricao: 'OCs abertas além da data prometida (data da OC + prazo do contrato ou padrão)',
       arquivo: 'ocs-em-atraso',
-      linhas: () => ocsVencidas(ocs, sols).map(linhaOC),
+      linhas: () =>
+        avaliacoes
+          .filter((a) => a.status === 'aberta_vencida')
+          .map((a) => ({ ...linhaOC(a.oc), 'Data prometida': fmt(a.dataPrometida), 'Dias além do prazo': a.diasAtraso })),
     },
     {
       titulo: 'OCs sem previsão',

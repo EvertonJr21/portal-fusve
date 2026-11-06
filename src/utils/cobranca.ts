@@ -1,13 +1,13 @@
-import { PRAZO } from '@/constants'
 import type { Fornecedor, OC, Solicitacao } from '@/types'
-import { addDias, fmt } from '@/utils/date'
-import { dataPrazo, diasRestantes } from '@/utils/oc'
+import { diasEntre, fmt, getHoje } from '@/utils/date'
 
-/** Mensagem de cobrança individual de uma OC — mesmo template do app anterior. */
-export function gerarMensagemCobranca(oc: OC, sols: Solicitacao[], hospitalNome: string): string {
-  const dp = dataPrazo(oc, sols)
-  const prazoEntrega = dp ? addDias(dp, PRAZO) : null
-  const dr = diasRestantes(dp)
+/**
+ * Mensagem de cobrança individual de uma OC. `prazoEntrega` é a data prometida
+ * (data da OC + prazo do contrato ou padrão — a mesma da lista e do Desempenho
+ * de Entrega, item 82), não mais solicitação + 15.
+ */
+export function gerarMensagemCobranca(oc: OC, sols: Solicitacao[], hospitalNome: string, prazoEntrega: Date | null): string {
+  const dr = prazoEntrega ? diasEntre(getHoje(), prazoEntrega) : null
 
   const linhas = [
     `Olá, ${oc.fornecedorNome}.`,
@@ -42,11 +42,15 @@ export function gerarMensagemCobranca(oc: OC, sols: Solicitacao[], hospitalNome:
 }
 
 /** Mensagem de cobrança em lote — todas as OCs pendentes de um fornecedor. */
-export function gerarMensagemCobrancaLote(fornecedorNome: string, ocs: OC[], sols: Solicitacao[], hospitalNome: string): string {
+export function gerarMensagemCobrancaLote(
+  fornecedorNome: string,
+  itens: { oc: OC; prazoEntrega: Date | null }[],
+  hospitalNome: string,
+): string {
   const linhas = [`Olá, ${fornecedorNome}.`, '', 'Gostaríamos de obter uma atualização sobre as seguintes OCs em aberto:', '']
 
-  for (const oc of ocs) {
-    const dr = diasRestantes(dataPrazo(oc, sols))
+  for (const { oc, prazoEntrega } of itens) {
+    const dr = prazoEntrega ? diasEntre(getHoje(), prazoEntrega) : null
     const situacaoPrazo = dr === null ? '' : dr < 0 ? ` (vencida há ${Math.abs(dr)}d)` : ` (${dr}d restantes)`
     linhas.push(`• OC ${oc.id} — ${oc.sit}${situacaoPrazo}`)
   }

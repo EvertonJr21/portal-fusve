@@ -1,7 +1,7 @@
 import { FINAL_SIT } from '@/constants'
-import type { HistOC, OC, Solicitacao } from '@/types'
+import type { HistOC, OC } from '@/types'
 import { diasEntre, getHoje, parseDMY } from './date'
-import { dataPrazo, diasRestantes, diasSemMovimentacao, isPrevisaoDescumprida } from './oc'
+import { diasSemMovimentacao, isPrevisaoDescumprida } from './oc'
 
 export type Prioridade = 'critica' | 'alta' | 'media' | 'normal'
 
@@ -21,7 +21,7 @@ function diasParaPrevisao(oc: OC): number | null {
   return d ? diasEntre(getHoje(), d) : null
 }
 
-interface Avaliacao {
+export interface AvaliacaoPrioridade {
   prioridade: Prioridade
   acao: string
 }
@@ -31,13 +31,16 @@ interface Avaliacao {
  * do Everton (CLAUDE.md > "Evolução do módulo OCs — roadmap" > Fase 1). Não usa
  * só o status da OC: cruza prazo, previsão, atraso, cobrança/resposta e
  * movimentação, na ordem de severidade descrita na spec.
+ *
+ * `diasPrazo` = dias até a data prometida (data da OC + prazo do contrato ou
+ * padrão — a mesma do Desempenho de Entrega, `kpis.ts`); negativo = vencida.
  */
-function avaliar(oc: OC, sols: Solicitacao[], ultimaCobranca: HistOC | null): Avaliacao {
+export function avaliarPrioridade(oc: OC, diasPrazo: number | null, ultimaCobranca: HistOC | null): AvaliacaoPrioridade {
   if ((FINAL_SIT as readonly string[]).includes(oc.sit)) {
     return { prioridade: 'normal', acao: 'Situação final' }
   }
 
-  const dr = diasRestantes(dataPrazo(oc, sols))
+  const dr = diasPrazo
   const dsm = diasSemMovimentacao(oc)
   const cobrancaPendente = ultimaCobranca && !ultimaCobranca.respondidoEm ? ultimaCobranca : null
   const diasCobranca = cobrancaPendente ? diasDesde(cobrancaPendente.ts) : null
@@ -81,12 +84,4 @@ function avaliar(oc: OC, sols: Solicitacao[], ultimaCobranca: HistOC | null): Av
 
   // 🟢 Normal
   return { prioridade: 'normal', acao: 'Dentro do prazo — sem ação necessária' }
-}
-
-export function prioridadeOC(oc: OC, sols: Solicitacao[], ultimaCobranca: HistOC | null): Prioridade {
-  return avaliar(oc, sols, ultimaCobranca).prioridade
-}
-
-export function acaoRecomendada(oc: OC, sols: Solicitacao[], ultimaCobranca: HistOC | null): string {
-  return avaliar(oc, sols, ultimaCobranca).acao
 }

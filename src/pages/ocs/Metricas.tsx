@@ -6,9 +6,13 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { OTIF_AMOSTRA_MIN, OTIF_META } from '@/constants'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
+import { useHospital } from '@/hooks/useHospital'
+import { useSols } from '@/hooks/useSols'
 import { getHoje } from '@/utils/date'
+import { isPrevisaoDescumprida } from '@/utils/oc'
 import {
   backlogVencido,
+  cicloInterno,
   confiabilidadePrevisao,
   desempenhoPorFornecedor,
   entregasAConfirmar,
@@ -26,6 +30,8 @@ const TH = 'px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide te
 
 export default function Metricas() {
   const { avaliacoes, forns, prazoPadrao, setPrazoPadrao, prazos, isLoading, error } = useAvaliacoesEntrega()
+  const { hospitalId } = useHospital()
+  const { data: sols = [], isLoading: carregandoSols } = useSols(hospitalId)
   const [periodo, setPeriodo] = useState<PeriodoEntrega>('90')
   const [definicoesAbertas, setDefinicoesAbertas] = useState(false)
 
@@ -40,8 +46,23 @@ export default function Metricas() {
   const backlog = useMemo(() => backlogVencido(doPeriodo), [doPeriodo])
   const fornecedores = useMemo(() => ordenarPorRisco(desempenhoPorFornecedor(doPeriodo, forns)), [doPeriodo, forns])
   const aConfirmar = useMemo(() => entregasAConfirmar(doPeriodo), [doPeriodo])
+  const ciclo = useMemo(
+    () => cicloInterno(doPeriodo.map((a) => a.oc), sols),
+    [doPeriodo, sols],
+  )
+  // Panorama de agora (independe do período): o que está aberto hoje.
+  const agora = useMemo(() => {
+    const abertas = avaliacoes.filter((a) => a.status === 'aberta_vencida' || a.status === 'aberta_no_prazo')
+    return {
+      abertas: abertas.length,
+      vencidas: abertas.filter((a) => a.status === 'aberta_vencida').length,
+      semPrevisao: abertas.filter((a) => !a.oc.previsaoForn).length,
+      descumpridas: abertas.filter((a) => isPrevisaoDescumprida(a.oc)).length,
+    }
+  }, [avaliacoes])
+  const notaD = fornecedores.filter((f) => f.classe?.classe === 'D').length
 
-  if (isLoading) return <SkeletonRows colunas={6} />
+  if (isLoading || carregandoSols) return <SkeletonRows colunas={6} />
   if (error) return <p className="text-sm text-status-red">Erro ao carregar: {error.message}</p>
 
   return (
@@ -49,7 +70,7 @@ export default function Metricas() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">Desempenho de Entrega</h2>
-          <p className="text-sm text-slate-500">OTIF e lead time dos fornecedores — pela data da OC no período escolhido</p>
+          <p className="text-sm text-slate-500">Panorama das OCs abertas, OTIF e lead time dos fornecedores e ciclo interno — indicadores do período pela data da OC</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -110,6 +131,18 @@ export default function Metricas() {
         </div>
       )}
 
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Agora — OCs abertas (clique pra abrir a lista)</h3>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <CardLink to="/ocs/ordens?visao=abertas" label="Abertas" value={agora.abertas} tone="blue" />
+          <CardLink to="/ocs/ordens?visao=vencidas" label="Além da data prometida" value={agora.vencidas} tone={agora.vencidas ? 'red' : 'gray'} />
+          <CardLink to="/ocs/ordens?visao=sem_previsao" label="Sem previsão" value={agora.semPrevisao} tone={agora.semPrevisao ? 'amber' : 'gray'} />
+          <CardLink to="/ocs/ordens?visao=acao" label="Previsão descumprida" value={agora.descumpridas} tone={agora.descumpridas ? 'red' : 'gray'} />
+          <CardLink to="/ocs/ranking" label="Fornecedores nota D" value={notaD} sub="no período" tone={notaD ? 'red' : 'gray'} />
+        </div>
+      </div>
+
+      <h3 className="-mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Entrega dos fornecedores — OCs do período</h3>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="OTIF" value={formatarPct(resumo.otif)} sub={`${resumo.perfeitas} de ${resumo.avaliadas} OCs`} tone={tomPct(resumo.otif)} />
         <KpiCard label="On Time" value={formatarPct(resumo.onTime)} sub={`${resumo.noPrazo} no prazo`} tone={tomPct(resumo.onTime)} />
@@ -137,6 +170,29 @@ export default function Metricas() {
             <KpiCard key={f.rotulo} label={f.rotulo} value={f.quantidade} tone={f.quantidade === 0 ? 'gray' : i >= 2 ? 'red' : 'amber'} />
           ))}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-soft-sm">
+        <h3 className="text-sm font-semibold text-slate-800">Ciclo interno — Solicitação → OC</h3>
+        <p className="mb-3 text-xs text-slate-400">
+          Mede o trabalho do setor de compras, não o fornecedor — fica fora do OTIF. Meta: {ciclo.meta} dias. Conta só OCs
+          vinculadas a uma solicitação.
+        </p>
+        {ciclo.total === 0 ? (
+          <p className="text-sm text-slate-400">Nenhuma OC do período vinculada a solicitação — importe o Acompanhamento de Compras.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <KpiCard
+              label="Dentro da meta"
+              value={formatarPct(ciclo.pct)}
+              sub={`${ciclo.dentroMeta} de ${ciclo.total} OCs`}
+              tone={ciclo.pct === null ? 'gray' : ciclo.pct >= 0.85 ? 'green' : ciclo.pct >= 0.6 ? 'amber' : 'red'}
+            />
+            <KpiCard label="Mediana" value={formatarDias(ciclo.mediana)} sub="caso típico" tone="blue" />
+            <KpiCard label="P90" value={formatarDias(ciclo.p90)} sub="9 em 10 OCs saem até aqui" tone="blue" />
+            <KpiCard label="Fora da meta" value={ciclo.total - ciclo.dentroMeta} tone={ciclo.total - ciclo.dentroMeta ? 'red' : 'gray'} />
+          </div>
+        )}
       </div>
 
       <div>
@@ -191,6 +247,14 @@ export default function Metricas() {
 
       {aConfirmar.length > 0 && <EntregasAConfirmar grupos={aConfirmar} />}
     </div>
+  )
+}
+
+function CardLink({ to, label, value, sub, tone }: { to: string; label: string; value: number | string; sub?: string; tone: 'blue' | 'red' | 'amber' | 'green' | 'gray' }) {
+  return (
+    <Link to={to} className="block transition-transform hover:-translate-y-0.5">
+      <KpiCard label={label} value={value} sub={sub} tone={tone} />
+    </Link>
   )
 }
 

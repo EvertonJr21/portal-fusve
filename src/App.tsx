@@ -6,18 +6,13 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { Sidebar, type NavGroup, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import Admin from '@/pages/Admin'
-import AnaliseCausas from '@/pages/ocs/AnaliseCausas'
-import DashboardExecutivo from '@/pages/ocs/DashboardExecutivo'
-import DashboardOCs from '@/pages/ocs/Dashboard'
 import Exportar from '@/pages/ocs/Exportar'
 import FichaFornecedor from '@/pages/ocs/FichaFornecedor'
 import Fornecedores from '@/pages/ocs/Fornecedores'
 import Importar from '@/pages/ocs/Importar'
 import Metricas from '@/pages/ocs/Metricas'
 import OrdensDeCompra from '@/pages/ocs/OrdensDeCompra'
-import PorFornecedor from '@/pages/ocs/PorFornecedor'
 import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
-import SLA from '@/pages/ocs/SLA'
 import Solicitacoes from '@/pages/ocs/Solicitacoes'
 import Modulos from '@/pages/Modulos'
 import Calendario from '@/pages/opmes/Calendario'
@@ -29,14 +24,14 @@ import DashboardPareceres from '@/pages/pareceres/Dashboard'
 import MarcasSugeridas from '@/pages/pareceres/MarcasSugeridas'
 import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
-// Agrupado por seção funcional — 12 itens numa lista linear só era o menu mais
-// carregado do sistema, sem nenhuma hierarquia (auditoria de UX, 18/09/2026).
+// Agrupado por seção funcional. Enxugado de 12 pra 8 itens no item 82: Central de
+// Pendências e Por Fornecedor viraram visões/agrupamento da própria tela de OCs,
+// Análise de Causas virou coluna/filtro de motivo, Ciclo interno e Dashboard
+// Executivo entraram em Desempenho de Entrega.
 const OCS_GROUPS: NavGroup[] = [
   {
     title: 'Operação',
     items: [
-      { to: '/ocs', label: 'Central de Pendências', end: true },
-      { to: '/ocs/executivo', label: 'Dashboard Executivo' },
       { to: '/ocs/ordens', label: 'Ordens de Compra' },
       { to: '/ocs/solicitacoes', label: 'Solicitações' },
     ],
@@ -44,18 +39,13 @@ const OCS_GROUPS: NavGroup[] = [
   {
     title: 'Fornecedores',
     items: [
-      { to: '/ocs/fornecedores', label: 'Por Fornecedor' },
       { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
       { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
     ],
   },
   {
     title: 'Análise',
-    items: [
-      { to: '/ocs/sla', label: 'Ciclo interno' },
-      { to: '/ocs/causas', label: 'Análise de Causas' },
-      { to: '/ocs/metricas', label: 'Desempenho de Entrega' },
-    ],
+    items: [{ to: '/ocs/metricas', label: 'Desempenho de Entrega' }],
   },
   {
     title: 'Dados',
@@ -173,16 +163,17 @@ export default function App() {
           />
 
           <Route path="/ocs" element={<OCsLayout />}>
-            <Route index element={<DashboardOCs />} />
-            <Route path="executivo" element={<DashboardExecutivo />} />
+            {/* Telas antigas (item 82) redirecionam pra onde o conteúdo foi parar. */}
+            <Route index element={<Navigate to="/ocs/ordens" replace />} />
+            <Route path="executivo" element={<Navigate to="/ocs/metricas" replace />} />
             <Route path="ordens" element={<OrdensDeCompra />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
-            <Route path="fornecedores" element={<PorFornecedor />} />
+            <Route path="fornecedores" element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="ranking" element={<RankingFornecedores />} />
             <Route path="ranking/:fornecedorId" element={<FichaFornecedor />} />
             <Route path="cadastro-fornecedores" element={<Fornecedores />} />
-            <Route path="sla" element={<SLA />} />
-            <Route path="causas" element={<AnaliseCausas />} />
+            <Route path="sla" element={<Navigate to="/ocs/metricas" replace />} />
+            <Route path="causas" element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="metricas" element={<Metricas />} />
             <Route path="importar" element={<Importar />} />
             <Route path="exportar" element={<Exportar />} />

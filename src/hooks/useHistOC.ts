@@ -53,3 +53,31 @@ export function useMarcarRespondida() {
     },
   })
 }
+
+/** Várias cobranças marcadas como respondidas de uma vez (ação em lote, item 82). */
+export function useMarcarRespondidas() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (itens: { hid: number; ocId: number }[]) => {
+      for (const i of itens) await histOcRepository.marcarRespondida(i.hid)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['hist_oc'] })
+      queryClient.invalidateQueries({ queryKey: ['hist-recente'] })
+    },
+  })
+}
+
+/** Cobrança em lote: registra a mesma cobrança em várias OCs com uma invalidação só. */
+export function useRegistrarCobrancas() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (itens: histOcRepository.RegistrarCobrancaInput[]) => {
+      for (const i of itens) await histOcRepository.registrarCobranca(i)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['hist_oc'] })
+      queryClient.invalidateQueries({ queryKey: ['hist-recente'] })
+    },
+  })
+}

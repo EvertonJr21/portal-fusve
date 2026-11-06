@@ -24,6 +24,7 @@ export function Modal({ title, onClose, children, footer, size = 'md', closeOnBa
   const pressionouNoFundo = useRef(false)
   return (
     <div
+      data-modal-aberto
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px] animate-fade-in"
       onMouseDown={(e) => {
         pressionouNoFundo.current = e.target === e.currentTarget

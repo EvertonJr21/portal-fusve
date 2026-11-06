@@ -4,7 +4,7 @@ import { useMeuPerfil, useMinhasPermissoes } from '@/hooks/usePermissoes'
 
 const MODULOS = [
   {
-    to: '/ocs',
+    to: '/ocs/ordens',
     chave: 'ocs' as ModuloChave,
     titulo: 'Controle de OCs',
     descricao: 'Ordens de Compra, pendências, cobrança e fornecedores.',

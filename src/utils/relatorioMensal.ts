@@ -3,7 +3,7 @@ import { autoTable } from 'jspdf-autotable'
 import type { Fornecedor, OC, Solicitacao } from '@/types'
 import { parseDMY } from './date'
 import { abrirDocPdf } from './pdfDataUrl'
-import { dataPrazo, isPrevisaoDescumprida, statusPrazo } from './oc'
+import { isPrevisaoDescumprida } from './oc'
 import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, ordenarPorRisco, resumir, type AvaliacaoOC } from './kpis'
 
 const MESES = [
@@ -49,11 +49,12 @@ export function gerarRelatorioMensalPDF(
   doc.text(`Emitido em ${hoje}`, pageW - mR, 10, { align: 'right' })
 
   const ocsDoMes = ocs.filter((o) => noMes(o.dataSolic, mes, ano))
-  const atrasadas = ocsDoMes.filter((o) => statusPrazo(dataPrazo(o, sols), o.sit) === 'vencida')
   const descumpridas = ocsDoMes.filter(isPrevisaoDescumprida)
   const idsDoMes = new Set(ocsDoMes.map((o) => o.id))
   const avaliacoesDoMes = avaliacoes.filter((a) => idsDoMes.has(a.oc.id))
   const entrega = resumir(avaliacoesDoMes)
+  // Mesmo prazo da tela de OCs e do Desempenho de Entrega (item 82): data da OC + prazo do contrato ou padrão.
+  const atrasadas = avaliacoesDoMes.filter((a) => a.status === 'aberta_vencida' || a.status === 'atrasada')
   const ciclo = cicloInterno(ocsDoMes, sols)
 
   let y = 30
@@ -65,7 +66,7 @@ export function gerarRelatorioMensalPDF(
 
   const resumo = [
     ['OCs processadas', String(ocsDoMes.length)],
-    ['OCs em atraso (institucional)', String(atrasadas.length)],
+    ['OCs fora do prazo prometido (abertas ou entregues)', String(atrasadas.length)],
     ['Previsões descumpridas', String(descumpridas.length)],
     ['OTIF — no prazo e completo', entrega.avaliadas ? `${formatarPct(entrega.otif)} (${entrega.perfeitas} de ${entrega.avaliadas})` : 'sem dado'],
     ['On Time / In Full', `${formatarPct(entrega.onTime)} / ${formatarPct(entrega.inFull)}`],

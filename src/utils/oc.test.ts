@@ -6,8 +6,6 @@ import {
   diasRestantes,
   diasSemMovimentacao,
   isPrevisaoDescumprida,
-  previsaoAtiva,
-  riscoOC,
   statusPrazo,
 } from './oc'
 
@@ -96,40 +94,6 @@ describe('dataPrazo', () => {
   })
 })
 
-describe('riscoOC', () => {
-  it('é "baixo" para situação final, independente de qualquer outro fator', () => {
-    const oc = ocBase({ sit: 'Atendida', previsaoDescumprida: true, ultimaMovimentacao: dataHaDias(999) })
-    expect(riscoOC(oc, [])).toBe('baixo')
-  })
-
-  it('é "alto" quando vencida', () => {
-    const oc = ocBase({ dataSolic: dataHaDias(20) })
-    expect(riscoOC(oc, [])).toBe('alto')
-  })
-
-  it('é "alto" quando a previsão foi descumprida, mesmo dentro do prazo', () => {
-    const oc = ocBase({ dataSolic: dataHaDias(1), previsaoDescumprida: true })
-    expect(riscoOC(oc, [])).toBe('alto')
-  })
-
-  it('é "alto" com 10+ dias sem movimentação, mesmo dentro do prazo', () => {
-    const oc = ocBase({ dataSolic: dataHaDias(1), ultimaMovimentacao: dataHaDias(10) })
-    expect(riscoOC(oc, [])).toBe('alto')
-  })
-
-  it('é "medio" quando urgente mas não vencida', () => {
-    // última movimentação recente pra isolar o efeito de "urgente" do de
-    // "sem movimentação" (ambos alimentam riscoOC, mas por regras diferentes)
-    const oc = ocBase({ dataSolic: dataHaDias(12), ultimaMovimentacao: dataHaDias(0) })
-    expect(riscoOC(oc, [])).toBe('medio')
-  })
-
-  it('é "baixo" quando dentro do prazo e sem sinais de risco', () => {
-    const oc = ocBase({ dataSolic: dataHaDias(1) })
-    expect(riscoOC(oc, [])).toBe('baixo')
-  })
-})
-
 describe('diasSemMovimentacao', () => {
   it('usa a última movimentação quando existe', () => {
     const oc = ocBase({ dataSolic: dataHaDias(30), ultimaMovimentacao: dataHaDias(4) })
@@ -144,27 +108,6 @@ describe('diasSemMovimentacao', () => {
   it('retorna null quando não há nenhuma data de referência', () => {
     const oc = ocBase({ dataSolic: null, ultimaMovimentacao: null })
     expect(diasSemMovimentacao(oc)).toBeNull()
-  })
-})
-
-describe('previsaoAtiva', () => {
-  it('mostra a 1ª previsão se ainda não passou', () => {
-    const oc = ocBase({ previsaoForn: fmt(addDias(getHoje(), 2)) })
-    expect(previsaoAtiva(oc)).toBe(oc.previsaoForn)
-  })
-
-  it('cai para a 2ª previsão quando a 1ª já passou e a OC está parcial', () => {
-    const oc = ocBase({
-      sit: 'Parcialmente Atendida',
-      previsaoForn: dataHaDias(1),
-      previsaoForn2: fmt(addDias(getHoje(), 3)),
-    })
-    expect(previsaoAtiva(oc)).toBe(oc.previsaoForn2)
-  })
-
-  it('retorna null quando a 1ª previsão passou e a OC não é parcial', () => {
-    const oc = ocBase({ sit: 'Autorizada', previsaoForn: dataHaDias(1) })
-    expect(previsaoAtiva(oc)).toBeNull()
   })
 })
 

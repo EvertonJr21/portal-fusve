@@ -16,17 +16,19 @@ interface OCCobrarProps {
   forn: Fornecedor | undefined
   hospitalId: HospitalId
   canalInicial: 'mail' | 'wpp'
+  /** Data prometida da OC (mesma da lista/Desempenho de Entrega). */
+  prazoEntrega: Date | null
   onClose: () => void
 }
 
-export function OCCobrar({ oc, sols, forn, hospitalId, canalInicial, onClose }: OCCobrarProps) {
+export function OCCobrar({ oc, sols, forn, hospitalId, canalInicial, prazoEntrega, onClose }: OCCobrarProps) {
   const guarda = useGuardaSaida(onClose)
   const atualizar = useAtualizarOC(hospitalId)
   const registrar = useRegistrarCobranca()
   const toast = useToast()
 
   const hospitalNome = HOSPITAIS[hospitalId].nome
-  const [corpo, setCorpo] = useState(() => gerarMensagemCobranca(oc, sols, hospitalNome))
+  const [corpo, setCorpo] = useState(() => gerarMensagemCobranca(oc, sols, hospitalNome, prazoEntrega))
   const [resposta, setResposta] = useState('')
   const [enviando, setEnviando] = useState(false)
 

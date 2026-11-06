@@ -25,5 +25,8 @@ export function useGuardaSaida(onClose: () => void) {
     onClose()
   }
 
-  return { alterado, marcar, fechar }
+  /** Depois de salvar sem fechar (ex.: painel lateral que continua aberto). */
+  const limpar = useCallback(() => setAlterado(false), [])
+
+  return { alterado, marcar, fechar, limpar }
 }
