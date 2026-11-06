@@ -153,6 +153,7 @@ export type Database = {
         Row: {
           aviso_renovacao_dias: number | null
           classificacao: string | null
+          condicao_pagamento: string
           contato_email: string | null
           contato_nome: string | null
           contato_whatsapp: string | null
@@ -182,6 +183,7 @@ export type Database = {
         Insert: {
           aviso_renovacao_dias?: number | null
           classificacao?: string | null
+          condicao_pagamento?: string
           contato_email?: string | null
           contato_nome?: string | null
           contato_whatsapp?: string | null
@@ -211,6 +213,7 @@ export type Database = {
         Update: {
           aviso_renovacao_dias?: number | null
           classificacao?: string | null
+          condicao_pagamento?: string
           contato_email?: string | null
           contato_nome?: string | null
           contato_whatsapp?: string | null

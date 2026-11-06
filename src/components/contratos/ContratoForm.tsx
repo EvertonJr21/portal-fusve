@@ -48,6 +48,7 @@ function novoHeader(hospitalId: HospitalId): ContratoHeader {
     horarioCutoff: '',
     gatilhoDesconto: '',
     reajusteRegra: '',
+    condicaoPagamento: '',
     vigenciaInicio: null,
     vigenciaFim: null,
     avisoRenovacaoDias: 60,
@@ -309,6 +310,10 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         <section>
           <h4 className={sectionTitleClass}>Condições Comerciais e Renovação</h4>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className={labelClass}>
+              <span className="font-medium text-slate-700">Condição de pagamento</span>
+              <input type="text" className={inputClass} value={header.condicaoPagamento} onChange={(e) => set('condicaoPagamento', e.target.value)} placeholder="Ex.: Boleto 28 dias" />
+            </label>
             <label className={labelClass}>
               <span className="font-medium text-slate-700">Gatilho de desconto</span>
               <input type="text" className={inputClass} value={header.gatilhoDesconto} onChange={(e) => set('gatilhoDesconto', e.target.value)} placeholder="Ex.: Acima de 5.000un, preço cai 5%" />

@@ -39,12 +39,11 @@ function inteiroOuNull(texto: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-type CampoEmMassa = 'precoUnitario' | 'unidade' | 'meioPagamento'
+type CampoEmMassa = 'precoUnitario' | 'unidade'
 
 const CAMPOS_EM_MASSA: { id: CampoEmMassa; label: string }[] = [
   { id: 'precoUnitario', label: 'Preço unitário' },
   { id: 'unidade', label: 'Unidade' },
-  { id: 'meioPagamento', label: 'Pagamento' },
 ]
 
 function normalizar(s: string) {
@@ -288,10 +287,10 @@ function PainelEmMassa({
   onAplicar: (campo: CampoEmMassa, valor: string | number) => void
   onFechar: () => void
 }) {
-  const [campo, setCampo] = useState<CampoEmMassa>('meioPagamento')
+  const [campo, setCampo] = useState<CampoEmMassa>('precoUnitario')
   const [texto, setTexto] = useState('')
   const [unidade, setUnidade] = useState<string>(UNIDADES_PRODUTO[0])
-  const valor = campo === 'unidade' ? unidade : campo === 'precoUnitario' ? parsePrecoBR(texto) : texto.trim()
+  const valor = campo === 'unidade' ? unidade : parsePrecoBR(texto)
   return (
     <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <div>
@@ -320,7 +319,7 @@ function PainelEmMassa({
             className={campoClass}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder={campo === 'precoUnitario' ? '700,00' : 'Ex.: boleto 28 dias'}
+            placeholder="700,00"
           />
         )}
       </div>
@@ -437,7 +436,7 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
       </div>
 
       {/* Condições do item — as mais usadas sempre à vista; o resto atrás de "mais condições" pra lista longa ficar curta. */}
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 pt-3 sm:ml-9 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 pt-3 sm:ml-9 sm:grid-cols-[1fr_1fr_auto]">
         <div>
           <label className={rotuloClass}>Preço unitário</label>
           <PrecoInput valor={p.precoUnitario} onChange={(v) => onCampo('precoUnitario', v)} inputRef={precoRef} />
@@ -452,16 +451,6 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
               </option>
             ))}
           </select>
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className={rotuloClass}>Pagamento</label>
-          <input
-            type="text"
-            className={campoClass}
-            placeholder="Ex.: boleto 28d"
-            value={p.meioPagamento}
-            onChange={(e) => onCampo('meioPagamento', e.target.value)}
-          />
         </div>
         <div className="col-span-2 flex items-end sm:col-span-1">
           <button

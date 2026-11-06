@@ -9,6 +9,7 @@ function contratoRowBase(overrides: Partial<ContratoRow> = {}): ContratoRow {
   return {
     id: 'c1',
     titulo: 'Stent',
+    condicao_pagamento: 'Boleto 28 dias',
     tipo: 'Contrato',
     status: 'Ativo',
     fornecedor_nome: 'FORNECEDOR TESTE LTDA',
@@ -65,6 +66,7 @@ describe('toContrato', () => {
     expect(c.fornecedorNome).toBe('FORNECEDOR TESTE LTDA')
     expect(c.hospitalId).toBe('huv')
     expect(c.titulo).toBe('Stent')
+    expect(c.condicaoPagamento).toBe('Boleto 28 dias')
   })
 
   it('usa 60 como padrão pra avisoRenovacaoDias nulo', () => {

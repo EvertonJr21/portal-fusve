@@ -132,6 +132,8 @@ export interface ContratoHeader {
   horarioCutoff: string
   gatilhoDesconto: string
   reajusteRegra: string
+  /** Condição de pagamento do contrato inteiro (ex.: "Boleto 28 dias") — item 85. */
+  condicaoPagamento: string
   vigenciaInicio: string | null
   vigenciaFim: string | null
   avisoRenovacaoDias: number
