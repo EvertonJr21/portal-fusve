@@ -9,7 +9,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
 import { useConfirm } from '@/hooks/useConfirm'
-import { useContratos, useExcluirContrato } from '@/hooks/useContratos'
+import { useComodatosPorContrato, useContratos, useExcluirContrato } from '@/hooks/useContratos'
 import { useHospital } from '@/hooks/useHospital'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoHeader } from '@/types'
@@ -21,6 +21,8 @@ type VigenciaFiltro = '' | 'vencendo' | 'vencido'
 export default function TabelaMestre() {
   const { hospitalId } = useHospital()
   const { data: contratos = [], isLoading, error } = useContratos(hospitalId)
+  // Erro aqui (ex.: tabela de comodatos ainda não criada) só esconde o selo — não quebra a lista.
+  const { data: comodatos } = useComodatosPorContrato(contratos.map((c) => c.id))
   const excluir = useExcluirContrato(hospitalId)
   const toast = useToast()
   const confirmar = useConfirm()
@@ -172,6 +174,11 @@ export default function TabelaMestre() {
                 <td className="px-3 py-2 text-xs">
                   <div className="font-medium text-slate-800">{c.fornecedorNome}</div>
                   {c.fornecedorCnpj && <div className="text-[11px] text-slate-400">{c.fornecedorCnpj}</div>}
+                  {!!comodatos?.get(c.id) && (
+                    <span className="mt-0.5 inline-block rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                      {comodatos.get(c.id)} equip. em comodato
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-xs">{c.tipo}</td>
                 <td className="px-3 py-2 text-xs">{c.hospitalId === 'ambos' ? 'Ambos' : HOSPITAIS[c.hospitalId].sigla}</td>

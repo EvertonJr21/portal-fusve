@@ -139,6 +139,22 @@ export interface ContratoHeader {
   observacoes: string
 }
 
+/** Equipamento deixado pelo fornecedor em comodato, vinculado ao contrato (item 83). */
+export interface ContratoComodato {
+  id: string
+  contratoId: string
+  equipamento: string
+  fabricanteModelo: string
+  numeroSerie: string
+  patrimonio: string
+  quantidade: number
+  localInstalacao: string
+  /** yyyy-mm-dd (mesmo formato das vigências do contrato) */
+  dataInstalacao: string | null
+  valorEstimado: number | null
+  observacao: string
+}
+
 export interface ContratoProduto {
   id: string
   contratoId: string

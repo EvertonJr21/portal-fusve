@@ -10,11 +10,18 @@ import {
   TIPOS_CONTRATO,
   type HospitalId,
 } from '@/constants'
+import { ComodatosContratoEditor } from '@/components/contratos/ComodatosContratoEditor'
 import { ProdutosContratoEditor } from '@/components/contratos/ProdutosContratoEditor'
-import { useContratoProdutos, useSalvarContrato, useSalvarProdutosContrato } from '@/hooks/useContratos'
+import {
+  useContratoComodatos,
+  useContratoProdutos,
+  useSalvarComodatosContrato,
+  useSalvarContrato,
+  useSalvarProdutosContrato,
+} from '@/hooks/useContratos'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useToast } from '@/hooks/useToast'
-import type { ContratoHeader, ContratoProduto } from '@/types'
+import type { ContratoComodato, ContratoHeader, ContratoProduto } from '@/types'
 import { consultarCNPJ, formatarCNPJ } from '@/utils/cnpj'
 
 interface ContratoFormProps {
@@ -69,8 +76,21 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
     setProdutosInicializados(true)
   }
 
+  const {
+    data: comodatosOriginais = [],
+    isLoading: carregandoComodatos,
+    error: erroComodatos,
+  } = useContratoComodatos(contrato?.id ?? null)
+  const [comodatos, setComodatos] = useState<ContratoComodato[]>([])
+  const [comodatosInicializados, setComodatosInicializados] = useState(isNovo)
+  if (!comodatosInicializados && !carregandoComodatos) {
+    setComodatos(comodatosOriginais)
+    setComodatosInicializados(true)
+  }
+
   const salvarContrato = useSalvarContrato(header.hospitalId === 'ambos' ? hospitalIdPadrao : header.hospitalId)
   const salvarProdutos = useSalvarProdutosContrato()
+  const salvarComodatos = useSalvarComodatosContrato()
   const toast = useToast()
 
   const set = <K extends keyof ContratoHeader>(key: K, value: ContratoHeader[K]) =>
@@ -103,6 +123,10 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         produtosAtuais: produtos.filter((p) => p.descricao.trim()),
         produtosOriginais,
       })
+      const comodatosValidos = comodatos.filter((c) => c.equipamento.trim())
+      if (comodatosValidos.length || comodatosOriginais.length) {
+        await salvarComodatos.mutateAsync({ contratoId: header.id, atuais: comodatosValidos, originais: comodatosOriginais })
+      }
       toast.show(isNovo ? 'Contrato cadastrado!' : 'Contrato atualizado!')
       onClose()
     } catch (err) {
@@ -110,10 +134,11 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
     }
   }
 
-  const salvando = salvarContrato.isPending || salvarProdutos.isPending
+  const salvando = salvarContrato.isPending || salvarProdutos.isPending || salvarComodatos.isPending
   const alterado =
     JSON.stringify(header) !== headerInicial ||
-    (produtosInicializados && JSON.stringify(produtos) !== JSON.stringify(produtosOriginais))
+    (produtosInicializados && JSON.stringify(produtos) !== JSON.stringify(produtosOriginais)) ||
+    (comodatosInicializados && JSON.stringify(comodatos) !== JSON.stringify(comodatosOriginais))
 
   const fechar = async () => {
     if (
@@ -260,6 +285,13 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         </section>
 
         <ProdutosContratoEditor contratoId={header.id} produtos={produtos} onChange={setProdutos} />
+
+        <ComodatosContratoEditor
+          contratoId={header.id}
+          comodatos={comodatos}
+          onChange={setComodatos}
+          erro={erroComodatos ? erroComodatos.message : null}
+        />
 
         {/* Comercial */}
         <section>

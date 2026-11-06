@@ -31,6 +31,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      contrato_comodatos: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          data_instalacao: string | null
+          deleted_at: string | null
+          equipamento: string
+          fabricante_modelo: string
+          id: string
+          local_instalacao: string
+          numero_serie: string
+          observacao: string
+          patrimonio: string
+          quantidade: number
+          updated_at: string
+          valor_estimado: number | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          data_instalacao?: string | null
+          deleted_at?: string | null
+          equipamento: string
+          fabricante_modelo?: string
+          id?: string
+          local_instalacao?: string
+          numero_serie?: string
+          observacao?: string
+          patrimonio?: string
+          quantidade?: number
+          updated_at?: string
+          valor_estimado?: number | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          data_instalacao?: string | null
+          deleted_at?: string | null
+          equipamento?: string
+          fabricante_modelo?: string
+          id?: string
+          local_instalacao?: string
+          numero_serie?: string
+          observacao?: string
+          patrimonio?: string
+          quantidade?: number
+          updated_at?: string
+          valor_estimado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_comodatos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrato_produtos: {
         Row: {
           capacidade_fornecimento: number | null

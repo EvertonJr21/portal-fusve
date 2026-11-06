@@ -40,3 +40,54 @@ export function parsePrecoBR(texto: string): number {
   const n = Number(normalizado)
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0
 }
+
+export interface LinhaColada {
+  cod: string
+  /** Preço encontrado na mesma linha (com vírgula ou ponto decimal), ou null. */
+  preco: number | null
+}
+
+const RE_PRECO = /^(?:R\$)?\d{1,3}(?:\.\d{3})*,\d{1,2}$|^(?:R\$)?\d+[.,]\d{1,2}$/
+
+/**
+ * Lê uma lista colada de códigos SoulMV (item 83) pra adicionar vários produtos
+ * ao contrato de uma vez. Aceita:
+ * - um código por linha, opcionalmente com o preço no fim (`16874 700,00`,
+ *   colunas copiadas do Excel separadas por tab, `16874;Stent ...;700,00`);
+ * - vários códigos numa linha só, separados por vírgula/espaço (`16874, 16876`).
+ * Código = número inteiro de até 7 dígitos no início da linha (ou cada um da
+ * lista, quando a linha só tem números). Preço = último valor com casas decimais.
+ * Repetidos são ignorados (fica a 1ª ocorrência).
+ */
+export function lerListaColada(texto: string): LinhaColada[] {
+  const saida: LinhaColada[] = []
+  const vistos = new Set<string>()
+  const add = (cod: string, preco: number | null) => {
+    const c = cod.replace(/^0+(?=\d)/, '')
+    if (vistos.has(c)) return
+    vistos.add(c)
+    saida.push({ cod: c, preco })
+  }
+  for (const bruta of texto.split(/\r?\n/)) {
+    const linha = bruta.trim()
+    if (!linha) continue
+    const tokens = linha.split(/[\t;|]+|\s+/).map((t) => t.trim().replace(/^"|"$/g, '')).filter(Boolean)
+    if (!tokens.length) continue
+    // Só números inteiros (separados por espaço/vírgula) → lista de códigos. "700,00" é preço,
+    // não dois códigos: vírgula só separa códigos quando as partes têm 3+ dígitos.
+    const soCodigos = tokens.flatMap((t) => {
+      const sem = t.replace(/,$/, '')
+      const partes = sem.split(',')
+      return partes.length > 1 && partes.every((x) => x.length >= 3) ? partes : [sem]
+    })
+    if (soCodigos.length > 1 && soCodigos.every((t) => /^\d{1,7}$/.test(t))) {
+      soCodigos.forEach((t) => add(t, null))
+      continue
+    }
+    if (!/^\d{1,7}$/.test(tokens[0])) continue
+    const ultimo = tokens.length > 1 ? tokens[tokens.length - 1].replace(/\s/g, '') : ''
+    const preco = ultimo && RE_PRECO.test(ultimo) ? parsePrecoBR(ultimo) || null : null
+    add(tokens[0], preco)
+  }
+  return saida
+}

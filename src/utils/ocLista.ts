@@ -250,14 +250,6 @@ export function textoPrazo(l: LinhaOC): string {
   }
 }
 
-/** "há 3d", "hoje" — pra última cobrança. */
-export function haQuantoTempo(ts: number, hoje: Date): string {
-  const d = new Date(ts)
-  d.setHours(0, 0, 0, 0)
-  const dias = diasEntre(d, hoje)
-  return dias <= 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias}d`
-}
-
 /** Mapeia o antigo `?rapido=` (links salvos, Dashboard Executivo) pra uma visão nova. */
 export function visaoDeParametro(rapido: string | null, visao: string | null): VisaoOC | null {
   if (visao && VISOES_OC.some((v) => v.id === visao)) return visao as VisaoOC

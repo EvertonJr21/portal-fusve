@@ -6,7 +6,9 @@ import type { Produto } from '@/data/produtos'
 import { useProdutos } from '@/hooks/useProdutos'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoProduto } from '@/types'
-import { formatarPrecoBR, parsePrecoBR } from '@/utils/contrato'
+import { PrecoInput } from '@/components/contratos/PrecoInput'
+import { campoClass, rotuloClass } from '@/components/contratos/estilos'
+import { lerListaColada, parsePrecoBR } from '@/utils/contrato'
 
 interface ProdutosContratoEditorProps {
   contratoId: string
@@ -31,51 +33,36 @@ function novoProduto(contratoId: string, base: Partial<ContratoProduto> = {}): C
   }
 }
 
-const campoClass =
-  'w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
-const rotuloClass = 'mb-1 block text-[11px] font-medium text-slate-500'
-
-interface PrecoInputProps {
-  valor: number
-  onChange: (valor: number) => void
-  inputRef?: React.Ref<HTMLInputElement>
-}
-
-/** Texto livre enquanto digita, formatado em R$ ao sair — evita o "0387,69" do input number. */
-function PrecoInput({ valor, onChange, inputRef }: PrecoInputProps) {
-  const [rascunho, setRascunho] = useState<string | null>(null)
-  return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">R$</span>
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="decimal"
-        className={`${campoClass} pl-8 text-right tabular-nums`}
-        placeholder="0,00"
-        value={rascunho ?? formatarPrecoBR(valor)}
-        onFocus={() => setRascunho(formatarPrecoBR(valor))}
-        onChange={(e) => setRascunho(e.target.value)}
-        onBlur={() => {
-          if (rascunho !== null) onChange(parsePrecoBR(rascunho))
-          setRascunho(null)
-        }}
-      />
-    </div>
-  )
-}
 
 function inteiroOuNull(texto: string): number | null {
   const n = parseInt(texto.replace(/\D/g, ''), 10)
   return Number.isFinite(n) ? n : null
 }
 
+type CampoEmMassa = 'precoUnitario' | 'unidade' | 'meioPagamento'
+
+const CAMPOS_EM_MASSA: { id: CampoEmMassa; label: string }[] = [
+  { id: 'precoUnitario', label: 'Preço unitário' },
+  { id: 'unidade', label: 'Unidade' },
+  { id: 'meioPagamento', label: 'Pagamento' },
+]
+
+function normalizar(s: string) {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 export function ProdutosContratoEditor({ contratoId, produtos, onChange }: ProdutosContratoEditorProps) {
   const toast = useToast()
   const { data: catalogo = [] } = useProdutos()
-  const codsCatalogo = useMemo(() => new Set(catalogo.map((p) => p.cod)), [catalogo])
+  const porCod = useMemo(() => new Map(catalogo.map((p) => [p.cod, p])), [catalogo])
   const [busca, setBusca] = useState('')
   const [focoId, setFocoId] = useState<string | null>(null)
+  const [filtro, setFiltro] = useState('')
+  const [painel, setPainel] = useState<'colar' | 'massa' | null>(null)
+  const buscaRef = useRef<HTMLDivElement>(null)
 
   const atualizar = <K extends keyof ContratoProduto>(id: string, key: K, value: ContratoProduto[K]) =>
     onChange(produtos.map((p) => (p.id === id ? { ...p, [key]: value } : p)))
@@ -88,79 +75,147 @@ export function ProdutosContratoEditor({ contratoId, produtos, onChange }: Produ
     }
     const novo = novoProduto(contratoId, { codSoulmv: item.cod, descricao: item.nome })
     onChange([...produtos, novo])
+    setFiltro('')
     setFocoId(novo.id)
   }
 
   const adicionarManual = () => {
     const novo = novoProduto(contratoId)
     onChange([...produtos, novo])
+    setFiltro('')
     setFocoId(novo.id)
   }
 
   const vincularCatalogo = (id: string, item: Produto) =>
     onChange(produtos.map((p) => (p.id === id ? { ...p, codSoulmv: item.cod, descricao: item.nome } : p)))
 
+  const adicionarLista = (texto: string) => {
+    const lidos = lerListaColada(texto)
+    const jaTem = new Set(produtos.map((p) => p.codSoulmv))
+    const novos: ContratoProduto[] = []
+    const repetidos: string[] = []
+    const desconhecidos: string[] = []
+    for (const { cod, preco } of lidos) {
+      const item = porCod.get(cod)
+      if (!item) desconhecidos.push(cod)
+      else if (jaTem.has(cod)) repetidos.push(cod)
+      else novos.push(novoProduto(contratoId, { codSoulmv: cod, descricao: item.nome, precoUnitario: preco ?? 0 }))
+    }
+    if (novos.length) onChange([...produtos, ...novos])
+    const partes = [
+      `${novos.length} item(ns) adicionado(s)`,
+      repetidos.length ? `${repetidos.length} já estavam no contrato` : '',
+      desconhecidos.length ? `não encontrados no catálogo: ${desconhecidos.slice(0, 8).join(', ')}${desconhecidos.length > 8 ? '…' : ''}` : '',
+    ].filter(Boolean)
+    toast.show(partes.join(' · '), desconhecidos.length || !novos.length ? 'warn' : 'info')
+    return novos.length > 0
+  }
+
   const semPreco = produtos.filter((p) => p.descricao.trim() && !p.precoUnitario).length
+  const termos = normalizar(filtro).split(/\s+/).filter(Boolean)
+  const visiveis = termos.length
+    ? produtos.filter((p) => termos.every((t) => normalizar(`${p.codSoulmv} ${p.descricao} ${p.sku}`).includes(t)))
+    : produtos
+
+  const aplicarEmMassa = (campo: CampoEmMassa, valor: string | number) => {
+    const ids = new Set(visiveis.map((p) => p.id))
+    onChange(produtos.map((p) => (ids.has(p.id) ? { ...p, [campo]: valor } : p)))
+    toast.show(`${CAMPOS_EM_MASSA.find((c) => c.id === campo)?.label} aplicado em ${ids.size} item(ns)`)
+    setPainel(null)
+  }
+
+  const botao = (ativo: boolean) =>
+    `inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+      ativo ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+    }`
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400">Produtos do contrato</h4>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {produtos.length === 0
-              ? 'Nenhum item ainda'
-              : `${produtos.length} ${produtos.length === 1 ? 'item' : 'itens'}`}
-            {semPreco > 0 && <span className="ml-2 text-status-amber">· {semPreco} sem preço</span>}
-          </p>
+      {/* Barra fixa no topo da área rolável do formulário enquanto a lista de produtos estiver na tela —
+          buscar/adicionar sem precisar rolar de volta (pedido do Everton, contrato com 53 itens). */}
+      <div ref={buscaRef} className="sticky -top-4 z-10 -mx-5 mb-3 border-b border-slate-200 bg-white/95 px-5 pb-3 pt-4 backdrop-blur-sm">
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400">Produtos do contrato</h4>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {produtos.length === 0 ? 'Nenhum item ainda' : `${produtos.length} ${produtos.length === 1 ? 'item' : 'itens'}`}
+              {semPreco > 0 && <span className="ml-2 text-status-amber">· {semPreco} sem preço</span>}
+              {termos.length > 0 && <span className="ml-2 text-blue-700">· mostrando {visiveis.length}</span>}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={botao(painel === 'colar')} onClick={() => setPainel((v) => (v === 'colar' ? null : 'colar'))}>
+              📋 Colar lista de códigos
+            </button>
+            {produtos.length > 1 && (
+              <button type="button" className={botao(painel === 'massa')} onClick={() => setPainel((v) => (v === 'massa' ? null : 'massa'))}>
+                ⇣ Preencher em todos
+              </button>
+            )}
+            <button type="button" className={botao(false)} onClick={adicionarManual}>
+              + Item fora do catálogo
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={adicionarManual}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
-        >
-          + Item fora do catálogo
-        </button>
-      </div>
 
-      <div className="relative mb-3">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path strokeLinecap="round" d="M20 20l-3.5-3.5" />
-        </svg>
-        <ProdutoAutocompleteInput
-          value={busca}
-          onChange={setBusca}
-          onSelect={adicionarDoCatalogo}
-          minimo={1}
-          ariaLabel="Adicionar produto do catálogo SoulMV"
-          placeholder="Buscar no catálogo SoulMV por código ou nome (ex.: 2868, fio ethibond)"
-          className={`${campoClass} py-2.5 pl-9`}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path strokeLinecap="round" d="M20 20l-3.5-3.5" />
+            </svg>
+            <ProdutoAutocompleteInput
+              value={busca}
+              onChange={setBusca}
+              onSelect={adicionarDoCatalogo}
+              minimo={1}
+              ariaLabel="Adicionar produto do catálogo SoulMV"
+              placeholder="Adicionar do catálogo SoulMV — código ou nome (ex.: 2868, fio ethibond)"
+              className={`${campoClass} py-2 pl-9`}
+            />
+          </div>
+          {produtos.length > 5 && (
+            <input
+              type="search"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Filtrar itens deste contrato…"
+              aria-label="Filtrar itens deste contrato"
+              className={`${campoClass} py-2 sm:max-w-[16rem]`}
+            />
+          )}
+        </div>
+
+        {painel === 'colar' && <PainelColar onAdicionar={adicionarLista} onFechar={() => setPainel(null)} />}
+        {painel === 'massa' && (
+          <PainelEmMassa total={visiveis.length} filtrado={termos.length > 0} onAplicar={aplicarEmMassa} onFechar={() => setPainel(null)} />
+        )}
       </div>
 
       {produtos.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-slate-200 px-4 py-8 text-center">
           <p className="text-sm font-medium text-slate-600">Busque um produto acima pra adicionar ao contrato</p>
           <p className="mt-1 text-xs text-slate-400">
-            Cada item escolhido vira um cartão onde você preenche preço, unidade e condições.
+            Ou cole de uma vez a lista de códigos (e preços) da proposta do fornecedor em "Colar lista de códigos".
           </p>
         </div>
+      ) : visiveis.length === 0 ? (
+        <p className="py-6 text-center text-sm text-slate-500">Nenhum item deste contrato bate com "{filtro}".</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {produtos.map((p, i) => (
+          {visiveis.map((p) => (
             <ItemProduto
               key={p.id}
-              indice={i + 1}
+              indice={produtos.indexOf(p) + 1}
               produto={p}
-              doCatalogo={!!p.codSoulmv && codsCatalogo.has(p.codSoulmv)}
+              doCatalogo={!!p.codSoulmv && porCod.has(p.codSoulmv)}
               focar={focoId === p.id}
               onFocado={() => setFocoId(null)}
               onCampo={(key, value) => atualizar(p.id, key, value)}
@@ -170,7 +225,117 @@ export function ProdutosContratoEditor({ contratoId, produtos, onChange }: Produ
           ))}
         </ul>
       )}
+
+      {produtos.length > 3 && (
+        <button
+          type="button"
+          onClick={() => buscaRef.current?.querySelector('input')?.focus()}
+          className="mt-2 w-full rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-700"
+        >
+          + Adicionar outro produto
+        </button>
+      )}
     </section>
+  )
+}
+
+function PainelColar({ onAdicionar, onFechar }: { onAdicionar: (texto: string) => boolean; onFechar: () => void }) {
+  const [texto, setTexto] = useState('')
+  return (
+    <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="mb-2 text-xs text-slate-600">
+        Cole os códigos SoulMV — um por linha ou separados por vírgula. Pode ter o preço no fim da linha, com centavos
+        (ex.: <span className="font-mono">16874 700,00</span>). Funciona com colunas copiadas do Excel.
+      </p>
+      <textarea
+        autoFocus
+        rows={5}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        className={`${campoClass} font-mono text-xs`}
+        placeholder={'16874 700,00\n16876 700,00\n2868'}
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button type="button" className="text-xs text-slate-500 hover:underline" onClick={onFechar}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={!texto.trim()}
+          onClick={() => {
+            if (onAdicionar(texto)) {
+              setTexto('')
+              onFechar()
+            }
+          }}
+          className="rounded-md bg-blue-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+        >
+          Adicionar itens
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PainelEmMassa({
+  total,
+  filtrado,
+  onAplicar,
+  onFechar,
+}: {
+  total: number
+  filtrado: boolean
+  onAplicar: (campo: CampoEmMassa, valor: string | number) => void
+  onFechar: () => void
+}) {
+  const [campo, setCampo] = useState<CampoEmMassa>('meioPagamento')
+  const [texto, setTexto] = useState('')
+  const [unidade, setUnidade] = useState<string>(UNIDADES_PRODUTO[0])
+  const valor = campo === 'unidade' ? unidade : campo === 'precoUnitario' ? parsePrecoBR(texto) : texto.trim()
+  return (
+    <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div>
+        <label className={rotuloClass}>Campo</label>
+        <select className={campoClass} value={campo} onChange={(e) => setCampo(e.target.value as CampoEmMassa)}>
+          {CAMPOS_EM_MASSA.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="min-w-[10rem] flex-1">
+        <label className={rotuloClass}>Valor</label>
+        {campo === 'unidade' ? (
+          <select className={campoClass} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+            {UNIDADES_PRODUTO.map((u) => (
+              <option key={u} value={u}>
+                {u.charAt(0) + u.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            autoFocus
+            className={campoClass}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={campo === 'precoUnitario' ? '700,00' : 'Ex.: boleto 28 dias'}
+          />
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={campo !== 'unidade' && !valor}
+        onClick={() => onAplicar(campo, valor)}
+        className="rounded-md bg-blue-700 px-3 py-2 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+      >
+        Aplicar em {total} {filtrado ? 'item(ns) filtrado(s)' : 'item(ns)'}
+      </button>
+      <button type="button" className="py-2 text-xs text-slate-500 hover:underline" onClick={onFechar}>
+        Cancelar
+      </button>
+    </div>
   )
 }
 
@@ -204,6 +369,9 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
   }, [focar, doCatalogo, onFocado])
 
   const unidadeCustom = p.unidade && !(UNIDADES_PRODUTO as readonly string[]).includes(p.unidade)
+  const extrasPreenchidos = [p.moq, p.capacidadeFornecimento, p.sku.trim() || null].filter((v) => v !== null && v !== '').length
+  const [mais, setMais] = useState<boolean | null>(null)
+  const mostrarMais = mais ?? extrasPreenchidos > 0
 
   return (
     <li
@@ -268,8 +436,8 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
         </IconButton>
       </div>
 
-      {/* Condições do item */}
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 pt-3 sm:ml-9 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Condições do item — as mais usadas sempre à vista; o resto atrás de "mais condições" pra lista longa ficar curta. */}
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 pt-3 sm:ml-9 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
         <div>
           <label className={rotuloClass}>Preço unitário</label>
           <PrecoInput valor={p.precoUnitario} onChange={(v) => onCampo('precoUnitario', v)} inputRef={precoRef} />
@@ -285,6 +453,29 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
             ))}
           </select>
         </div>
+        <div className="col-span-2 sm:col-span-1">
+          <label className={rotuloClass}>Pagamento</label>
+          <input
+            type="text"
+            className={campoClass}
+            placeholder="Ex.: boleto 28d"
+            value={p.meioPagamento}
+            onChange={(e) => onCampo('meioPagamento', e.target.value)}
+          />
+        </div>
+        <div className="col-span-2 flex items-end sm:col-span-1">
+          <button
+            type="button"
+            onClick={() => setMais(!mostrarMais)}
+            className="whitespace-nowrap py-1.5 text-xs font-medium text-slate-500 hover:text-blue-700"
+            aria-expanded={mostrarMais}
+          >
+            {mostrarMais ? '− menos' : `+ mais condições${extrasPreenchidos ? ` (${extrasPreenchidos})` : ''}`}
+          </button>
+        </div>
+      </div>
+      {mostrarMais && (
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:ml-9 sm:grid-cols-3">
         <div>
           <label className={rotuloClass} title="Quantidade mínima de pedido">
             Pedido mínimo
@@ -324,16 +515,6 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
           </div>
         </div>
         <div>
-          <label className={rotuloClass}>Pagamento</label>
-          <input
-            type="text"
-            className={campoClass}
-            placeholder="Ex.: boleto 28d"
-            value={p.meioPagamento}
-            onChange={(e) => onCampo('meioPagamento', e.target.value)}
-          />
-        </div>
-        <div>
           <label className={rotuloClass}>SKU interno</label>
           <input
             type="text"
@@ -343,7 +524,8 @@ function ItemProduto({ indice, produto: p, doCatalogo, focar, onFocado, onCampo,
             onChange={(e) => onCampo('sku', e.target.value)}
           />
         </div>
-      </div>
+        </div>
+      )}
     </li>
   )
 }

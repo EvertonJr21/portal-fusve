@@ -2,11 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FILTROS_VAZIOS, visaoDeParametro, type ChaveOrdem, type DirOrdem, type FiltrosOC, type VisaoOC } from '@/utils/ocLista'
 
-export type ColunaOpcional = 'produto' | 'ultimaAcao' | 'motivo' | 'acao'
+export type ColunaOpcional = 'produto' | 'motivo' | 'acao'
 
 export const COLUNAS_OPCIONAIS: { id: ColunaOpcional; label: string }[] = [
   { id: 'produto', label: 'Produto / solicitação' },
-  { id: 'ultimaAcao', label: 'Última cobrança' },
   { id: 'motivo', label: 'Motivo do atraso' },
   { id: 'acao', label: 'Prioridade e ação recomendada' },
 ]
@@ -24,7 +23,7 @@ const KEY = 'fusve:ocsLista'
 const PADRAO: EstadoSalvo = {
   visao: 'acao',
   filtros: FILTROS_VAZIOS,
-  colunas: ['produto', 'ultimaAcao', 'motivo', 'acao'],
+  colunas: ['produto', 'motivo', 'acao'],
   agrupar: false,
   ordem: { chave: 'prioridade', dir: 1 },
 }
@@ -38,6 +37,8 @@ function ler(): EstadoSalvo {
       ...PADRAO,
       ...salvo,
       filtros: { ...FILTROS_VAZIOS, ...(salvo.filtros ?? {}), busca: '' },
+      // Coluna que deixou de existir (ex.: "Última cobrança", removida a pedido) some do estado salvo.
+      colunas: (salvo.colunas ?? PADRAO.colunas).filter((c) => COLUNAS_OPCIONAIS.some((o) => o.id === c)),
     }
   } catch {
     return PADRAO

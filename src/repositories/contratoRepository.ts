@@ -1,12 +1,13 @@
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
-import type { ContratoHeader, ContratoProduto } from '@/types'
+import type { ContratoComodato, ContratoHeader, ContratoProduto } from '@/types'
 import type { Database } from '@/types/database'
 
 /** Acesso ao Supabase pra `contratos`/`contrato_produtos` — mesmo padrão de `ocRepository.ts` (Hardening P2). */
 
 type ContratoRow = Database['public']['Tables']['contratos']['Row']
 type ContratoProdutoRow = Database['public']['Tables']['contrato_produtos']['Row']
+type ContratoComodatoRow = Database['public']['Tables']['contrato_comodatos']['Row']
 
 export function toContrato(row: ContratoRow): ContratoHeader {
   return {
@@ -155,4 +156,91 @@ export async function excluirContrato(id: string): Promise<void> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+}
+
+// ── Equipamentos em comodato (item 83) ──
+
+export function toContratoComodato(row: ContratoComodatoRow): ContratoComodato {
+  return {
+    id: row.id,
+    contratoId: row.contrato_id,
+    equipamento: row.equipamento,
+    fabricanteModelo: row.fabricante_modelo ?? '',
+    numeroSerie: row.numero_serie ?? '',
+    patrimonio: row.patrimonio ?? '',
+    quantidade: row.quantidade ?? 1,
+    localInstalacao: row.local_instalacao ?? '',
+    dataInstalacao: row.data_instalacao,
+    valorEstimado: row.valor_estimado,
+    observacao: row.observacao ?? '',
+  }
+}
+
+function toContratoComodatoRow(c: ContratoComodato) {
+  return {
+    id: c.id,
+    contrato_id: c.contratoId,
+    equipamento: c.equipamento.trim(),
+    fabricante_modelo: c.fabricanteModelo,
+    numero_serie: c.numeroSerie,
+    patrimonio: c.patrimonio,
+    quantidade: c.quantidade > 0 ? c.quantidade : 1,
+    local_instalacao: c.localInstalacao,
+    data_instalacao: c.dataInstalacao || null,
+    valor_estimado: c.valorEstimado,
+    observacao: c.observacao,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+export async function listarContratoComodatos(contratoId: string): Promise<ContratoComodato[]> {
+  const { data, error } = await supabase
+    .from('contrato_comodatos')
+    .select('*')
+    .eq('contrato_id', contratoId)
+    .is('deleted_at', null)
+    .order('created_at')
+  if (error) throw error
+  return (data as ContratoComodatoRow[]).map(toContratoComodato)
+}
+
+export interface SalvarComodatosInput {
+  contratoId: string
+  atuais: ContratoComodato[]
+  originais: ContratoComodato[]
+}
+
+/** Mesmo diff de `salvarProdutosContrato`: upsert dos atuais, soft-delete dos removidos. Sem mudança → nenhuma chamada. */
+export async function salvarComodatosContrato(input: SalvarComodatosInput): Promise<void> {
+  const idsAtuais = new Set(input.atuais.map((c) => c.id))
+  const removidos = input.originais.filter((c) => !idsAtuais.has(c.id))
+  if (input.atuais.length) {
+    const { error } = await supabase.from('contrato_comodatos').upsert(input.atuais.map(toContratoComodatoRow))
+    if (error) throw error
+  }
+  if (removidos.length) {
+    const { error } = await supabase
+      .from('contrato_comodatos')
+      .update({ deleted_at: new Date().toISOString() })
+      .in(
+        'id',
+        removidos.map((c) => c.id),
+      )
+    if (error) throw error
+  }
+}
+
+/** Quantidade de equipamentos (soma das quantidades) por contrato. */
+export async function contarComodatosPorContrato(contratoIds: string[]): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from('contrato_comodatos')
+    .select('contrato_id, quantidade')
+    .in('contrato_id', contratoIds)
+    .is('deleted_at', null)
+  if (error) throw error
+  const mapa = new Map<string, number>()
+  for (const r of data as { contrato_id: string; quantidade: number }[]) {
+    mapa.set(r.contrato_id, (mapa.get(r.contrato_id) ?? 0) + (r.quantidade ?? 1))
+  }
+  return mapa
 }

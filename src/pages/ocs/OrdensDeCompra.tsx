@@ -14,7 +14,7 @@ import { FINAL_SIT, MOTIVOS_OCORRENCIA, type SituacaoOC } from '@/constants'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useEstadoListaOCs } from '@/hooks/useEstadoListaOCs'
-import { useHistoricoRecentePorOC, useMarcarRespondida, useMarcarRespondidas } from '@/hooks/useHistOC'
+import { useHistoricoRecentePorOC, useMarcarRespondidas } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
 import { useAtualizarOC, useAtualizarOCsEmLote, useAtualizarSituacaoOC, useExcluirOC } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
@@ -67,7 +67,6 @@ function TelaOrdensDeCompra() {
   const atualizarSituacao = useAtualizarSituacaoOC(hospitalId)
   const atualizarCampos = useAtualizarOC(hospitalId)
   const atualizarLote = useAtualizarOCsEmLote(hospitalId)
-  const marcarRespondida = useMarcarRespondida()
   const marcarRespondidas = useMarcarRespondidas()
   const excluir = useExcluirOC(hospitalId)
   const toast = useToast()
@@ -137,15 +136,6 @@ function TelaOrdensDeCompra() {
       toast.show(previsaoForn ? `Previsão da OC ${oc.id}: ${previsaoForn}` : `Previsão da OC ${oc.id} removida`)
     } catch (err) {
       erro(err, 'Erro ao atualizar previsão')
-    }
-  }
-
-  const handleRespondida = async (h: HistOC) => {
-    try {
-      await marcarRespondida.mutateAsync({ hid: h.hid, ocId: h.ocId })
-      toast.show(`OC ${h.ocId} — fornecedor respondeu`)
-    } catch (err) {
-      erro(err, 'Erro ao registrar resposta')
     }
   }
 
@@ -346,7 +336,6 @@ function TelaOrdensDeCompra() {
             onSituacao={handleSituacao}
             onPrevisao={handlePrevisao}
             onVincular={(oc) => setModal({ tipo: 'vincular', oc })}
-            onRespondida={handleRespondida}
             onCobrarGrupo={(g: GrupoFornecedor) => setModal({ tipo: 'lote', linhas: g.linhas })}
           />
           <Pagination

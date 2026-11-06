@@ -2,9 +2,9 @@ import { useState, type ReactNode } from 'react'
 import { SortableTh, Table, TableHead } from '@/components/ui/Table'
 import { SITUACOES_OC } from '@/constants'
 import type { ColunaOpcional } from '@/hooks/useEstadoListaOCs'
-import type { HistOC, OC } from '@/types'
-import { fmt, fromInput, getHoje, toInput } from '@/utils/date'
-import { haQuantoTempo, type ChaveOrdem, type DirOrdem, type GrupoFornecedor, type LinhaOC } from '@/utils/ocLista'
+import type { OC } from '@/types'
+import { fmt, fromInput, toInput } from '@/utils/date'
+import { type ChaveOrdem, type DirOrdem, type GrupoFornecedor, type LinhaOC } from '@/utils/ocLista'
 import { BadgePrazo, BadgePrioridade } from '../ocVisual'
 
 export interface AcoesLinha {
@@ -12,7 +12,6 @@ export interface AcoesLinha {
   onSituacao: (oc: OC, sit: string) => void
   onPrevisao: (oc: OC, previsao: string | null) => void
   onVincular: (oc: OC) => void
-  onRespondida: (h: HistOC) => void
   onCobrarGrupo?: (g: GrupoFornecedor) => void
 }
 
@@ -28,7 +27,6 @@ interface TabelaOCsProps extends AcoesLinha {
   abertaId: number | null
 }
 
-const CANAL: Record<string, string> = { mail: '✉', 'mail (lote)': '✉', wpp: '💬', lembrete: '🔔' }
 const TH = 'px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500'
 
 /** Não deixa o clique num controle da linha abrir o painel. */
@@ -83,7 +81,6 @@ export function TabelaOCs(props: TabelaOCsProps) {
                 Prazo
               </SortableTh>
               <th className={TH}>Previsão</th>
-              {tem('ultimaAcao') && <th className={TH}>Última cobrança</th>}
               {tem('motivo') && <th className={TH}>Motivo</th>}
               {tem('acao') && (
                 <SortableTh sortKey="prioridade" activeKey={ordem.chave} sortDir={ordem.dir} onSort={onOrdenar}>
@@ -174,11 +171,6 @@ function BlocoTabela(
             <td className="px-3 py-2 text-xs" onClick={parar}>
               <CelulaPrevisao linha={l} onPrevisao={props.onPrevisao} />
             </td>
-            {tem('ultimaAcao') && (
-              <td className="px-3 py-2 text-xs" onClick={parar}>
-                <UltimaCobranca linha={l} onRespondida={props.onRespondida} />
-              </td>
-            )}
             {tem('motivo') && (
               <td className="max-w-[10rem] px-3 py-2 text-xs">
                 <Motivo oc={o} />
@@ -344,30 +336,6 @@ function CelulaPrevisao({ linha: l, onPrevisao }: { linha: LinhaOC; onPrevisao: 
       {prev2 ? `2ª ${prev2}` : o.previsaoForn}
       {l.previsaoDescumprida && ' ⚠'}
     </button>
-  )
-}
-
-function UltimaCobranca({ linha: l, onRespondida }: { linha: LinhaOC; onRespondida: (h: HistOC) => void }) {
-  const h = l.ultimaCobranca
-  if (!h) return <span className="text-slate-300">{l.aberta ? 'nunca cobrada' : '—'}</span>
-  return (
-    <div className="flex flex-col items-start gap-0.5">
-      <span className="whitespace-nowrap text-slate-600">
-        {CANAL[h.canal] ?? '📨'} {haQuantoTempo(h.ts, getHoje())}
-      </span>
-      {l.cobrancaPendente ? (
-        <button
-          type="button"
-          onClick={() => onRespondida(h)}
-          title="Marcar que o fornecedor respondeu"
-          className="whitespace-nowrap rounded border border-status-green-bg bg-status-green-bg px-1.5 py-0.5 text-[10px] font-medium text-status-green hover:brightness-95"
-        >
-          sem resposta · ✓ respondeu
-        </button>
-      ) : (
-        <span className="text-[10px] text-status-green">respondida</span>
-      )}
-    </div>
   )
 }
 
