@@ -96,6 +96,8 @@ export function OCHistorico({ oc, sols, hospitalId, onClose }: OCHistoricoProps)
         patch: {
           previsaoForn: dPrevisaoForn,
           dataEntregaReal: dEntregaReal,
+          // Data digitada aqui vale como confirmada (origem manual); apagar a data limpa a origem.
+          ...(dEntregaReal !== oc.dataEntregaReal ? { dataEntregaOrigem: dEntregaReal ? ('manual' as const) : null } : {}),
           dataParcial: dParcial,
           proximaAcao: proximaAcao || null,
           motivoAtraso: motivoAtraso || null,

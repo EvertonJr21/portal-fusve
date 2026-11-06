@@ -45,6 +45,16 @@ export const vinculoAcompSchema = z.object({
   fornecedorNome: z.string().min(1),
 })
 
+export const ocAcompanhamentoSchema = z.object({
+  ocId: z.number().int().positive(),
+  dataOC: dataDMY,
+  fornecedorNome: z.string(),
+  solicitacaoId: z.number().int().positive().nullable(),
+  dataSolicitacao: dataDMY.nullable(),
+  diasSolOrd: z.number().int().nonnegative().nullable(),
+  entradas: z.array(z.object({ numero: z.string().regex(/^\d+$/), data: dataDMY })),
+})
+
 export interface ItemInvalido<T> {
   item: T
   erros: string[]

@@ -1,7 +1,7 @@
 import { fmt, fromInput, getHoje, toInput } from '@/utils/date'
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
-import type { OC, SituacaoOC } from '@/types'
+import type { OC, OrigemDataEntrega, SituacaoOC } from '@/types'
 import type { Database } from '@/types/database'
 
 /**
@@ -56,6 +56,9 @@ export function toOC(row: OCRow): OC {
     previsaoForn2: deColunaDate(row.previsao_forn2_date),
     dataEntregaReal: deColunaDate(row.data_entrega_real_date),
     dataParcial: deColunaDate(row.data_parcial_date),
+    dataEntregaOrigem: (['mv', 'manual', 'estimada'] as const).find((o) => o === row.data_entrega_origem) ?? null,
+    entradaMv: row.entrada_mv ?? '',
+    qtdEntradas: row.qtd_entradas ?? 0,
     diasAtraso: row.dias_atraso ?? 0,
     hospitalId: row.hospital_id as HospitalId,
     proximaAcao: row.proxima_acao,
@@ -154,6 +157,7 @@ export interface OCImportadaInput {
   ultimaMovimentacao: string | null
   dataEntregaReal?: string | null
   dataParcial?: string | null
+  dataEntregaOrigem?: OrigemDataEntrega | null
 }
 
 /**
@@ -182,6 +186,7 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
     previsao_descumprida: false,
     data_entrega_real_date: paraColunaDate(input.dataEntregaReal ?? null),
     data_parcial_date: paraColunaDate(input.dataParcial ?? null),
+    data_entrega_origem: input.dataEntregaOrigem ?? null,
   })
   if (error) throw error
 }
@@ -196,6 +201,9 @@ const PATCH_FIELD_MAP: Partial<Record<keyof OC, keyof OCRow>> = {
   sit: 'sit',
   fornecedorNome: 'fornecedor_nome',
   fornecedorId: 'fornecedor_id',
+  dataEntregaOrigem: 'data_entrega_origem',
+  entradaMv: 'entrada_mv',
+  qtdEntradas: 'qtd_entradas',
 }
 
 /** Campos de data com coluna `_date` irmã — mantidos em sincronia em todo patch parcial. */

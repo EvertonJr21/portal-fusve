@@ -9,6 +9,8 @@ export type { SituacaoOC } from '@/constants'
  * devem ser conferidos contra `database.ts` assim que ele existir.
  */
 
+export type OrigemDataEntrega = 'mv' | 'manual' | 'estimada'
+
 export interface OC {
   id: number
   dataSolic: string | null
@@ -23,6 +25,16 @@ export interface OC {
   dataEntregaReal: string | null
   /** Data em que a OC entrou pela primeira vez em "Parcialmente Atendida" — nunca sobrescrita depois. */
   dataParcial: string | null
+  /**
+   * De onde veio `dataEntregaReal`: 'mv' (Dt. Entrada do Acompanhamento de Compras),
+   * 'manual' (digitada no Histórico) ou 'estimada' (dia em que a importação viu a OC
+   * Atendida). `null` = data anterior a esse controle, tratada como estimada.
+   */
+  dataEntregaOrigem: OrigemDataEntrega | null
+  /** Número(s) da entrada no MV, separados por vírgula ('' = nenhuma conhecida). */
+  entradaMv: string
+  /** Quantas entradas o MV registrou pra OC — mais de 1 = entrega fracionada. */
+  qtdEntradas: number
   diasAtraso: number
   hospitalId: HospitalId
   proximaAcao: string | null

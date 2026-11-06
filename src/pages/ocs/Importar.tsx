@@ -10,7 +10,7 @@ import * as solRepository from '@/repositories/solRepository'
 import type { OC, Solicitacao } from '@/types'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 import { fmt, getHoje } from '@/utils/date'
-import { ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
+import { ocAcompanhamentoSchema, ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
 type Relatorio = 'ocs' | 'sols' | 'acomp'
 
@@ -94,6 +94,7 @@ export default function Importar() {
           // entregue"). Só dispara na transição, nunca sobrescreve entrega já registrada.
           if (patch.sit === 'Atendida' && !existente.dataEntregaReal) {
             patch.dataEntregaReal = fmt(getHoje())
+            patch.dataEntregaOrigem = 'estimada'
           }
           // Mesma aproximação da entrega real (item 34): a primeira vez que a OC
           // entra em Parcialmente Atendida nesta importação, registra a data de
@@ -132,6 +133,7 @@ export default function Importar() {
             ultimaMovimentacao: item.dataSolic,
             dataEntregaReal: entregaNaChegada,
             dataParcial: parcialNaChegada,
+            dataEntregaOrigem: entregaNaChegada ? 'estimada' : null,
           })
           added++
           const marcadorNova = entregaNaChegada
@@ -220,21 +222,105 @@ export default function Importar() {
     }
   }
 
+  /**
+   * Acompanhamento de Compras em planilha/XML (item 79): grava a data de
+   * entrada confirmada pelo MV e o vínculo com a solicitação. Não cria OC, não
+   * muda a situação, não sobrescreve data digitada à mão nem vínculo já
+   * existente — divergências vão pro log.
+   */
+  const importarAcompMv = async (file: File) => {
+    const { lerAcompanhamento } = await import('@/utils/acompanhamento')
+    const lido = await lerAcompanhamento(file)
+    addLog(`Formato: ${lido.formato.toUpperCase()} — ${lido.ocs.length} OC(s) no arquivo`)
+    if (lido.formato === 'xml') addLog('ℹ O XML não traz a solicitação — só as datas de entrada são gravadas, sem vínculo.')
+    const { validos, invalidos } = validarLote(lido.ocs, ocAcompanhamentoSchema)
+    for (const { item, erros } of invalidos) addLog(`⚠ OC ${item.ocId || '?'} ignorada — ${erros.join('; ')}`)
+    if (!validos.length) throw new Error('Nenhuma OC encontrada. Verifique se é um relatório de Acompanhamento de Compras.')
+
+    let entradas = 0
+    let vinculos = 0
+    let semMudanca = 0
+    let ausentes = 0
+    let divergencias = 0
+
+    for (const item of validos) {
+      const existente = ocs.find((o) => o.id === item.ocId)
+      if (!existente) {
+        ausentes++
+        addLog(`⚠ OC ${item.ocId} não está no sistema — importe o relatório de OCs antes.`)
+        continue
+      }
+      const patch: Partial<OC> = {}
+      const notas: string[] = []
+
+      if (item.solicitacaoId) {
+        if (!existente.solicitacaoId) {
+          patch.solicitacaoId = item.solicitacaoId
+          notas.push(`vinculada à Solicitação ${item.solicitacaoId}`)
+        } else if (existente.solicitacaoId !== item.solicitacaoId) {
+          divergencias++
+          addLog(`⚠ OC ${item.ocId}: vínculo atual Sol. ${existente.solicitacaoId} ≠ MV ${item.solicitacaoId} — mantido o atual.`)
+        }
+      }
+
+      if (item.entradas.length) {
+        const ultima = item.entradas[item.entradas.length - 1]
+        const numeros = item.entradas.map((e) => e.numero).join(', ')
+        if (existente.dataEntregaOrigem === 'manual' && existente.dataEntregaReal && existente.dataEntregaReal !== ultima.data) {
+          divergencias++
+          addLog(`⚠ OC ${item.ocId}: entrega manual ${existente.dataEntregaReal} ≠ entrada MV ${ultima.data} — mantida a manual.`)
+        } else if (
+          existente.dataEntregaReal !== ultima.data ||
+          existente.dataEntregaOrigem !== 'mv' ||
+          existente.entradaMv !== numeros ||
+          existente.qtdEntradas !== item.entradas.length
+        ) {
+          patch.dataEntregaReal = ultima.data
+          patch.dataEntregaOrigem = 'mv'
+          patch.entradaMv = numeros
+          patch.qtdEntradas = item.entradas.length
+          notas.push(`entrada ${numeros} em ${ultima.data}`)
+        }
+        if (item.entradas.length > 1 && !existente.dataParcial) patch.dataParcial = item.entradas[0].data
+      }
+
+      if (Object.keys(patch).length) {
+        await ocRepository.atualizarCamposOC(item.ocId, patch)
+        if (patch.dataEntregaReal) entradas++
+        if (patch.solicitacaoId) vinculos++
+        addLog(`OC ${item.ocId} — ${notas.join('; ')}`)
+      } else {
+        semMudanca++
+      }
+    }
+
+    const resumo = [
+      `${entradas} entrada(s) gravada(s)`,
+      `${vinculos} vínculo(s)`,
+      semMudanca ? `${semMudanca} sem mudança` : '',
+      ausentes ? `${ausentes} fora do sistema` : '',
+      divergencias ? `${divergencias} divergência(s) no log` : '',
+      invalidos.length ? `${invalidos.length} ignorada(s)` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ')
+    addLog(`─ Acompanhamento: ${resumo}`)
+    setCardStatus('acomp', { state: 'done', message: resumo })
+    await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
+  }
+
   const importarAcomp = async (file: File) => {
     setAtivo('acomp')
     setCardStatus('acomp', { state: 'processing' })
-    const ehPlanilha = /\.xlsx?$/i.test(file.name)
-    setLog([`📄 ${file.name} — ${ehPlanilha ? 'lendo planilha...' : 'extraindo texto do PDF...'}`])
+    const ehPdf = /\.pdf$/i.test(file.name)
+    setLog([`📄 ${file.name} — ${ehPdf ? 'extraindo texto do PDF...' : 'lendo relatório...'}`])
     try {
-      const vinculosBrutos = ehPlanilha
-        ? await (async () => {
-            const { extractXlsRows, parseAcompXLS } = await import('@/utils/acompXls')
-            return parseAcompXLS(await extractXlsRows(file))
-          })()
-        : await (async () => {
-            const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
-            return parseAcompPDF(await extractPdfLines(file))
-          })()
+      if (!ehPdf) {
+        await importarAcompMv(file)
+        return
+      }
+      const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
+      const vinculosBrutos = parseAcompPDF(await extractPdfLines(file))
       const { validos: vinculos, invalidos } = validarLote(vinculosBrutos, vinculoAcompSchema)
       for (const { item, erros } of invalidos) {
         addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
@@ -327,9 +413,9 @@ export default function Importar() {
         />
         <UploadCard
           title="Acompanhamento de Compras"
-          description="PDF ou planilha (.xls/.xlsx) — vincula OCs às Solicitações de origem automaticamente."
-          filenameHint="Arquivo .pdf, .xls ou .xlsx"
-          accept=".pdf,.xls,.xlsx"
+          description="Planilha (.xlsx/.xls) ou XML do MV — grava a data de entrada real de cada OC e o vínculo com a Solicitação. PDF continua aceito só para o vínculo."
+          filenameHint="Arquivo .xlsx, .xls, .xml ou .pdf"
+          accept=".xlsx,.xls,.xml,.pdf"
           accentClass="border-status-amber/30 bg-status-amber-bg text-status-amber"
           icon={ICON_PDF}
           status={status.acomp}
