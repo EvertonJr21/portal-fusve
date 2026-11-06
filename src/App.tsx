@@ -24,7 +24,7 @@ import DashboardPareceres from '@/pages/pareceres/Dashboard'
 import MarcasSugeridas from '@/pages/pareceres/MarcasSugeridas'
 import TabelaMestre from '@/pages/contratos/TabelaMestre'
 
-// Agrupado por seção funcional. Enxugado de 12 pra 8 itens no item 82: Central de
+// Agrupado por seção funcional. Enxugado de 12 pra 7 itens no item 82: Central de
 // Pendências e Por Fornecedor viraram visões/agrupamento da própria tela de OCs,
 // Análise de Causas virou coluna/filtro de motivo, Ciclo interno e Dashboard
 // Executivo entraram em Desempenho de Entrega.
