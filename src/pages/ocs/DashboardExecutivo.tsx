@@ -1,14 +1,14 @@
 import { Link } from 'react-router-dom'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
-import { useFornecedores } from '@/hooks/useFornecedores'
+import { tomPct } from '@/utils/desempenhoUi'
+import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
 import { ocsPendentes, ocsPrevisaoDescumprida, ocsSemPrevisao, ocsVencidas } from '@/utils/oc'
-import { calcularScoresTodos, fornecedoresProblematicos } from '@/utils/scoreFornecedor'
-import { slaFornecedor, slaInterno } from '@/utils/sla'
+import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, resumir } from '@/utils/kpis'
 
 function CardLink({ to, label, value, sub, tone }: { to: string; label: string; value: number | string; sub?: string; tone: 'blue' | 'red' | 'amber' | 'green' | 'gray' }) {
   return (
@@ -22,10 +22,10 @@ export default function DashboardExecutivo() {
   const { hospitalId } = useHospital()
   const { data: ocs = [], isLoading: carregandoOCs } = useOCs(hospitalId)
   const { data: sols = [] } = useSols(hospitalId)
-  const { data: forns = [] } = useFornecedores()
+  const { avaliacoes, forns, isLoading: carregandoEntrega } = useAvaliacoesEntrega()
   const { data: cobrancas = [], isLoading: carregandoHist } = useHistoricoTodos()
 
-  if (carregandoOCs || carregandoHist) return <SkeletonRows linhas={4} colunas={3} />
+  if (carregandoOCs || carregandoHist || carregandoEntrega) return <SkeletonRows linhas={4} colunas={3} />
 
   const pendentes = ocsPendentes(ocs)
   const vencidas = ocsVencidas(ocs, sols)
@@ -36,12 +36,9 @@ export default function DashboardExecutivo() {
   const cobrancasDoHospital = cobrancas.filter((h) => ocIdsHospital.has(h.ocId))
   const cobrancasPendentes = cobrancasDoHospital.filter((h) => !h.respondidoEm)
 
-  const scores = calcularScoresTodos(forns, ocs, sols, cobrancas).filter((s) => s.totalOCs >= 3)
-  const problematicos = fornecedoresProblematicos(scores)
-  const scoreMedia = scores.length ? Math.round(scores.reduce((s, x) => s + x.score, 0) / scores.length) : null
-
-  const interno = slaInterno(ocs, sols)
-  const fornecedor = slaFornecedor(ocs, sols)
+  const entrega = resumir(avaliacoes)
+  const notaD = desempenhoPorFornecedor(avaliacoes, forns).filter((d) => d.classe?.classe === 'D').length
+  const ciclo = cicloInterno(ocs, sols)
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,27 +61,22 @@ export default function DashboardExecutivo() {
         <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Cobrança e Fornecedores</h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <CardLink to="/ocs" label="Cobranças sem resposta" value={cobrancasPendentes.length} sub={`de ${cobrancasDoHospital.length} no total`} tone="amber" />
-          <CardLink to="/ocs/ranking" label="Fornecedores críticos" value={problematicos.length} tone="red" />
-          <CardLink to="/ocs/ranking" label="Score médio" value={scoreMedia ?? '—'} tone={scoreMedia !== null && scoreMedia >= 70 ? 'green' : 'amber'} />
+          <CardLink to="/ocs/ranking" label="Fornecedores nota D" value={notaD} sub="OTIF abaixo de 60%" tone={notaD ? 'red' : 'gray'} />
+          <CardLink to="/ocs/metricas" label="Lead time OC → entrada" value={formatarDias(entrega.leadTimeMediana)} sub={`mediana · P90 ${formatarDias(entrega.leadTimeP90)}`} tone="blue" />
         </div>
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">SLA</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Entrega e ciclo interno</h3>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <CardLink to="/ocs/metricas" label="OTIF" value={formatarPct(entrega.otif)} sub="no prazo e completo" tone={tomPct(entrega.otif)} />
+          <CardLink to="/ocs/metricas" label="On Time" value={formatarPct(entrega.onTime)} sub={`${entrega.abertasVencidas} abertas vencidas`} tone={tomPct(entrega.onTime)} />
           <CardLink
             to="/ocs/sla"
-            label="SLA Interno"
-            value={interno.pct !== null ? `${(interno.pct * 100).toFixed(0)}%` : '—'}
-            sub="Solicitação → OC"
-            tone={interno.pct === null ? 'gray' : interno.pct >= 0.85 ? 'green' : 'amber'}
-          />
-          <CardLink
-            to="/ocs/sla"
-            label="SLA Fornecedor"
-            value={fornecedor.pct !== null ? `${(fornecedor.pct * 100).toFixed(0)}%` : '—'}
-            sub="OC → Entrega"
-            tone={fornecedor.pct === null ? 'gray' : fornecedor.pct >= 0.85 ? 'green' : 'amber'}
+            label="Ciclo interno"
+            value={formatarDias(ciclo.mediana)}
+            sub={`Solicitação → OC · ${formatarPct(ciclo.pct)} na meta`}
+            tone={ciclo.pct === null ? 'gray' : ciclo.pct >= 0.85 ? 'green' : 'amber'}
           />
         </div>
       </div>

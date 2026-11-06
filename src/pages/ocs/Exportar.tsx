@@ -4,7 +4,7 @@ import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHistoricoTodos } from '@/hooks/useHistOC'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
-import { useScoreReset } from '@/hooks/useScoreReset'
+import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useSols } from '@/hooks/useSols'
 import { useToast } from '@/hooks/useToast'
 import { fmt, parseDMY } from '@/utils/date'
@@ -12,8 +12,7 @@ import { exportarExcel } from '@/utils/exportar'
 import { exportarPDF } from '@/utils/exportarPdf'
 import { isPrevisaoDescumprida, ocsSemPrevisao, ocsVencidas } from '@/utils/oc'
 import { gerarRelatorioMensalPDF } from '@/utils/relatorioMensal'
-import { calcularScoresTodos, filtrarDesdeReset } from '@/utils/scoreFornecedor'
-import { slaFornecedor, slaInterno } from '@/utils/sla'
+import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, resumir } from '@/utils/kpis'
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -33,7 +32,7 @@ export default function Exportar() {
   const { data: sols = [] } = useSols(hospitalId)
   const { data: forns = [] } = useFornecedores()
   const { data: cobrancas = [] } = useHistoricoTodos()
-  const { resetAt } = useScoreReset()
+  const { avaliacoes } = useAvaliacoesEntrega()
   const toast = useToast()
 
   const agora = new Date()
@@ -90,34 +89,63 @@ export default function Exportar() {
         })),
     },
     {
-      titulo: 'SLA',
-      descricao: 'Resumo do SLA interno (Solicitação → OC) e do fornecedor (OC → Entrega)',
-      arquivo: 'sla',
-      linhas: () => {
-        const interno = slaInterno(ocs, sols)
-        const fornecedor = slaFornecedor(ocs, sols)
-        return [
-          { Indicador: 'SLA Interno', Total: interno.total, 'Dentro do Prazo': interno.dentro, 'Fora do Prazo': interno.fora, '% Cumprimento': interno.pct !== null ? `${(interno.pct * 100).toFixed(0)}%` : '—' },
-          { Indicador: 'SLA Fornecedor', Total: fornecedor.total, 'Dentro do Prazo': fornecedor.dentro, 'Fora do Prazo': fornecedor.fora, '% Cumprimento': fornecedor.pct !== null ? `${(fornecedor.pct * 100).toFixed(0)}%` : '—' },
-        ]
-      },
+      titulo: 'Desempenho de entrega (OTIF)',
+      descricao: 'Uma linha por OC: data prometida, entrada, origem da data, no prazo/completo e dias de atraso',
+      arquivo: 'otif-por-oc',
+      linhas: () =>
+        avaliacoes
+          .filter((a) => a.status !== 'cancelada')
+          .map((a) => ({
+            OC: a.oc.id,
+            Fornecedor: a.oc.fornecedorNome,
+            'Data da OC': fmt(a.dataOC),
+            'Prazo (dias)': a.prazoDias,
+            'Fonte do prazo': a.prazoFonte === 'contrato' ? 'Contrato' : 'Padrão',
+            'Data prometida': fmt(a.dataPrometida),
+            'Data de entrada': a.dataEntrega ? fmt(a.dataEntrega) : '',
+            'Origem da data': a.oc.dataEntregaOrigem ?? (a.dataEntrega ? 'estimada' : ''),
+            'Nº entrada MV': a.oc.entradaMv,
+            Status: a.status,
+            'On Time': a.status === 'no_prazo' ? 'Sim' : a.status === 'atrasada' || a.status === 'aberta_vencida' ? 'Não' : '',
+            'In Full': a.inFull === null ? '' : a.inFull ? 'Sim' : 'Não',
+            'Dias de atraso': a.diasAtraso,
+            'Lead time (dias)': a.leadTimeDias ?? '',
+          })),
     },
     {
       titulo: 'Fornecedores / Ranking',
-      descricao: 'Score, taxa de atraso e indicadores de todos os fornecedores com OCs',
+      descricao: 'OTIF, On Time, In Full, nota A–D e lead time por fornecedor',
       arquivo: 'ranking-fornecedores',
-      linhas: () =>
-        calcularScoresTodos(forns, filtrarDesdeReset(ocs, resetAt), sols, cobrancas).map((s) => ({
-          Fornecedor: s.fornecedorNome,
-          Score: s.score,
-          'Total OCs': s.totalOCs,
-          'OCs Abertas': s.ocsAbertas,
-          'OCs Atrasadas': s.ocsAtrasadas,
-          'Taxa de Atraso': s.taxaAtraso !== null ? `${(s.taxaAtraso * 100).toFixed(0)}%` : '—',
-          'Cumprimento de Prazo': s.cumprimentoPrazoPct !== null ? `${(s.cumprimentoPrazoPct * 100).toFixed(0)}%` : '—',
-          'Cumprimento de Previsão': s.cumprimentoPrevisaoPct !== null ? `${(s.cumprimentoPrevisaoPct * 100).toFixed(0)}%` : '—',
-          Responsividade: s.responsividadePct !== null ? `${(s.responsividadePct * 100).toFixed(0)}%` : '—',
-        })),
+      linhas: () => {
+        const geral = resumir(avaliacoes)
+        const ciclo = cicloInterno(ocs, sols)
+        return [
+          ...desempenhoPorFornecedor(avaliacoes, forns).map((d) => ({
+            Fornecedor: d.fornecedorNome,
+            Nota: d.classe?.classe ?? 'sem nota',
+            OTIF: formatarPct(d.resumo.otif),
+            'On Time': formatarPct(d.resumo.onTime),
+            'In Full': formatarPct(d.resumo.inFull),
+            'OCs avaliadas': d.resumo.avaliadas,
+            Atrasadas: d.resumo.atrasadas,
+            'Abertas vencidas': d.resumo.abertasVencidas,
+            'Lead time mediana': formatarDias(d.resumo.leadTimeMediana),
+            'Lead time P90': formatarDias(d.resumo.leadTimeP90),
+          })),
+          {
+            Fornecedor: 'TOTAL DO HOSPITAL',
+            Nota: '',
+            OTIF: formatarPct(geral.otif),
+            'On Time': formatarPct(geral.onTime),
+            'In Full': formatarPct(geral.inFull),
+            'OCs avaliadas': geral.avaliadas,
+            Atrasadas: geral.atrasadas,
+            'Abertas vencidas': geral.abertasVencidas,
+            'Lead time mediana': formatarDias(geral.leadTimeMediana),
+            'Lead time P90': `${formatarDias(geral.leadTimeP90)} · ciclo interno Sol→OC (mediana): ${formatarDias(ciclo.mediana)}`,
+          },
+        ]
+      },
     },
     {
       titulo: 'Ocorrências',
@@ -151,7 +179,7 @@ export default function Exportar() {
   }
 
   const handleRelatorioMensal = () => {
-    gerarRelatorioMensalPDF(mes, ano, ocs, sols, forns, cobrancas)
+    gerarRelatorioMensalPDF(mes, ano, ocs, sols, forns, avaliacoes)
     toast.show('Relatório mensal gerado')
   }
 
@@ -182,7 +210,7 @@ export default function Exportar() {
       <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-soft-sm">
         <div className="mb-3 text-sm font-semibold text-slate-800">Relatório Gerencial Mensal</div>
         <div className="mb-3 text-xs text-slate-500">
-          Resumo do mês (OCs processadas, cumprimento de SLA, atrasos e previsões descumpridas), fornecedores críticos e
+          Resumo do mês (OCs processadas, OTIF, lead time, ciclo interno, atrasos e previsões descumpridas), fornecedores críticos e
           principais ocorrências.
         </div>
         <div className="flex flex-wrap items-center gap-2">

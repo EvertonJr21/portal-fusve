@@ -120,6 +120,23 @@ export const MOTIVOS_OCORRENCIA = [
 export const SLA_INTERNO_DIAS = 3
 
 /**
+ * Indicadores de entrega (OTIF) — ver `src/utils/kpis.ts`. Prazo padrão usado
+ * como data prometida quando o fornecedor não tem contrato ativo com prazo
+ * médio (ajustável na tela Desempenho de Entrega). Nota A–D pelo OTIF, sem nota
+ * abaixo da amostra mínima. Faixas iniciais (referência de mercado: OTIF ≥ 90%),
+ * não uma norma hospitalar.
+ */
+export const PRAZO_PADRAO_ENTREGA_DIAS = 15
+export const OTIF_AMOSTRA_MIN = 5
+export const OTIF_META = 0.9
+export const OTIF_CLASSES = [
+  { min: 90, classe: 'A', acao: 'Manter' },
+  { min: 75, classe: 'B', acao: 'Monitorar' },
+  { min: 60, classe: 'C', acao: 'Plano de ação' },
+  { min: 0, classe: 'D', acao: 'Reavaliar fornecedor' },
+] as const
+
+/**
  * Paleta de cores pra séries de gráfico (barras de categoria em Pareceres/Dashboard
  * e OCs/AnaliseCausas) — antes cada tela tinha seu próprio array de hex, parcialmente
  * sobreposto mas divergente. Union das duas paletas antigas, único ponto de verdade agora.

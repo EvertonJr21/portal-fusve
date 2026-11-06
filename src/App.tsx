@@ -52,9 +52,9 @@ const OCS_GROUPS: NavGroup[] = [
   {
     title: 'Análise',
     items: [
-      { to: '/ocs/sla', label: 'SLA' },
+      { to: '/ocs/sla', label: 'Ciclo interno' },
       { to: '/ocs/causas', label: 'Análise de Causas' },
-      { to: '/ocs/metricas', label: 'Métricas' },
+      { to: '/ocs/metricas', label: 'Desempenho de Entrega' },
     ],
   },
   {

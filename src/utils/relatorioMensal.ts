@@ -1,11 +1,10 @@
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
-import type { Fornecedor, HistOC, OC, Solicitacao } from '@/types'
+import type { Fornecedor, OC, Solicitacao } from '@/types'
 import { parseDMY } from './date'
 import { abrirDocPdf } from './pdfDataUrl'
 import { dataPrazo, isPrevisaoDescumprida, statusPrazo } from './oc'
-import { calcularScoresTodos, fornecedoresProblematicos } from './scoreFornecedor'
-import { slaFornecedor, slaInterno } from './sla'
+import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, ordenarPorRisco, resumir, type AvaliacaoOC } from './kpis'
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -29,7 +28,7 @@ export function gerarRelatorioMensalPDF(
   ocs: OC[],
   sols: Solicitacao[],
   forns: Fornecedor[],
-  cobrancas: HistOC[],
+  avaliacoes: AvaliacaoOC[],
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageW = doc.internal.pageSize.getWidth()
@@ -52,8 +51,10 @@ export function gerarRelatorioMensalPDF(
   const ocsDoMes = ocs.filter((o) => noMes(o.dataSolic, mes, ano))
   const atrasadas = ocsDoMes.filter((o) => statusPrazo(dataPrazo(o, sols), o.sit) === 'vencida')
   const descumpridas = ocsDoMes.filter(isPrevisaoDescumprida)
-  const interno = slaInterno(ocsDoMes, sols)
-  const fornecedor = slaFornecedor(ocsDoMes, sols)
+  const idsDoMes = new Set(ocsDoMes.map((o) => o.id))
+  const avaliacoesDoMes = avaliacoes.filter((a) => idsDoMes.has(a.oc.id))
+  const entrega = resumir(avaliacoesDoMes)
+  const ciclo = cicloInterno(ocsDoMes, sols)
 
   let y = 30
   doc.setFontSize(11)
@@ -66,8 +67,11 @@ export function gerarRelatorioMensalPDF(
     ['OCs processadas', String(ocsDoMes.length)],
     ['OCs em atraso (institucional)', String(atrasadas.length)],
     ['Previsões descumpridas', String(descumpridas.length)],
-    ['SLA interno (Solicitação → OC)', interno.pct !== null ? `${(interno.pct * 100).toFixed(0)}%` : 'sem dado'],
-    ['SLA do fornecedor (OC → Entrega)', fornecedor.pct !== null ? `${(fornecedor.pct * 100).toFixed(0)}%` : 'sem dado'],
+    ['OTIF — no prazo e completo', entrega.avaliadas ? `${formatarPct(entrega.otif)} (${entrega.perfeitas} de ${entrega.avaliadas})` : 'sem dado'],
+    ['On Time / In Full', `${formatarPct(entrega.onTime)} / ${formatarPct(entrega.inFull)}`],
+    ['Lead time OC → entrada (mediana · P90)', `${formatarDias(entrega.leadTimeMediana)} · ${formatarDias(entrega.leadTimeP90)}`],
+    ['Ciclo interno Solicitação → OC (mediana)', ciclo.total ? `${formatarDias(ciclo.mediana)} · ${formatarPct(ciclo.pct)} na meta` : 'sem dado'],
+    ['Cobertura de datas de entrega', formatarPct(entrega.cobertura)],
   ]
   autoTable(doc, {
     startY: y,
@@ -80,30 +84,32 @@ export function gerarRelatorioMensalPDF(
 
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
 
-  const scores = calcularScoresTodos(forns, ocs, sols, cobrancas).filter((s) => s.totalOCs >= 3)
-  const problematicos = fornecedoresProblematicos(scores).slice(0, 10)
+  const criticos = ordenarPorRisco(desempenhoPorFornecedor(avaliacoesDoMes, forns))
+    .filter((d) => d.classe?.classe === 'D' || d.classe?.classe === 'C')
+    .slice(0, 10)
 
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text('Fornecedores Críticos', mL, y)
+  doc.text('Fornecedores Críticos (nota C ou D)', mL, y)
   y += 4
 
-  if (problematicos.length === 0) {
+  if (criticos.length === 0) {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(100, 116, 139)
-    doc.text('Nenhum fornecedor com taxa de atraso significativamente acima da média.', mL, y + 4)
+    doc.text('Nenhum fornecedor com nota C ou D no mês (mínimo de 5 OCs avaliadas para receber nota).', mL, y + 4)
     y += 12
   } else {
     autoTable(doc, {
       startY: y + 2,
-      head: [['Fornecedor', 'Score', 'Taxa de Atraso', 'x Média Geral', 'Total OCs']],
-      body: problematicos.map((p) => [
-        p.fornecedorNome,
-        String(p.score),
-        p.taxaAtraso !== null ? `${(p.taxaAtraso * 100).toFixed(0)}%` : '—',
-        `${p.multiploMedia.toFixed(1)}x`,
-        String(p.totalOCs),
+      head: [['Fornecedor', 'Nota', 'OTIF', 'On Time', 'In Full', 'OCs avaliadas']],
+      body: criticos.map((d) => [
+        d.fornecedorNome,
+        d.classe?.classe ?? '',
+        formatarPct(d.resumo.otif),
+        formatarPct(d.resumo.onTime),
+        formatarPct(d.resumo.inFull),
+        String(d.resumo.avaliadas),
       ]),
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, textColor: [26, 32, 44] },
