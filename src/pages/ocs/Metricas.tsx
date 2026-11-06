@@ -6,17 +6,18 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { OTIF_AMOSTRA_MIN, OTIF_META } from '@/constants'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
-import { fmt, getHoje } from '@/utils/date'
+import { getHoje } from '@/utils/date'
 import {
   backlogVencido,
   confiabilidadePrevisao,
   desempenhoPorFornecedor,
+  entregasAConfirmar,
   filtrarPeriodo,
   formatarDias,
   formatarPct,
   ordenarPorRisco,
   resumir,
-  type AvaliacaoOC,
+  type GrupoAConfirmar,
 } from '@/utils/kpis'
 import { ClasseBadge } from '@/components/ocs/desempenho'
 import { PERIODOS_ENTREGA, tomPct, type PeriodoEntrega } from '@/utils/desempenhoUi'
@@ -38,10 +39,7 @@ export default function Metricas() {
   const previsao = useMemo(() => confiabilidadePrevisao(doPeriodo), [doPeriodo])
   const backlog = useMemo(() => backlogVencido(doPeriodo), [doPeriodo])
   const fornecedores = useMemo(() => ordenarPorRisco(desempenhoPorFornecedor(doPeriodo, forns)), [doPeriodo, forns])
-  const semData = useMemo(
-    () => doPeriodo.filter((a) => a.status === 'sem_data' && (a.oc.sit === 'Atendida' || a.oc.sit === 'Fechada')),
-    [doPeriodo],
-  )
+  const aConfirmar = useMemo(() => entregasAConfirmar(doPeriodo), [doPeriodo])
 
   if (isLoading) return <SkeletonRows colunas={6} />
   if (error) return <p className="text-sm text-status-red">Erro ao carregar: {error.message}</p>
@@ -191,46 +189,73 @@ export default function Metricas() {
         )}
       </div>
 
-      {semData.length > 0 && <InconsistenciasEntrega lista={semData} />}
+      {aConfirmar.length > 0 && <EntregasAConfirmar grupos={aConfirmar} />}
     </div>
   )
 }
 
-function InconsistenciasEntrega({ lista }: { lista: AvaliacaoOC[] }) {
+function EntregasAConfirmar({ grupos }: { grupos: GrupoAConfirmar[] }) {
   const [aberto, setAberto] = useState(false)
+  const total = grupos.reduce((n, g) => n + g.avaliacoes.length, 0)
+  const comSol = grupos.filter((g) => g.solicitacaoId !== null)
   return (
     <div className="rounded-xl border border-status-amber/40 bg-status-amber-bg/40 p-4">
-      <button type="button" onClick={() => setAberto((v) => !v)} className="text-left">
+      <button type="button" onClick={() => setAberto((v) => !v)} className="w-full text-left">
         <h3 className="text-sm font-semibold text-status-amber">
-          ⚠ {lista.length} OC(s) concluída(s) sem data de entrega válida {aberto ? '▲' : '▼'}
+          ⚠ Entregas a confirmar: {total} OC(s) em {comSol.length} solicitação(ões) {aberto ? '▲' : '▼'}
         </h3>
         <p className="text-xs text-slate-600">
-          Ficam fora do OTIF e do lead time. Importe o Acompanhamento de Compras da solicitação ou registre a entrega no
-          Histórico da OC.
+          OCs atendidas com data estimada (dia em que o relatório de OCs foi importado) ou sem data. Exporte do MV o
+          Acompanhamento de Compras dessas solicitações e importe em{' '}
+          <Link to="/ocs/importar" className="font-medium text-blue-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+            Importar
+          </Link>{' '}
+          — dá pra subir vários arquivos de uma vez. As que cobrem mais OCs estão no topo. OC sem data fica fora do OTIF;
+          com data estimada entra, mas pode estar alguns dias errada.
         </p>
       </button>
       {aberto && (
-        <div className="mt-3 max-h-72 overflow-y-auto rounded-md bg-white">
+        <div className="mt-3 max-h-96 overflow-y-auto rounded-md bg-white">
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+            <thead className="sticky top-0 bg-slate-50 text-[11px] uppercase text-slate-500">
               <tr>
-                <th className="px-3 py-1.5 text-left">OC</th>
-                <th className="px-3 py-1.5 text-left">Data da OC</th>
-                <th className="px-3 py-1.5 text-left">Fornecedor</th>
-                <th className="px-3 py-1.5 text-left">Data registrada</th>
+                <th className="px-3 py-1.5 text-left">Solicitação</th>
+                <th className="px-3 py-1.5 text-left">OCs</th>
+                <th className="px-3 py-1.5 text-left">OC · fornecedor · data registrada</th>
               </tr>
             </thead>
             <tbody>
-              {lista.map((a) => (
-                <tr key={a.oc.id} className="border-t border-slate-100">
-                  <td className="px-3 py-1.5 font-mono">{a.oc.id}</td>
-                  <td className="px-3 py-1.5">{fmt(a.dataOC)}</td>
-                  <td className="px-3 py-1.5">{a.oc.fornecedorNome}</td>
-                  <td className="px-3 py-1.5 text-slate-500">{a.oc.dataEntregaReal ?? 'sem data'}</td>
+              {grupos.map((g) => (
+                <tr key={g.solicitacaoId ?? 'sem'} className="border-t border-slate-100 align-top">
+                  <td className="whitespace-nowrap px-3 py-1.5 font-mono font-semibold">
+                    {g.solicitacaoId ?? <span className="font-sans font-normal text-slate-500">Sem vínculo</span>}
+                  </td>
+                  <td className="px-3 py-1.5">{g.avaliacoes.length}</td>
+                  <td className="px-3 py-1.5">
+                    <ul className="flex flex-col gap-0.5">
+                      {g.avaliacoes.map((a) => (
+                        <li key={a.oc.id}>
+                          <span className="font-mono">{a.oc.id}</span>
+                          <span className="text-slate-500"> · {a.oc.fornecedorNome} · </span>
+                          {a.oc.dataEntregaReal ? (
+                            <span className="text-status-amber">{a.oc.dataEntregaReal} (estimada)</span>
+                          ) : (
+                            <span className="text-status-red">sem data</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {grupos.some((g) => g.solicitacaoId === null) && (
+            <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-500">
+              "Sem vínculo": a OC ainda não está ligada a uma solicitação. Ao importar o Acompanhamento da solicitação dela, o
+              vínculo e a data entram juntos — confira o nº da solicitação na própria OC no MV.
+            </p>
+          )}
         </div>
       )}
     </div>

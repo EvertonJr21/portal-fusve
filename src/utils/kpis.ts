@@ -350,3 +350,32 @@ export function formatarPct(v: number | null, casas = 0): string {
 export function formatarDias(v: number | null): string {
   return v === null ? '—' : `${Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',')}d`
 }
+
+export interface GrupoAConfirmar {
+  /** null = OC ainda sem solicitação vinculada. */
+  solicitacaoId: number | null
+  avaliacoes: AvaliacaoOC[]
+}
+
+/**
+ * OCs concluídas cuja data de entrega não foi confirmada (estimada pelo dia da
+ * importação do relatório de OCs, ou ausente), agrupadas pela solicitação — é
+ * por solicitação que o Acompanhamento de Compras sai do MV. Solicitações com
+ * mais OCs pendentes primeiro; OCs sem vínculo num grupo à parte, por último.
+ */
+export function entregasAConfirmar(avaliacoes: AvaliacaoOC[]): GrupoAConfirmar[] {
+  const grupos = new Map<number | null, AvaliacaoOC[]>()
+  for (const a of avaliacoes) {
+    if (!CONCLUIDAS.has(a.oc.sit) || a.confirmada) continue
+    const chave = a.oc.solicitacaoId ?? null
+    const lista = grupos.get(chave) ?? []
+    lista.push(a)
+    grupos.set(chave, lista)
+  }
+  return [...grupos.entries()]
+    .map(([solicitacaoId, lista]) => ({ solicitacaoId, avaliacoes: lista.sort((x, y) => x.oc.id - y.oc.id) }))
+    .sort((a, b) => {
+      if ((a.solicitacaoId === null) !== (b.solicitacaoId === null)) return a.solicitacaoId === null ? 1 : -1
+      return b.avaliacoes.length - a.avaliacoes.length || (a.solicitacaoId ?? 0) - (b.solicitacaoId ?? 0)
+    })
+}

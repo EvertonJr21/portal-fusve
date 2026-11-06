@@ -7,6 +7,7 @@ import {
   classificar,
   confiabilidadePrevisao,
   desempenhoPorFornecedor,
+  entregasAConfirmar,
   percentil,
   prazosContratuais,
   resumir,
@@ -197,5 +198,27 @@ describe('outros indicadores', () => {
   it('percentil com interpolação', () => {
     expect(percentil([], 0.5)).toBeNull()
     expect(percentil([1, 2, 3, 4], 0.5)).toBe(2.5)
+  })
+})
+
+describe('entregasAConfirmar', () => {
+  const av = (p: Partial<OC>) => avaliarOC(oc(p), SEM_CONTRATO, 15, HOJE)
+
+  it('agrupa por solicitação só as concluídas sem data confirmada; sem vínculo fica por último', () => {
+    const grupos = entregasAConfirmar([
+      av({ id: 1, solicitacaoId: 500, dataEntregaReal: '07/11/2026', dataEntregaOrigem: 'estimada' }),
+      av({ id: 2, solicitacaoId: 600, dataEntregaReal: '10/10/2026', dataEntregaOrigem: null }),
+      av({ id: 3, solicitacaoId: 600, dataEntregaReal: null }),
+      av({ id: 4, solicitacaoId: null, dataEntregaReal: '10/10/2026', dataEntregaOrigem: 'estimada' }),
+      av({ id: 5, solicitacaoId: 500, dataEntregaReal: '10/10/2026', dataEntregaOrigem: 'mv' }),
+      av({ id: 6, solicitacaoId: 500, dataEntregaReal: '10/10/2026', dataEntregaOrigem: 'manual' }),
+      av({ id: 7, solicitacaoId: 700, sit: 'Autorizada' }),
+      av({ id: 8, solicitacaoId: 700, sit: 'Cancelada' }),
+    ])
+    expect(grupos.map((g) => [g.solicitacaoId, g.avaliacoes.map((a) => a.oc.id)])).toEqual([
+      [600, [2, 3]],
+      [500, [1]],
+      [null, [4]],
+    ])
   })
 })

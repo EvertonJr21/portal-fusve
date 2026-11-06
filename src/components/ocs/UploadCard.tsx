@@ -11,7 +11,10 @@ interface UploadCardProps {
   icon: ReactNode
   status: UploadStatus
   disabled: boolean
-  onFile: (file: File) => void
+  /** Aceita vários arquivos de uma vez (seleção múltipla ou arrastar vários). */
+  multiple?: boolean
+  onFile?: (file: File) => void
+  onFiles?: (files: File[]) => void
 }
 
 const STATUS_LABEL: Record<UploadStatus['state'], string> = {
@@ -28,12 +31,26 @@ const STATUS_BADGE_CLASS: Record<UploadStatus['state'], string> = {
   error: 'bg-status-red-bg text-status-red',
 }
 
-export function UploadCard({ title, description, filenameHint, accept, accentClass, icon, status, disabled, onFile }: UploadCardProps) {
+export function UploadCard({
+  title,
+  description,
+  filenameHint,
+  accept,
+  accentClass,
+  icon,
+  status,
+  disabled,
+  multiple = false,
+  onFile,
+  onFiles,
+}: UploadCardProps) {
   const [arrastando, setArrastando] = useState(false)
 
   const handleFiles = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) onFile(file)
+    const lista = Array.from(files ?? [])
+    if (!lista.length) return
+    if (multiple && onFiles) onFiles(lista)
+    else onFile?.(lista[0])
   }
 
   return (
@@ -82,6 +99,7 @@ export function UploadCard({ title, description, filenameHint, accept, accentCla
         <input
           type="file"
           accept={accept}
+          multiple={multiple}
           disabled={disabled}
           className="sr-only"
           onChange={(e) => {
@@ -93,7 +111,7 @@ export function UploadCard({ title, description, filenameHint, accept, accentCla
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" />
         </svg>
         <span className="text-xs font-medium text-slate-600">
-          <span className="text-blue-700 group-hover:underline">Escolher arquivo</span> ou arraste aqui
+          <span className="text-blue-700 group-hover:underline">{multiple ? 'Escolher arquivos' : 'Escolher arquivo'}</span> ou arraste aqui
         </span>
         <span className="text-[11px] text-slate-400">{filenameHint}</span>
       </label>

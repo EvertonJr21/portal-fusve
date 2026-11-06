@@ -37,6 +37,38 @@ const ICON_PDF = (
   </svg>
 )
 
+interface ContagemAcomp {
+  entradas: number
+  vinculos: number
+  criadas: number
+  semMudanca: number
+  ausentes: number
+  divergencias: number
+  ignoradas: number
+}
+
+function novaContagem(): ContagemAcomp {
+  return { entradas: 0, vinculos: 0, criadas: 0, semMudanca: 0, ausentes: 0, divergencias: 0, ignoradas: 0 }
+}
+
+function somarContagem(total: ContagemAcomp, c: ContagemAcomp) {
+  for (const k of Object.keys(total) as (keyof ContagemAcomp)[]) total[k] += c[k]
+}
+
+function resumoAcomp(c: ContagemAcomp): string {
+  return [
+    c.entradas ? `${c.entradas} entrada(s) gravada(s)` : '',
+    c.vinculos ? `${c.vinculos} vínculo(s)` : '',
+    c.criadas ? `${c.criadas} OC(s) criada(s)` : '',
+    c.semMudanca ? `${c.semMudanca} sem mudança` : '',
+    c.ausentes ? `${c.ausentes} fora do sistema` : '',
+    c.divergencias ? `${c.divergencias} divergência(s) no log` : '',
+    c.ignoradas ? `${c.ignoradas} ignorada(s)` : '',
+  ]
+    .filter(Boolean)
+    .join(' | ')
+}
+
 export default function Importar() {
   const { hospitalId } = useHospital()
   const { data: ocs = [] } = useOCs(hospitalId)
@@ -226,27 +258,25 @@ export default function Importar() {
    * Acompanhamento de Compras em planilha/XML (item 79): grava a data de
    * entrada confirmada pelo MV e o vínculo com a solicitação. Não cria OC, não
    * muda a situação, não sobrescreve data digitada à mão nem vínculo já
-   * existente — divergências vão pro log.
+   * existente — divergências vão pro log. `base` é o estado das OCs já com o que
+   * os arquivos anteriores do mesmo lote gravaram.
    */
-  const importarAcompMv = async (file: File) => {
+  const importarAcompMv = async (file: File, base: Map<number, OC>): Promise<ContagemAcomp> => {
+    const c = novaContagem()
     const { lerAcompanhamento } = await import('@/utils/acompanhamento')
     const lido = await lerAcompanhamento(file)
-    addLog(`Formato: ${lido.formato.toUpperCase()} — ${lido.ocs.length} OC(s) no arquivo`)
+    const sol = lido.ocs.find((o) => o.solicitacaoId)?.solicitacaoId
+    addLog(`Formato: ${lido.formato.toUpperCase()}${sol ? ` — Solicitação ${sol}` : ''} — ${lido.ocs.length} OC(s) no arquivo`)
     if (lido.formato === 'xml') addLog('ℹ O XML não traz a solicitação — só as datas de entrada são gravadas, sem vínculo.')
     const { validos, invalidos } = validarLote(lido.ocs, ocAcompanhamentoSchema)
+    c.ignoradas = invalidos.length
     for (const { item, erros } of invalidos) addLog(`⚠ OC ${item.ocId || '?'} ignorada — ${erros.join('; ')}`)
     if (!validos.length) throw new Error('Nenhuma OC encontrada. Verifique se é um relatório de Acompanhamento de Compras.')
 
-    let entradas = 0
-    let vinculos = 0
-    let semMudanca = 0
-    let ausentes = 0
-    let divergencias = 0
-
     for (const item of validos) {
-      const existente = ocs.find((o) => o.id === item.ocId)
+      const existente = base.get(item.ocId)
       if (!existente) {
-        ausentes++
+        c.ausentes++
         addLog(`⚠ OC ${item.ocId} não está no sistema — importe o relatório de OCs antes.`)
         continue
       }
@@ -258,7 +288,7 @@ export default function Importar() {
           patch.solicitacaoId = item.solicitacaoId
           notas.push(`vinculada à Solicitação ${item.solicitacaoId}`)
         } else if (existente.solicitacaoId !== item.solicitacaoId) {
-          divergencias++
+          c.divergencias++
           addLog(`⚠ OC ${item.ocId}: vínculo atual Sol. ${existente.solicitacaoId} ≠ MV ${item.solicitacaoId} — mantido o atual.`)
         }
       }
@@ -267,7 +297,7 @@ export default function Importar() {
         const ultima = item.entradas[item.entradas.length - 1]
         const numeros = item.entradas.map((e) => e.numero).join(', ')
         if (existente.dataEntregaOrigem === 'manual' && existente.dataEntregaReal && existente.dataEntregaReal !== ultima.data) {
-          divergencias++
+          c.divergencias++
           addLog(`⚠ OC ${item.ocId}: entrega manual ${existente.dataEntregaReal} ≠ entrada MV ${ultima.data} — mantida a manual.`)
         } else if (
           existente.dataEntregaReal !== ultima.data ||
@@ -279,101 +309,121 @@ export default function Importar() {
           patch.dataEntregaOrigem = 'mv'
           patch.entradaMv = numeros
           patch.qtdEntradas = item.entradas.length
-          notas.push(`entrada ${numeros} em ${ultima.data}`)
+          const antes =
+            existente.dataEntregaReal && existente.dataEntregaReal !== ultima.data && existente.dataEntregaOrigem !== 'mv'
+              ? ` (era ${existente.dataEntregaReal} estimada)`
+              : ''
+          notas.push(`entrada ${numeros} em ${ultima.data}${antes}`)
         }
         if (item.entradas.length > 1 && !existente.dataParcial) patch.dataParcial = item.entradas[0].data
       }
 
       if (Object.keys(patch).length) {
         await ocRepository.atualizarCamposOC(item.ocId, patch)
-        if (patch.dataEntregaReal) entradas++
-        if (patch.solicitacaoId) vinculos++
+        base.set(item.ocId, { ...existente, ...patch })
+        if (patch.dataEntregaReal) c.entradas++
+        if (patch.solicitacaoId) c.vinculos++
         addLog(`OC ${item.ocId} — ${notas.join('; ')}`)
       } else {
-        semMudanca++
+        c.semMudanca++
       }
     }
-
-    const resumo = [
-      `${entradas} entrada(s) gravada(s)`,
-      `${vinculos} vínculo(s)`,
-      semMudanca ? `${semMudanca} sem mudança` : '',
-      ausentes ? `${ausentes} fora do sistema` : '',
-      divergencias ? `${divergencias} divergência(s) no log` : '',
-      invalidos.length ? `${invalidos.length} ignorada(s)` : '',
-    ]
-      .filter(Boolean)
-      .join(' | ')
-    addLog(`─ Acompanhamento: ${resumo}`)
-    setCardStatus('acomp', { state: 'done', message: resumo })
-    await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
+    return c
   }
 
-  const importarAcomp = async (file: File) => {
+  /** Acompanhamento em PDF — só vínculo OC ↔ Solicitação (cria a OC se não existir, comportamento antigo). */
+  const importarAcompPdf = async (file: File, base: Map<number, OC>): Promise<ContagemAcomp> => {
+    const c = novaContagem()
+    const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
+    const { validos: vinculos, invalidos } = validarLote(parseAcompPDF(await extractPdfLines(file)), vinculoAcompSchema)
+    c.ignoradas = invalidos.length
+    for (const { item, erros } of invalidos) addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
+    if (!vinculos.length) throw new Error('Nenhum vínculo encontrado. Verifique se é um relatório de Acompanhamento de Compras válido.')
+
+    for (const v of vinculos) {
+      const existente = base.get(v.ocId)
+      if (!existente) {
+        const nova: OC = {
+          id: v.ocId,
+          dataSolic: v.dataOC,
+          fornecedorNome: v.fornecedorNome.toUpperCase(),
+          fornecedorId: 0,
+          sit: 'Autorizada',
+          estoque: 'SUP CAF',
+          solicitacaoId: v.solicitacaoId,
+          cobrado: false,
+          previsaoForn: null,
+          previsaoForn2: null,
+          dataEntregaReal: null,
+          dataParcial: null,
+          dataEntregaOrigem: null,
+          entradaMv: '',
+          qtdEntradas: 0,
+          diasAtraso: 0,
+          hospitalId,
+          proximaAcao: null,
+          motivoAtraso: null,
+          ultimaMovimentacao: v.dataOC,
+          previsaoDescumprida: false,
+        }
+        await ocRepository.criarOCImportada({
+          id: nova.id,
+          dataSolic: nova.dataSolic,
+          fornecedorNome: nova.fornecedorNome,
+          fornecedorId: 0,
+          sit: nova.sit,
+          estoque: 'SUP CAF',
+          solicitacaoId: nova.solicitacaoId,
+          previsaoForn: null,
+          diasAtraso: 0,
+          hospitalId,
+          ultimaMovimentacao: v.dataOC,
+        })
+        base.set(v.ocId, nova)
+        c.criadas++
+      } else if (existente.solicitacaoId !== v.solicitacaoId) {
+        await ocRepository.atualizarCamposOC(v.ocId, { solicitacaoId: v.solicitacaoId })
+        base.set(v.ocId, { ...existente, solicitacaoId: v.solicitacaoId })
+        c.vinculos++
+      } else {
+        c.semMudanca++
+        continue
+      }
+      addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
+    }
+    return c
+  }
+
+  /** Um ou vários arquivos de Acompanhamento — um arquivo com erro não interrompe os outros. */
+  const importarAcomp = async (files: File[]) => {
     setAtivo('acomp')
     setCardStatus('acomp', { state: 'processing' })
-    const ehPdf = /\.pdf$/i.test(file.name)
-    setLog([`📄 ${file.name} — ${ehPdf ? 'extraindo texto do PDF...' : 'lendo relatório...'}`])
+    setLog(files.length > 1 ? [`📚 ${files.length} arquivos de Acompanhamento`] : [])
+    const base = new Map(ocs.map((o) => [o.id, o]))
+    const total = novaContagem()
+    let falhas = 0
     try {
-      if (!ehPdf) {
-        await importarAcompMv(file)
-        return
-      }
-      const { extractPdfLines, parseAcompPDF } = await import('@/utils/pdf')
-      const vinculosBrutos = parseAcompPDF(await extractPdfLines(file))
-      const { validos: vinculos, invalidos } = validarLote(vinculosBrutos, vinculoAcompSchema)
-      for (const { item, erros } of invalidos) {
-        addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
-      }
-      if (!vinculos.length) {
-        const msg = 'Nenhum vínculo encontrado. Verifique se é um relatório de Acompanhamento de Compras válido.'
-        addLog(`⚠ ${msg}`)
-        setCardStatus('acomp', { state: 'error', message: msg })
-        return
-      }
-
-      let vinculados = 0
-      let criadas = 0
-      let jaCorretas = 0
-
-      for (let i = 0; i < vinculos.length; i++) {
-        const v = vinculos[i]
-        const existente = ocs.find((o) => o.id === v.ocId)
-        if (!existente) {
-          await ocRepository.criarOCImportada({
-            id: v.ocId,
-            dataSolic: v.dataOC,
-            fornecedorNome: v.fornecedorNome.toUpperCase(),
-            fornecedorId: 0,
-            sit: 'Autorizada',
-            estoque: 'SUP CAF',
-            solicitacaoId: v.solicitacaoId,
-            previsaoForn: null,
-            diasAtraso: 0,
-            hospitalId,
-            ultimaMovimentacao: v.dataOC,
-          })
-          criadas++
-        } else if (existente.solicitacaoId !== v.solicitacaoId) {
-          await ocRepository.atualizarCamposOC(v.ocId, { solicitacaoId: v.solicitacaoId })
-          vinculados++
-        } else {
-          jaCorretas++
-          continue
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const ehPdf = /\.pdf$/i.test(file.name)
+        const prefixo = files.length > 1 ? `[${i + 1}/${files.length}] ` : ''
+        addLog(`📄 ${prefixo}${file.name} — ${ehPdf ? 'extraindo texto do PDF (só vínculo)...' : 'lendo relatório...'}`)
+        try {
+          const c = ehPdf ? await importarAcompPdf(file, base) : await importarAcompMv(file, base)
+          somarContagem(total, c)
+          if (files.length > 1) addLog(`  ↳ ${resumoAcomp(c) || 'nada a mudar'}`)
+        } catch (err) {
+          falhas++
+          addLog(`❌ ${file.name}: ${err instanceof Error ? err.message : String(err)}`)
         }
-        addLog(`OC ${v.ocId} — vinculada à Solicitação ${v.solicitacaoId}`)
       }
-      if (vinculados === 0 && criadas === 0 && jaCorretas > 0) {
-        addLog('ℹ Nenhum vínculo novo — esse arquivo já parece ter sido importado antes.')
+      if (total.entradas + total.vinculos + total.criadas === 0 && total.semMudanca > 0) {
+        addLog('ℹ Nada novo — esses arquivos já parecem ter sido importados antes.')
       }
-      const resumo = `${vinculados} OC(s) vinculada(s) | ${criadas} OC(s) criada(s)${jaCorretas ? ` | ${jaCorretas} já corretas` : ''}${invalidos.length ? ` | ${invalidos.length} ignorado(s) (formato inválido)` : ''}`
-      addLog(`─ Acompanhamento: ${resumo}`)
-      setCardStatus('acomp', { state: 'done', message: resumo })
+      const resumo = [resumoAcomp(total), falhas ? `${falhas} arquivo(s) com erro` : ''].filter(Boolean).join(' | ')
+      addLog(`─ Acompanhamento: ${resumo || 'nada a mudar'}`)
+      setCardStatus('acomp', { state: falhas === files.length ? 'error' : 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      addLog(`❌ Erro: ${msg}`)
-      setCardStatus('acomp', { state: 'error', message: msg })
     } finally {
       setAtivo(null)
     }
@@ -413,14 +463,15 @@ export default function Importar() {
         />
         <UploadCard
           title="Acompanhamento de Compras"
-          description="Planilha (.xlsx/.xls) ou XML do MV — grava a data de entrada real de cada OC e o vínculo com a Solicitação. PDF continua aceito só para o vínculo."
-          filenameHint="Arquivo .xlsx, .xls, .xml ou .pdf"
+          description="Planilha (.xlsx/.xls) ou XML do MV — grava a data de entrada real de cada OC (substitui a estimada) e o vínculo com a Solicitação. Pode selecionar vários arquivos de uma vez. PDF continua aceito só para o vínculo."
+          filenameHint="Um ou vários .xlsx, .xls, .xml ou .pdf"
           accept=".xlsx,.xls,.xml,.pdf"
           accentClass="border-status-amber/30 bg-status-amber-bg text-status-amber"
           icon={ICON_PDF}
           status={status.acomp}
           disabled={processando && ativo !== 'acomp'}
-          onFile={importarAcomp}
+          multiple
+          onFiles={importarAcomp}
         />
       </div>
 
