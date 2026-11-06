@@ -173,6 +173,7 @@ export type Database = {
           renovacao_automatica: boolean | null
           status: string
           tipo: string
+          titulo: string
           tolerancia_atraso_dias: number | null
           updated_at: string | null
           vigencia_fim: string | null
@@ -201,6 +202,7 @@ export type Database = {
           renovacao_automatica?: boolean | null
           status?: string
           tipo?: string
+          titulo?: string
           tolerancia_atraso_dias?: number | null
           updated_at?: string | null
           vigencia_fim?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           renovacao_automatica?: boolean | null
           status?: string
           tipo?: string
+          titulo?: string
           tolerancia_atraso_dias?: number | null
           updated_at?: string | null
           vigencia_fim?: string | null

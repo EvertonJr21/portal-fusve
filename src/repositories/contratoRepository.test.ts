@@ -8,6 +8,7 @@ type ContratoProdutoRow = Database['public']['Tables']['contrato_produtos']['Row
 function contratoRowBase(overrides: Partial<ContratoRow> = {}): ContratoRow {
   return {
     id: 'c1',
+    titulo: 'Stent',
     tipo: 'Contrato',
     status: 'Ativo',
     fornecedor_nome: 'FORNECEDOR TESTE LTDA',
@@ -63,6 +64,7 @@ describe('toContrato', () => {
     expect(c.id).toBe('c1')
     expect(c.fornecedorNome).toBe('FORNECEDOR TESTE LTDA')
     expect(c.hospitalId).toBe('huv')
+    expect(c.titulo).toBe('Stent')
   })
 
   it('usa 60 como padrão pra avisoRenovacaoDias nulo', () => {

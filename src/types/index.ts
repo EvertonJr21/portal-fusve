@@ -116,6 +116,8 @@ export interface Opme {
 
 export interface ContratoHeader {
   id: string
+  /** Nome do acordo (ex.: "Stent", "Cateter balão") — distingue vários contratos do mesmo fornecedor. '' = sem título. */
+  titulo: string
   tipo: TipoContrato
   status: StatusContrato
   fornecedorNome: string

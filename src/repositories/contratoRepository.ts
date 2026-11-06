@@ -12,6 +12,7 @@ type ContratoComodatoRow = Database['public']['Tables']['contrato_comodatos']['R
 export function toContrato(row: ContratoRow): ContratoHeader {
   return {
     id: row.id,
+    titulo: row.titulo ?? '',
     tipo: row.tipo as ContratoHeader['tipo'],
     status: row.status as ContratoHeader['status'],
     fornecedorNome: row.fornecedor_nome,
@@ -39,6 +40,7 @@ export function toContrato(row: ContratoRow): ContratoHeader {
 function toContratoRow(c: ContratoHeader) {
   return {
     id: c.id,
+    titulo: c.titulo.trim(),
     tipo: c.tipo,
     status: c.status,
     fornecedor_nome: c.fornecedorNome,
@@ -103,6 +105,7 @@ export async function listarContratos(hospitalId: HospitalId): Promise<ContratoH
     .in('hospital_id', [hospitalId, 'ambos'])
     .is('deleted_at', null)
     .order('fornecedor_nome')
+    .order('titulo')
   if (error) throw error
   return (data as ContratoRow[]).map(toContrato)
 }

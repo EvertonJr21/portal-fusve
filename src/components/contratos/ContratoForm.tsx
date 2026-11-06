@@ -33,6 +33,7 @@ interface ContratoFormProps {
 function novoHeader(hospitalId: HospitalId): ContratoHeader {
   return {
     id: crypto.randomUUID(),
+    titulo: '',
     tipo: 'Contrato',
     status: 'Ativo',
     fornecedorNome: '',
@@ -155,7 +156,7 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
 
   return (
     <Modal
-      title={isNovo ? 'Novo Contrato' : `Editar Contrato — ${header.fornecedorNome}`}
+      title={isNovo ? 'Novo Contrato' : `Editar Contrato — ${[header.titulo.trim(), header.fornecedorNome].filter(Boolean).join(' · ')}`}
       onClose={fechar}
       size="xl"
       closeOnBackdrop={false}
@@ -174,6 +175,17 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         {/* Cabeçalho */}
         <section>
           <h4 className={sectionTitleClass}>Cabeçalho</h4>
+          <label className={`${labelClass} mb-3`}>
+            <span className="font-medium text-slate-700">Título do contrato/acordo</span>
+            <input
+              type="text"
+              className={inputClass}
+              value={header.titulo}
+              onChange={(e) => set('titulo', e.target.value)}
+              placeholder="Ex.: Stent coronário, Cateter balão — diferencia acordos do mesmo fornecedor"
+              autoFocus={isNovo}
+            />
+          </label>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <label className={labelClass}>
               <span className="font-medium text-slate-700">Tipo</span>

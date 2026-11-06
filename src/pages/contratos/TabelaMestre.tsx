@@ -39,7 +39,7 @@ export default function TabelaMestre() {
     if (tipo && c.tipo !== tipo) return false
     if (busca) {
       const q = busca.toLowerCase()
-      if (!c.fornecedorNome.toLowerCase().includes(q) && !c.fornecedorCnpj.includes(q)) return false
+      if (!c.fornecedorNome.toLowerCase().includes(q) && !c.titulo.toLowerCase().includes(q) && !c.fornecedorCnpj.includes(q)) return false
     }
     if (vigenciaFiltro) {
       const s = statusVigencia(c)
@@ -64,7 +64,7 @@ export default function TabelaMestre() {
   const vencidos = contratos.filter((c) => statusVigencia(c) === 'vencido').length
 
   const handleExcluir = async (c: ContratoHeader) => {
-    if (!(await confirmar({ message: `Excluir o contrato com ${c.fornecedorNome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
+    if (!(await confirmar({ message: `Excluir o contrato ${c.titulo ? `"${c.titulo}" ` : ''}com ${c.fornecedorNome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(c.id)
       toast.show('Contrato excluído')
@@ -139,7 +139,7 @@ export default function TabelaMestre() {
         </select>
         <input
           type="text"
-          placeholder="Buscar por fornecedor ou CNPJ..."
+          placeholder="Buscar por título, fornecedor ou CNPJ..."
           className="min-w-64 flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
@@ -152,7 +152,7 @@ export default function TabelaMestre() {
         <Table>
           <TableHead>
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Fornecedor</th>
+              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Contrato / Fornecedor</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tipo</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Hospital</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
@@ -172,7 +172,14 @@ export default function TabelaMestre() {
             {paginados.map((c) => (
               <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-3 py-2 text-xs">
-                  <div className="font-medium text-slate-800">{c.fornecedorNome}</div>
+                  {c.titulo ? (
+                    <>
+                      <div className="font-semibold text-slate-800">{c.titulo}</div>
+                      <div className="text-slate-600">{c.fornecedorNome}</div>
+                    </>
+                  ) : (
+                    <div className="font-medium text-slate-800">{c.fornecedorNome}</div>
+                  )}
                   {c.fornecedorCnpj && <div className="text-[11px] text-slate-400">{c.fornecedorCnpj}</div>}
                   {!!comodatos?.get(c.id) && (
                     <span className="mt-0.5 inline-block rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
