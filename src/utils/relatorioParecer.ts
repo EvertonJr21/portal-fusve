@@ -48,11 +48,12 @@ export function gerarRelatorioPDF(lista: Parecer[], totalGeral?: number) {
     { label: 'Total', val: lista.length, fill: [235, 248, 255], border: [190, 227, 248], text: [44, 82, 130] },
     { label: 'Com Padrão', val: lista.filter((p) => p.padrao.length).length, fill: [240, 255, 244], border: [154, 230, 180], text: [39, 103, 73] },
     { label: 'C/ Proibida', val: lista.filter((p) => p.proibidas.length).length, fill: [255, 245, 245], border: [254, 178, 178], text: [155, 44, 44] },
+    { label: 'C/ Requisito', val: lista.filter((p) => p.requisitoTecnico).length, fill: [255, 251, 235], border: [252, 211, 77], text: [180, 83, 9] },
     { label: 'C/ Restrita', val: lista.filter((p) => p.restritas.length).length, fill: [255, 247, 237], border: [253, 186, 116], text: [123, 52, 30] },
     { label: 'Com PDF', val: lista.filter((p) => p.pdfPath || p.pdfDataUrl).length, fill: [250, 245, 255], border: [214, 188, 253], text: [85, 60, 154] },
   ] as const
 
-  const bw = (cW - 8) / boxes.length
+  const bw = (cW - 2 * (boxes.length - 1)) / boxes.length
   boxes.forEach((b, i) => {
     const bx = mL + i * (bw + 2)
     doc.setFillColor(b.fill[0], b.fill[1], b.fill[2])
@@ -105,14 +106,16 @@ export function gerarRelatorioPDF(lista: Parecer[], totalGeral?: number) {
     juntar(p.permitidas),
     juntar(p.restritas),
     juntar(p.proibidas),
-    (p.observacao || '').substring(0, 55) || '—',
+    [p.requisitoTecnico ? `REQUISITO: ${p.requisitoTecnico}` : '', (p.observacao || '').substring(0, 55)]
+      .filter(Boolean)
+      .join('\n') || '—',
     p.responsavel || '—',
     validadeTexto(p.dataParecer),
   ])
 
   autoTable(doc, {
     startY: legendaY + 5,
-    head: [['#', 'Cód.', 'Produto', 'Categoria', 'P Padrão', 'A Permitidas', 'R Restritas', 'X Proibidas', 'Observações', 'Responsável', 'Validade']],
+    head: [['#', 'Cód.', 'Produto', 'Categoria', 'P Padrão', 'A Permitidas', 'R Restritas', 'X Proibidas', 'Requisito / Obs.', 'Responsável', 'Validade']],
     body: rows,
     theme: 'grid',
     styles: {

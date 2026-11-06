@@ -13,6 +13,7 @@ function rowBase(overrides: Partial<ParecerRow> = {}): ParecerRow {
     permitidas: ['DESCARPACK'],
     restritas: [],
     proibidas: [],
+    requisito_tecnico: '',
     observacao: 'Observação técnica',
     responsavel: 'FULANO',
     data_parecer_date: '2026-09-10',

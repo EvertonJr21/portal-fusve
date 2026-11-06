@@ -456,6 +456,7 @@ export type Database = {
           pdf_path: string | null
           permitidas: string[]
           proibidas: string[]
+          requisito_tecnico: string
           responsavel: string
           restritas: string[]
           updated_at: string | null
@@ -474,6 +475,7 @@ export type Database = {
           pdf_path?: string | null
           permitidas?: string[]
           proibidas?: string[]
+          requisito_tecnico?: string
           responsavel?: string
           restritas?: string[]
           updated_at?: string | null
@@ -492,6 +494,7 @@ export type Database = {
           pdf_path?: string | null
           permitidas?: string[]
           proibidas?: string[]
+          requisito_tecnico?: string
           responsavel?: string
           restritas?: string[]
           updated_at?: string | null

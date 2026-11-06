@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/useToast'
 import type { Produto } from '@/data/produtos'
 import type { MarcaCategoria, Parecer } from '@/types'
 import { toInput, fromInput } from '@/utils/date'
+import { temConteudoParecer } from '@/utils/marcas'
 import { MarcasEditor, type AnexosPendentes, type MarcasPorCategoria } from './MarcasEditor'
 
 interface ParecerFormProps {
@@ -39,6 +40,7 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         }
       : MARCAS_VAZIAS,
   )
+  const [requisitoTecnico, setRequisitoTecnico] = useState(parecerExistente?.requisitoTecnico ?? '')
   const [observacao, setObservacao] = useState(parecerExistente?.observacao ?? '')
   const [responsavel, setResponsavel] = useState(parecerExistente?.responsavel ?? '')
   const [data, setData] = useState(toInput(parecerExistente?.dataParecer))
@@ -73,9 +75,8 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const algumaMarca = Object.values(marcas).some((arr) => arr.length > 0)
-    if (!algumaMarca) {
-      toast.show('Adicione ao menos uma marca', 'warn')
+    if (!temConteudoParecer({ ...marcas, requisitoTecnico })) {
+      toast.show('Informe ao menos uma marca ou um requisito técnico de compra', 'warn')
       return
     }
     try {
@@ -84,6 +85,7 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         nome: produto.nome,
         cat: produto.cat,
         ...marcas,
+        requisitoTecnico,
         observacao,
         responsavel,
         dataParecer: data ? fromInput(data) : '',
@@ -133,6 +135,20 @@ export function ParecerForm({ produto, parecerExistente, onSalvo }: ParecerFormP
         onExcluirExistente={handleExcluirExistente}
         onAbrirExistente={(a) => abrirAnexo.abrir(a.pdfPath)}
       />
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-slate-700">Requisito técnico de compra</span>
+        <span className="text-xs text-slate-500">
+          Exigência que vale pra qualquer marca — ex.: “só comprar se for de silicone”. Um parecer pode ter só
+          o requisito, sem nenhuma marca definida.
+        </span>
+        <textarea
+          className="h-16 rounded-md border border-status-amber/40 bg-status-amber-bg/30 px-2 py-1.5 focus:border-status-amber focus:outline-none"
+          value={requisitoTecnico}
+          onChange={(e) => setRequisitoTecnico(e.target.value)}
+          placeholder="Opcional"
+        />
+      </label>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700">Observação</span>

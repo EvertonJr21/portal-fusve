@@ -62,6 +62,7 @@ export default function Base() {
   const [categoria, setCategoria] = useState('')
   const [busca, setBusca] = useState('')
   const [soRevisar, setSoRevisar] = useState(false)
+  const [soRequisito, setSoRequisito] = useState(false)
   const [pagina, setPagina] = useState(0)
   const [editando, setEditando] = useState<Parecer | null>(null)
   const [gerandoPdf, setGerandoPdf] = useState(false)
@@ -72,17 +73,19 @@ export default function Base() {
     if (categoria && p.cat !== categoria) return false
     if (busca) {
       const q = busca.toUpperCase()
-      if (!p.cod.includes(q) && !p.nome.toUpperCase().includes(q)) return false
+      if (!p.cod.includes(q) && !p.nome.toUpperCase().includes(q) && !p.requisitoTecnico.toUpperCase().includes(q)) return false
     }
     if (soRevisar && !validadeInfo(p.dataParecer)?.revisar) return false
+    if (soRequisito && !p.requisitoTecnico) return false
     return true
   })
 
   const aRevisar = pareceres.filter((p) => validadeInfo(p.dataParecer)?.revisar).length
+  const comRequisito = pareceres.filter((p) => p.requisitoTecnico).length
 
   useEffect(() => {
     setPagina(0)
-  }, [categoria, busca, soRevisar])
+  }, [categoria, busca, soRevisar, soRequisito])
 
   const inicio = pagina * PG
   const paginados = filtrados.slice(inicio, inicio + PG)
@@ -137,7 +140,7 @@ export default function Base() {
         </select>
         <input
           type="text"
-          placeholder="Buscar por código ou nome..."
+          placeholder="Buscar por código, nome ou requisito..."
           className="min-w-64 flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
@@ -152,6 +155,17 @@ export default function Base() {
           }`}
         >
           ⚠ A revisar {aRevisar > 0 && `(${aRevisar})`}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSoRequisito((v) => !v)}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+            soRequisito
+              ? 'border-status-amber bg-status-amber text-white'
+              : 'border-slate-300 text-slate-600 hover:border-status-amber/50 hover:text-status-amber'
+          }`}
+        >
+          ⚙ Com requisito técnico {comRequisito > 0 && `(${comRequisito})`}
         </button>
       </div>
 
@@ -188,6 +202,14 @@ export default function Base() {
                   <td className="max-w-[220px] px-3 py-2 text-xs">
                     <div className="font-medium text-slate-800">{p.nome}</div>
                     <div className="text-[11px] text-slate-400">{p.cat}</div>
+                    {p.requisitoTecnico && (
+                      <div
+                        className="mt-1 rounded border border-status-amber/40 bg-status-amber-bg px-1.5 py-0.5 text-[11px] text-status-amber"
+                        title="Requisito técnico de compra — vale pra qualquer marca"
+                      >
+                        <span className="font-bold">⚙ Requisito:</span> {p.requisitoTecnico}
+                      </div>
+                    )}
                   </td>
                   <td className="max-w-[140px] px-3 py-2">
                     <MarcasBadge marcas={p.padrao} categoria="padrao" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />

@@ -2,7 +2,7 @@ import type { Produto } from '@/data/produtos'
 import { useAbrirPdfParecer } from '@/hooks/usePareceres'
 import { useAbrirAnexo, useAnexosParecer } from '@/hooks/useParecerAnexos'
 import type { Parecer } from '@/types'
-import { CATEGORIAS_MARCA, temAlgumaMarca } from '@/utils/marcas'
+import { CATEGORIAS_MARCA, temAlgumaMarca, temConteudoParecer } from '@/utils/marcas'
 import { MarcasBadge } from './MarcasBadge'
 
 interface ParecerCardProps {
@@ -12,7 +12,7 @@ interface ParecerCardProps {
 }
 
 export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardProps) {
-  const semParecer = !parecer || !temAlgumaMarca(parecer)
+  const semParecer = !parecer || !temConteudoParecer(parecer)
   const abrirPdf = useAbrirPdfParecer()
   const { data: anexos = [] } = useAnexosParecer(produto.cod)
   const abrirAnexo = useAbrirAnexo()
@@ -63,16 +63,28 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {CATEGORIAS_MARCA.map(({ key, label, descricao }) => (
-                <div key={key}>
-                  <div className="mb-1 text-xs font-semibold text-slate-600">
-                    {label} <span className="font-normal text-slate-400">— {descricao}</span>
+            {parecer!.requisitoTecnico && (
+              <div className="rounded-md border border-status-amber/40 bg-status-amber-bg px-3 py-2">
+                <div className="text-[11px] font-bold uppercase tracking-wide text-status-amber">⚙ Requisito técnico de compra</div>
+                <p className="mt-0.5 whitespace-pre-line text-sm font-medium text-slate-800">{parecer!.requisitoTecnico}</p>
+              </div>
+            )}
+            {temAlgumaMarca(parecer!) ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {CATEGORIAS_MARCA.map(({ key, label, descricao }) => (
+                  <div key={key}>
+                    <div className="mb-1 text-xs font-semibold text-slate-600">
+                      {label} <span className="font-normal text-slate-400">— {descricao}</span>
+                    </div>
+                    <MarcasBadge marcas={parecer![key]} categoria={key} anexos={anexos} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
                   </div>
-                  <MarcasBadge marcas={parecer![key]} categoria={key} anexos={anexos} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Sem marca definida — qualquer marca serve, desde que atenda ao requisito acima.
+              </p>
+            )}
             {parecer!.observacao && (
               <div className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 📌 {parecer!.observacao}

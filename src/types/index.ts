@@ -71,6 +71,8 @@ export interface Parecer {
   permitidas: string[]
   restritas: string[]
   proibidas: string[]
+  /** Exigência de compra que vale pra qualquer marca (ex: "só se for de silicone"). */
+  requisitoTecnico: string
   observacao: string
   responsavel: string
   dataParecer: string
