@@ -9,7 +9,8 @@ const DIAS_COBRANCA_SEM_RESPOSTA = 3
 const DIAS_SEM_MOVIMENTACAO_CRITICA = 10
 const DIAS_SEM_MOVIMENTACAO_MEDIA = 5
 const DIAS_VENCIMENTO_ALTA = 2
-const DIAS_PREVISAO_PROXIMA = 2
+/** Quantos dias antes da previsão a OC volta pra "Precisa de ação". */
+const DIAS_AVISO_ENTREGA = 1
 const DIAS_VENCIMENTO_MEDIA = 5
 
 function diasDesde(ts: number): number {
@@ -60,15 +61,23 @@ export function avaliarPrioridade(oc: OC, diasPrazo: number | null, ultimaCobran
     return { prioridade: 'critica', acao: `Verificar — ${dsm}d sem movimentação` }
   }
 
+  // Previsão já registrada pelo comprador, sem cobrança em aberto e dentro do
+  // prazo prometido: não há o que "confirmar" — só acompanhar. A OC volta a
+  // pedir ação 1 dia antes da entrega (e no próprio dia), pra conferir com o
+  // fornecedor/recebimento. Previsão depois da data prometida não entra aqui:
+  // aí a OC vai atrasar e as regras de prazo abaixo continuam valendo.
+  if (diasPrevisao !== null && diasPrevisao >= 0 && !cobrancaPendente && (dr === null || diasPrevisao <= dr)) {
+    if (diasPrevisao === 0) return { prioridade: 'alta', acao: 'Entrega prevista para hoje — conferir recebimento' }
+    if (diasPrevisao <= DIAS_AVISO_ENTREGA) return { prioridade: 'alta', acao: 'Entrega amanhã — confirmar com o fornecedor' }
+    return { prioridade: 'normal', acao: `Previsão confirmada — entrega em ${diasPrevisao}d (aviso 1 dia antes)` }
+  }
+
   // 🟠 Alta
   if (dr !== null && dr <= DIAS_VENCIMENTO_ALTA) {
     return { prioridade: 'alta', acao: `Acompanhar de perto — vence em ${dr}d` }
   }
   if (!oc.previsaoForn) {
     return { prioridade: 'alta', acao: 'Cobrar previsão de entrega' }
-  }
-  if (diasPrevisao !== null && diasPrevisao >= 0 && diasPrevisao <= DIAS_PREVISAO_PROXIMA) {
-    return { prioridade: 'alta', acao: `Confirmar previsão — entrega em ${diasPrevisao}d` }
   }
   if (cobrancaPendente) {
     return { prioridade: 'alta', acao: 'Aguardar resposta da cobrança' }
