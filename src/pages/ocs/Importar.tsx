@@ -10,9 +10,13 @@ import * as solRepository from '@/repositories/solRepository'
 import type { OC, Solicitacao } from '@/types'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 import { fmt, getHoje } from '@/utils/date'
+import { avaliarHospitalDoArquivo, avisoArquivoDeOutroHospital, mensagemErro, siglaHospital } from '@/utils/importacaoHospital'
 import { ocAcompanhamentoSchema, ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
 type Relatorio = 'ocs' | 'sols' | 'acomp'
+
+/** Arquivo de Acompanhamento de outro hospital — vira aviso, não erro. */
+class ArquivoDeOutroHospital extends Error {}
 
 function sitAvancou(atual: string, nova: string): boolean {
   return (SIT_RANK[nova] ?? 0) > (SIT_RANK[atual] ?? 0)
@@ -101,9 +105,23 @@ export default function Importar() {
       for (const { item, erros } of invalidos) {
         addLog(`⚠ OC ${item.id || '?'} ignorada — ${erros.join('; ')}`)
       }
+      const idsAtivo = new Set(ocs.map((o) => o.id))
+      const foraDoAtivo = itens.filter((i) => !idsAtivo.has(i.id)).map((i) => i.id)
+      const aval = avaliarHospitalDoArquivo(
+        itens.length - foraDoAtivo.length,
+        foraDoAtivo.length ? await ocRepository.hospitaisDasOCs(foraDoAtivo) : new Map(),
+        hospitalId,
+      )
+      if (aval.arquivoEhDeOutro && aval.outroHospital) {
+        const aviso = avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, 'OC(s)')
+        addLog(`⚠ ${aviso}`)
+        setCardStatus('ocs', { state: 'warn', message: aviso })
+        return
+      }
       let added = 0
       let updated = 0
       let skipped = 0
+      let deOutroHospital = 0
 
       for (let i = 0; i < itens.length; i++) {
         const item = itens[i]
@@ -146,6 +164,9 @@ export default function Importar() {
           } else {
             skipped++
           }
+        } else if (aval.deOutro.has(item.id)) {
+          deOutroHospital++
+          addLog(`⚠ OC ${item.id} já está cadastrada no ${siglaHospital(aval.deOutro.get(item.id)!)} — ignorada.`)
         } else {
           const entregaNaChegada = item.sit === 'Atendida' ? fmt(getHoje()) : null
           const parcialNaChegada = item.sit === 'Parcialmente Atendida' ? fmt(getHoje()) : null
@@ -179,12 +200,12 @@ export default function Importar() {
       if (added === 0 && updated === 0 && skipped > 0) {
         addLog('ℹ Nenhuma OC nova ou alterada — esse arquivo já parece ter sido importado antes.')
       }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${deOutroHospital ? ` | ${deOutroHospital} de outro hospital` : ''}${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ OCs CSV: ${resumo}`)
       setCardStatus('ocs', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = mensagemErro(err)
       addLog(`❌ Erro: ${msg}`)
       setCardStatus('ocs', { state: 'error', message: msg })
     } finally {
@@ -202,9 +223,23 @@ export default function Importar() {
       for (const { item, erros } of invalidos) {
         addLog(`⚠ Solicitação ${item.id || '?'} ignorada — ${erros.join('; ')}`)
       }
+      const idsAtivo = new Set(sols.map((x) => x.id))
+      const foraDoAtivo = itens.filter((i) => !idsAtivo.has(i.id)).map((i) => i.id)
+      const aval = avaliarHospitalDoArquivo(
+        itens.length - foraDoAtivo.length,
+        foraDoAtivo.length ? await solRepository.hospitaisDasSols(foraDoAtivo) : new Map(),
+        hospitalId,
+      )
+      if (aval.arquivoEhDeOutro && aval.outroHospital) {
+        const aviso = avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, 'solicitação(ões)')
+        addLog(`⚠ ${aviso}`)
+        setCardStatus('sols', { state: 'warn', message: aviso })
+        return
+      }
       let added = 0
       let updated = 0
       let skipped = 0
+      let deOutroHospital = 0
 
       for (let i = 0; i < itens.length; i++) {
         const item = itens[i]
@@ -223,6 +258,9 @@ export default function Importar() {
           } else {
             skipped++
           }
+        } else if (aval.deOutro.has(item.id)) {
+          deOutroHospital++
+          addLog(`⚠ Solicitação ${item.id} já está cadastrada no ${siglaHospital(aval.deOutro.get(item.id)!)} — ignorada.`)
         } else {
           await solRepository.salvarSol({
             id: item.id,
@@ -241,17 +279,35 @@ export default function Importar() {
       if (added === 0 && updated === 0 && skipped > 0) {
         addLog('ℹ Nenhuma solicitação nova ou alterada — esse arquivo já parece ter sido importado antes.')
       }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
+      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${deOutroHospital ? ` | ${deOutroHospital} de outro hospital` : ''}${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
       addLog(`─ Solicitações CSV: ${resumo}`)
       setCardStatus('sols', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = mensagemErro(err)
       addLog(`❌ Erro: ${msg}`)
       setCardStatus('sols', { state: 'error', message: msg })
     } finally {
       setAtivo(null)
     }
+  }
+
+  /**
+   * OCs do Acompanhamento que não estão no hospital ativo: se a maioria está no
+   * outro hospital, o arquivo é de lá — interrompe com aviso (nada é gravado).
+   * Devolve as que estão no outro hospital, pra serem puladas uma a uma.
+   */
+  const verificarHospitalAcomp = async (ids: number[], base: Map<number, OC>) => {
+    const fora = [...new Set(ids)].filter((id) => !base.has(id))
+    const aval = avaliarHospitalDoArquivo(
+      new Set(ids).size - fora.length,
+      fora.length ? await ocRepository.hospitaisDasOCs(fora) : new Map(),
+      hospitalId,
+    )
+    if (aval.arquivoEhDeOutro && aval.outroHospital) {
+      throw new ArquivoDeOutroHospital(avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, 'OC(s)'))
+    }
+    return aval.deOutro
   }
 
   /**
@@ -272,12 +328,18 @@ export default function Importar() {
     c.ignoradas = invalidos.length
     for (const { item, erros } of invalidos) addLog(`⚠ OC ${item.ocId || '?'} ignorada — ${erros.join('; ')}`)
     if (!validos.length) throw new Error('Nenhuma OC encontrada. Verifique se é um relatório de Acompanhamento de Compras.')
+    const deOutro = await verificarHospitalAcomp(validos.map((v) => v.ocId), base)
 
     for (const item of validos) {
       const existente = base.get(item.ocId)
       if (!existente) {
         c.ausentes++
-        addLog(`⚠ OC ${item.ocId} não está no sistema — importe o relatório de OCs antes.`)
+        const outro = deOutro.get(item.ocId)
+        addLog(
+          outro
+            ? `⚠ OC ${item.ocId} está cadastrada no ${siglaHospital(outro)} — ignorada.`
+            : `⚠ OC ${item.ocId} não está no sistema — importe o relatório de OCs antes.`,
+        )
         continue
       }
       const patch: Partial<OC> = {}
@@ -339,9 +401,16 @@ export default function Importar() {
     c.ignoradas = invalidos.length
     for (const { item, erros } of invalidos) addLog(`⚠ Vínculo OC ${item.ocId || '?'} ignorado — ${erros.join('; ')}`)
     if (!vinculos.length) throw new Error('Nenhum vínculo encontrado. Verifique se é um relatório de Acompanhamento de Compras válido.')
+    const deOutro = await verificarHospitalAcomp(vinculos.map((v) => v.ocId), base)
 
     for (const v of vinculos) {
       const existente = base.get(v.ocId)
+      const outro = deOutro.get(v.ocId)
+      if (!existente && outro) {
+        c.ausentes++
+        addLog(`⚠ OC ${v.ocId} está cadastrada no ${siglaHospital(outro)} — ignorada.`)
+        continue
+      }
       if (!existente) {
         const nova: OC = {
           id: v.ocId,
@@ -402,6 +471,7 @@ export default function Importar() {
     const base = new Map(ocs.map((o) => [o.id, o]))
     const total = novaContagem()
     let falhas = 0
+    let deOutroHospital = 0
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
@@ -414,15 +484,28 @@ export default function Importar() {
           if (files.length > 1) addLog(`  ↳ ${resumoAcomp(c) || 'nada a mudar'}`)
         } catch (err) {
           falhas++
-          addLog(`❌ ${file.name}: ${err instanceof Error ? err.message : String(err)}`)
+          if (err instanceof ArquivoDeOutroHospital) {
+            deOutroHospital++
+            addLog(`⚠ ${file.name}: ${err.message}`)
+          } else {
+            addLog(`❌ ${file.name}: ${mensagemErro(err)}`)
+          }
         }
       }
       if (total.entradas + total.vinculos + total.criadas === 0 && total.semMudanca > 0) {
         addLog('ℹ Nada novo — esses arquivos já parecem ter sido importados antes.')
       }
-      const resumo = [resumoAcomp(total), falhas ? `${falhas} arquivo(s) com erro` : ''].filter(Boolean).join(' | ')
+      const outrosErros = falhas - deOutroHospital
+      const resumo = [
+        resumoAcomp(total),
+        deOutroHospital ? `${deOutroHospital} arquivo(s) de outro hospital — troque o hospital no topo` : '',
+        outrosErros ? `${outrosErros} arquivo(s) com erro` : '',
+      ]
+        .filter(Boolean)
+        .join(' | ')
       addLog(`─ Acompanhamento: ${resumo || 'nada a mudar'}`)
-      setCardStatus('acomp', { state: falhas === files.length ? 'error' : 'done', message: resumo })
+      const estado = falhas < files.length ? 'done' : deOutroHospital === files.length ? 'warn' : 'error'
+      setCardStatus('acomp', { state: estado, message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } finally {
       setAtivo(null)

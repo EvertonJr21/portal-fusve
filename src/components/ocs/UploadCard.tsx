@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
-export type UploadStatus = { state: 'idle' | 'processing' | 'done' | 'error'; message?: string }
+export type UploadStatus = { state: 'idle' | 'processing' | 'done' | 'warn' | 'error'; message?: string }
 
 interface UploadCardProps {
   title: string
@@ -21,6 +21,7 @@ const STATUS_LABEL: Record<UploadStatus['state'], string> = {
   idle: '',
   processing: 'Processando…',
   done: 'Concluído',
+  warn: 'Hospital diferente',
   error: 'Falhou',
 }
 
@@ -28,6 +29,7 @@ const STATUS_BADGE_CLASS: Record<UploadStatus['state'], string> = {
   idle: '',
   processing: 'bg-status-blue-bg text-status-blue',
   done: 'bg-status-green-bg text-status-green',
+  warn: 'bg-status-amber-bg text-status-amber',
   error: 'bg-status-red-bg text-status-red',
 }
 
@@ -71,7 +73,9 @@ export function UploadCard({
           ? 'border-blue-400 bg-blue-50/60 shadow-soft-md'
           : status.state === 'error'
             ? 'border-status-red/40 bg-status-red-bg/30'
-            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-soft-sm'
+            : status.state === 'warn'
+              ? 'border-status-amber/50 bg-status-amber-bg/40'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-soft-sm'
       } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -117,7 +121,7 @@ export function UploadCard({
       </label>
 
       {status.message && (
-        <p className={`text-xs ${status.state === 'error' ? 'text-status-red' : 'text-slate-500'}`}>{status.message}</p>
+        <p className={`text-xs ${status.state === 'error' ? 'text-status-red' : status.state === 'warn' ? 'font-medium text-status-amber' : 'text-slate-500'}`}>{status.message}</p>
       )}
     </div>
   )

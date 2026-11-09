@@ -99,3 +99,14 @@ export async function excluirSol(id: number): Promise<void> {
     .eq('id', id)
   if (error) throw error
 }
+
+/** Hospital de cada solicitação (por id), sem filtrar pelo hospital ativo — ver `hospitaisDasOCs`. */
+export async function hospitaisDasSols(ids: number[]): Promise<Map<number, HospitalId>> {
+  const mapa = new Map<number, HospitalId>()
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.from('sols').select('id, hospital_id').in('id', ids.slice(i, i + 200))
+    if (error) throw error
+    for (const r of data ?? []) mapa.set(r.id, r.hospital_id as HospitalId)
+  }
+  return mapa
+}

@@ -235,3 +235,18 @@ export async function excluirOC(id: number): Promise<void> {
     .eq('id', id)
   if (error) throw error
 }
+
+/**
+ * Hospital de cada OC (por id), sem filtrar pelo hospital ativo — usado na
+ * importação pra detectar relatório de um hospital sendo importado no outro
+ * (`ocs.id` é único no banco inteiro). Inclui excluídas: também colidem no insert.
+ */
+export async function hospitaisDasOCs(ids: number[]): Promise<Map<number, HospitalId>> {
+  const mapa = new Map<number, HospitalId>()
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.from('ocs').select('id, hospital_id').in('id', ids.slice(i, i + 200))
+    if (error) throw error
+    for (const r of data ?? []) mapa.set(r.id, r.hospital_id as HospitalId)
+  }
+  return mapa
+}
