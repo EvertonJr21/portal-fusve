@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useMeuPerfil } from '@/hooks/usePermissoes'
 import { HospitalSwitch } from './HospitalSwitch'
+import { Sino } from './Sino'
 
 export function Topbar() {
   const { session, signOut } = useAuth()
@@ -9,9 +10,12 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200/80 bg-white/90 px-6 shadow-soft-sm backdrop-blur-sm">
-      <h1 className="text-sm font-semibold tracking-tight text-slate-800">Portal FUSVE — Compras</h1>
+      <Link to="/" title="Início — resumo do dia" className="text-sm font-semibold tracking-tight text-slate-800 hover:text-slate-950">
+        Portal FUSVE — Compras
+      </Link>
       <div className="flex items-center gap-4">
         <HospitalSwitch />
+        <Sino />
         <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
           <span className="hidden text-xs text-slate-400 sm:inline">{session?.user.email}</span>
           {perfil?.role === 'admin' && (

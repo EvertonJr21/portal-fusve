@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { Button } from '@/components/ui/Button'
@@ -30,7 +31,18 @@ export default function TabelaMestre() {
   const [status, setStatus] = useState('')
   const [tipo, setTipo] = useState('')
   const [busca, setBusca] = useState('')
-  const [vigenciaFiltro, setVigenciaFiltro] = useState<VigenciaFiltro>('')
+  // `?vigencia=vencendo|vencido` — vindo do resumo do dia / sino.
+  const [params] = useSearchParams()
+  const vigenciaUrl = params.get('vigencia')
+  const [vigenciaFiltro, setVigenciaFiltro] = useState<VigenciaFiltro>(
+    vigenciaUrl === 'vencendo' || vigenciaUrl === 'vencido' ? vigenciaUrl : '',
+  )
+  // Link novo com a tela já aberta (ex.: clicou em outro aviso do sino) → reaplica o filtro.
+  const [urlAplicada, setUrlAplicada] = useState(vigenciaUrl)
+  if (vigenciaUrl !== urlAplicada) {
+    setUrlAplicada(vigenciaUrl)
+    if (vigenciaUrl === 'vencendo' || vigenciaUrl === 'vencido') setVigenciaFiltro(vigenciaUrl)
+  }
   const [pagina, setPagina] = useState(0)
   const [modal, setModal] = useState<'novo' | ContratoHeader | null>(null)
 

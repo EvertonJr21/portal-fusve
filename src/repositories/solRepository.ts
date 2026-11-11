@@ -53,8 +53,8 @@ export interface SalvarSolInput {
   hospitalId: HospitalId
 }
 
-export async function salvarSol(input: SalvarSolInput): Promise<void> {
-  const { error } = await supabase.from('sols').upsert({
+function linhaSol(input: SalvarSolInput) {
+  return {
     id: input.id,
     data_date: input.data ? toInput(input.data) || null : null,
     produto: input.produto,
@@ -63,7 +63,18 @@ export async function salvarSol(input: SalvarSolInput): Promise<void> {
     qtd: input.qtd,
     sit: input.sit,
     hospital_id: input.hospitalId,
-  })
+  }
+}
+
+export async function salvarSol(input: SalvarSolInput): Promise<void> {
+  const { error } = await supabase.from('sols').upsert(linhaSol(input))
+  if (error) throw error
+}
+
+/** Várias solicitações numa chamada só (importação em lote). */
+export async function salvarSols(inputs: SalvarSolInput[]): Promise<void> {
+  if (!inputs.length) return
+  const { error } = await supabase.from('sols').upsert(inputs.map(linhaSol))
   if (error) throw error
 }
 

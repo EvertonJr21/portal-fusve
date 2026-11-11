@@ -167,8 +167,8 @@ export interface OCImportadaInput {
  * de `salvarOC` (formulário manual usa `null`), então não reaproveita
  * `toRow`/`salvarOC` pra não mudar esse comportamento silenciosamente.
  */
-export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
-  const { error } = await supabase.from('ocs').insert({
+function linhaImportada(input: OCImportadaInput): OCInsert {
+  return {
     id: input.id,
     data_solic_date: paraColunaDate(input.dataSolic),
     fornecedor_nome: input.fornecedorNome,
@@ -187,7 +187,22 @@ export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
     data_entrega_real_date: paraColunaDate(input.dataEntregaReal ?? null),
     data_parcial_date: paraColunaDate(input.dataParcial ?? null),
     data_entrega_origem: input.dataEntregaOrigem ?? null,
-  })
+  }
+}
+
+export async function criarOCImportada(input: OCImportadaInput): Promise<void> {
+  const { error } = await supabase.from('ocs').insert(linhaImportada(input))
+  if (error) throw error
+}
+
+/**
+ * Várias OCs novas numa chamada só (importação em lote) — mesmos defaults de
+ * `criarOCImportada`. Um lote é tudo-ou-nada no banco: se falhar, quem chama
+ * decide se tenta uma a uma pra isolar a linha com problema.
+ */
+export async function criarOCsImportadas(inputs: OCImportadaInput[]): Promise<void> {
+  if (!inputs.length) return
+  const { error } = await supabase.from('ocs').insert(inputs.map(linhaImportada))
   if (error) throw error
 }
 

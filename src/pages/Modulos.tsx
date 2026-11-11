@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { ResumoDoDia } from '@/components/inicio/ResumoDoDia'
 import type { ModuloChave } from '@/constants'
 import { useMeuPerfil, useMinhasPermissoes } from '@/hooks/usePermissoes'
 
@@ -72,11 +73,13 @@ export default function Modulos() {
     : MODULOS.filter((m) => isAdmin || permissoes?.some((p) => p.modulo === m.chave && p.podeVer))
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-14">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portal FUSVE — Compras</h1>
-        <p className="text-sm text-slate-500">Escolha um módulo para continuar</p>
+        <p className="text-sm text-slate-500">O que pede atenção hoje e os módulos do portal</p>
       </div>
+      {!carregando && !erro && modulosVisiveis.length > 0 && <ResumoDoDia />}
+      {modulosVisiveis.length > 0 && <h2 className="-mb-4 text-sm font-bold uppercase tracking-wide text-slate-400">Módulos</h2>}
       {carregando ? (
         <p className="text-sm text-slate-400">Carregando...</p>
       ) : erro ? (

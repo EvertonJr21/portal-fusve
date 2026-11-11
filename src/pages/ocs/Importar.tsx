@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { UploadCard, type UploadStatus } from '@/components/ocs/UploadCard'
-import { SIT_RANK } from '@/constants'
+import { Button } from '@/components/ui/Button'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useSols } from '@/hooks/useSols'
@@ -10,6 +10,7 @@ import * as solRepository from '@/repositories/solRepository'
 import type { OC, Solicitacao } from '@/types'
 import { decodeFile, parseOCsCSV, parseSolsCSV } from '@/utils/csv'
 import { fmt, getHoje } from '@/utils/date'
+import { emLotes, emParalelo, logOCNova, planejarOCs, planejarSols, type PlanoOCs, type PlanoSols } from '@/utils/importacaoPlano'
 import { avaliarHospitalDoArquivo, avisoArquivoDeOutroHospital, mensagemErro, siglaHospital } from '@/utils/importacaoHospital'
 import { ocAcompanhamentoSchema, ocImportadaSchema, solImportadaSchema, validarLote, vinculoAcompSchema } from '@/utils/validators'
 
@@ -18,9 +19,15 @@ type Relatorio = 'ocs' | 'sols' | 'acomp'
 /** Arquivo de Acompanhamento de outro hospital — vira aviso, não erro. */
 class ArquivoDeOutroHospital extends Error {}
 
-function sitAvancou(atual: string, nova: string): boolean {
-  return (SIT_RANK[nova] ?? 0) > (SIT_RANK[atual] ?? 0)
-}
+/** OCs/solicitações novas por chamada ao banco. */
+const TAMANHO_LOTE = 200
+/** Atualizações (e a repescagem linha a linha de um lote que falhou) simultâneas. */
+const PARALELAS = 6
+
+/** Plano montado e ainda não gravado — o que a prévia mostra antes de confirmar. */
+type Previa =
+  | { tipo: 'ocs'; arquivo: string; plano: PlanoOCs; invalidos: number }
+  | { tipo: 'sols'; arquivo: string; plano: PlanoSols; invalidos: number }
 
 const ICON_OCS = (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
@@ -88,208 +95,210 @@ export default function Importar() {
   })
   const logRef = useRef<HTMLDivElement>(null)
 
+  const [previa, setPrevia] = useState<Previa | null>(null)
+
   const addLog = (linha: string) => setLog((l) => [...l, linha])
+  const addLogs = (linhas: string[]) => {
+    if (linhas.length) setLog((l) => [...l, ...linhas])
+  }
   const setCardStatus = (key: Relatorio, s: UploadStatus) => setStatus((prev) => ({ ...prev, [key]: s }))
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
   }, [log])
 
-  const importarOCsCSV = async (file: File) => {
+  /** Hospital errado → aviso âmbar no card, nada gravado. Devolve true se interrompeu. */
+  const barrarOutroHospital = (rel: 'ocs' | 'sols', aval: ReturnType<typeof avaliarHospitalDoArquivo>, tipo: string): boolean => {
+    if (!aval.arquivoEhDeOutro || !aval.outroHospital) return false
+    const aviso = avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, tipo)
+    addLog(`⚠ ${aviso}`)
+    setCardStatus(rel, { state: 'warn', message: aviso })
+    setAtivo(null)
+    return true
+  }
+
+  /**
+   * 1ª etapa (OCs e Solicitações): lê o arquivo e monta o plano, sem gravar. Se
+   * houver o que gravar, mostra a prévia e espera a confirmação; se não houver,
+   * encerra na hora.
+   */
+  const prepararOCs = async (file: File) => {
     setAtivo('ocs')
     setCardStatus('ocs', { state: 'processing' })
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
       const { validos: itens, invalidos } = validarLote(parseOCsCSV(texto), ocImportadaSchema)
-      for (const { item, erros } of invalidos) {
-        addLog(`⚠ OC ${item.id || '?'} ignorada — ${erros.join('; ')}`)
-      }
-      const idsAtivo = new Set(ocs.map((o) => o.id))
-      const foraDoAtivo = itens.filter((i) => !idsAtivo.has(i.id)).map((i) => i.id)
+      addLogs(invalidos.map(({ item, erros }) => `⚠ OC ${item.id || '?'} ignorada — ${erros.join('; ')}`))
+      const existentes = new Map(ocs.map((o) => [o.id, o]))
+      const fora = [...new Set(itens.filter((i) => !existentes.has(i.id)).map((i) => i.id))]
       const aval = avaliarHospitalDoArquivo(
-        itens.length - foraDoAtivo.length,
-        foraDoAtivo.length ? await ocRepository.hospitaisDasOCs(foraDoAtivo) : new Map(),
+        new Set(itens.map((i) => i.id)).size - fora.length,
+        fora.length ? await ocRepository.hospitaisDasOCs(fora) : new Map(),
         hospitalId,
       )
-      if (aval.arquivoEhDeOutro && aval.outroHospital) {
-        const aviso = avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, 'OC(s)')
-        addLog(`⚠ ${aviso}`)
-        setCardStatus('ocs', { state: 'warn', message: aviso })
-        return
+      if (barrarOutroHospital('ocs', aval, 'OC(s)')) return
+      const plano = planejarOCs(itens, existentes, aval.deOutro, hospitalId, fmt(getHoje()))
+      const previa: Previa = { tipo: 'ocs', arquivo: file.name, plano, invalidos: invalidos.length }
+      if (plano.novas.length + plano.atualizacoes.length === 0) await gravarOCs(previa)
+      else {
+        setPrevia(previa)
+        setCardStatus('ocs', { state: 'processing', message: 'Aguardando sua confirmação logo abaixo.' })
       }
-      let added = 0
-      let updated = 0
-      let skipped = 0
-      let deOutroHospital = 0
-
-      for (let i = 0; i < itens.length; i++) {
-        const item = itens[i]
-        const existente = ocs.find((o) => o.id === item.id)
-        if (existente) {
-          const patch: Partial<OC> = {}
-          if (sitAvancou(existente.sit, item.sit)) patch.sit = item.sit as OC['sit']
-          if (item.fornecedorNome && existente.fornecedorNome !== item.fornecedorNome) {
-            patch.fornecedorNome = item.fornecedorNome
-            patch.fornecedorId = item.fornecedorId
-          }
-          // Previsão do relatório nunca é aplicada por importação, nem na 1ª vez
-          // (item 72) — mesmo motivo do item 34 pra OC nova: não é confiável, e
-          // reimportar o mesmo relatório periodicamente acabava preenchendo o
-          // campo de qualquer jeito 1 ciclo depois da OC entrar no sistema. Previsão
-          // é só manual (formulário ou clique direto na tabela) daqui pra frente.
-          // O relatório do SoulMV não traz data de entrega real — quando a OC vira
-          // "Atendida" nesta importação, registra a data de hoje como aproximação
-          // (é a única informação real que temos: "quando ficamos sabendo que foi
-          // entregue"). Só dispara na transição, nunca sobrescreve entrega já registrada.
-          if (patch.sit === 'Atendida' && !existente.dataEntregaReal) {
-            patch.dataEntregaReal = fmt(getHoje())
-            patch.dataEntregaOrigem = 'estimada'
-          }
-          // Mesma aproximação da entrega real (item 34): a primeira vez que a OC
-          // entra em Parcialmente Atendida nesta importação, registra a data de
-          // hoje — nunca sobrescreve se já tinha uma parcial registrada antes.
-          if (patch.sit === 'Parcialmente Atendida' && !existente.dataParcial) {
-            patch.dataParcial = fmt(getHoje())
-          }
-          if (Object.keys(patch).length) {
-            await ocRepository.atualizarCamposOC(item.id, patch)
-            updated++
-            const marcador = patch.dataEntregaReal
-              ? ' (entrega registrada hoje)'
-              : patch.dataParcial
-                ? ' (parcial registrada hoje)'
-                : ''
-            addLog(`OC ${item.id} — ${item.sit}${marcador}`)
-          } else {
-            skipped++
-          }
-        } else if (aval.deOutro.has(item.id)) {
-          deOutroHospital++
-          addLog(`⚠ OC ${item.id} já está cadastrada no ${siglaHospital(aval.deOutro.get(item.id)!)} — ignorada.`)
-        } else {
-          const entregaNaChegada = item.sit === 'Atendida' ? fmt(getHoje()) : null
-          const parcialNaChegada = item.sit === 'Parcialmente Atendida' ? fmt(getHoje()) : null
-          await ocRepository.criarOCImportada({
-            id: item.id,
-            dataSolic: item.dataSolic,
-            fornecedorNome: item.fornecedorNome,
-            fornecedorId: item.fornecedorId,
-            sit: item.sit,
-            estoque: item.estoque || 'SUP CAF',
-            solicitacaoId: null,
-            // Previsão do relatório não é confiável (nem sempre bate) — deixa em
-            // branco pro Everton registrar manualmente pelo formulário da OC.
-            previsaoForn: null,
-            diasAtraso: item.diasAtraso,
-            hospitalId,
-            ultimaMovimentacao: item.dataSolic,
-            dataEntregaReal: entregaNaChegada,
-            dataParcial: parcialNaChegada,
-            dataEntregaOrigem: entregaNaChegada ? 'estimada' : null,
-          })
-          added++
-          const marcadorNova = entregaNaChegada
-            ? ' (entrega registrada hoje)'
-            : parcialNaChegada
-              ? ' (parcial registrada hoje)'
-              : ''
-          addLog(`OC ${item.id} — ${item.sit} (nova)${marcadorNova}`)
-        }
-      }
-      if (added === 0 && updated === 0 && skipped > 0) {
-        addLog('ℹ Nenhuma OC nova ou alterada — esse arquivo já parece ter sido importado antes.')
-      }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${deOutroHospital ? ` | ${deOutroHospital} de outro hospital` : ''}${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
-      addLog(`─ OCs CSV: ${resumo}`)
-      setCardStatus('ocs', { state: 'done', message: resumo })
-      await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
     } catch (err) {
-      const msg = mensagemErro(err)
-      addLog(`❌ Erro: ${msg}`)
-      setCardStatus('ocs', { state: 'error', message: msg })
-    } finally {
-      setAtivo(null)
+      falhar('ocs', err)
     }
   }
 
-  const importarSolsCSV = async (file: File) => {
+  const prepararSols = async (file: File) => {
     setAtivo('sols')
     setCardStatus('sols', { state: 'processing' })
     setLog([`📄 ${file.name}`])
     try {
       const texto = await decodeFile(file)
       const { validos: itens, invalidos } = validarLote(parseSolsCSV(texto, hospitalId), solImportadaSchema)
-      for (const { item, erros } of invalidos) {
-        addLog(`⚠ Solicitação ${item.id || '?'} ignorada — ${erros.join('; ')}`)
-      }
-      const idsAtivo = new Set(sols.map((x) => x.id))
-      const foraDoAtivo = itens.filter((i) => !idsAtivo.has(i.id)).map((i) => i.id)
+      addLogs(invalidos.map(({ item, erros }) => `⚠ Solicitação ${item.id || '?'} ignorada — ${erros.join('; ')}`))
+      const existentes = new Map(sols.map((x) => [x.id, x]))
+      const fora = [...new Set(itens.filter((i) => !existentes.has(i.id)).map((i) => i.id))]
       const aval = avaliarHospitalDoArquivo(
-        itens.length - foraDoAtivo.length,
-        foraDoAtivo.length ? await solRepository.hospitaisDasSols(foraDoAtivo) : new Map(),
+        new Set(itens.map((i) => i.id)).size - fora.length,
+        fora.length ? await solRepository.hospitaisDasSols(fora) : new Map(),
         hospitalId,
       )
-      if (aval.arquivoEhDeOutro && aval.outroHospital) {
-        const aviso = avisoArquivoDeOutroHospital(aval.outroHospital, hospitalId, aval.deOutro.size, 'solicitação(ões)')
-        addLog(`⚠ ${aviso}`)
-        setCardStatus('sols', { state: 'warn', message: aviso })
-        return
+      if (barrarOutroHospital('sols', aval, 'solicitação(ões)')) return
+      const plano = planejarSols(itens, existentes, aval.deOutro, hospitalId)
+      const previa: Previa = { tipo: 'sols', arquivo: file.name, plano, invalidos: invalidos.length }
+      if (plano.novas.length + plano.atualizacoes.length === 0) await gravarSols(previa)
+      else {
+        setPrevia(previa)
+        setCardStatus('sols', { state: 'processing', message: 'Aguardando sua confirmação logo abaixo.' })
       }
-      let added = 0
-      let updated = 0
-      let skipped = 0
-      let deOutroHospital = 0
+    } catch (err) {
+      falhar('sols', err)
+    }
+  }
 
-      for (let i = 0; i < itens.length; i++) {
-        const item = itens[i]
-        const existente = sols.find((s) => s.id === item.id)
-        if (existente) {
-          const patch: Partial<Solicitacao> = {}
-          if (!existente.motivo && item.motivo) patch.motivo = item.motivo
-          if (!existente.solicitante && item.solicitante) patch.solicitante = item.solicitante
-          if ((!existente.produto || existente.produto.includes('verificar')) && item.produto) {
-            patch.produto = item.produto
-          }
-          if (Object.keys(patch).length) {
-            await solRepository.atualizarCamposSol(item.id, patch)
-            updated++
-            addLog(`Solicitação ${item.id} — ${item.sit}`)
-          } else {
-            skipped++
-          }
-        } else if (aval.deOutro.has(item.id)) {
-          deOutroHospital++
-          addLog(`⚠ Solicitação ${item.id} já está cadastrada no ${siglaHospital(aval.deOutro.get(item.id)!)} — ignorada.`)
-        } else {
-          await solRepository.salvarSol({
-            id: item.id,
-            data: item.data,
-            produto: item.produto,
-            motivo: item.motivo,
-            solicitante: item.solicitante,
-            qtd: item.qtd,
-            sit: item.sit,
-            hospitalId,
-          })
-          added++
-          addLog(`Solicitação ${item.id} — ${item.sit} (nova)`)
-        }
+  const falhar = (rel: Relatorio, err: unknown) => {
+    const msg = mensagemErro(err)
+    addLog(`❌ Erro: ${msg}`)
+    setCardStatus(rel, { state: 'error', message: msg })
+    setPrevia(null)
+    setAtivo(null)
+  }
+
+  /**
+   * Grava as novas em lotes (uma chamada por lote, não uma por linha). Se um lote
+   * falhar, tenta aquele lote linha a linha pra isolar a que tem problema — as
+   * outras entram normalmente. Devolve quantas falharam.
+   */
+  const gravarNovas = async <T extends { id: number }>(
+    novas: T[],
+    emLote: (lote: T[]) => Promise<void>,
+    umaAUma: (item: T) => Promise<void>,
+    texto: (item: T) => string,
+    nome: string,
+  ): Promise<number> => {
+    let falhas = 0
+    for (const lote of emLotes(novas, TAMANHO_LOTE)) {
+      try {
+        await emLote(lote)
+        addLogs(lote.map(texto))
+      } catch {
+        const erros = await emParalelo(lote, PARALELAS, umaAUma)
+        addLogs(lote.map((item, i) => (erros[i] ? `❌ ${nome} ${item.id} — ${mensagemErro(erros[i])}` : texto(item))))
+        falhas += erros.filter(Boolean).length
       }
-      if (added === 0 && updated === 0 && skipped > 0) {
+    }
+    return falhas
+  }
+
+  /** Atualizações são poucas e diferentes entre si: vão uma a uma, várias ao mesmo tempo. */
+  const gravarAtualizacoes = async <T,>(
+    atualizacoes: { id: number; patch: Partial<T>; log: string }[],
+    gravar: (id: number, patch: Partial<T>) => Promise<void>,
+    nome: string,
+  ): Promise<number> => {
+    let falhas = 0
+    for (const lote of emLotes(atualizacoes, TAMANHO_LOTE)) {
+      const erros = await emParalelo(lote, PARALELAS, (a) => gravar(a.id, a.patch))
+      addLogs(lote.map((a, i) => (erros[i] ? `❌ ${nome} ${a.id} — ${mensagemErro(erros[i])}` : a.log)))
+      falhas += erros.filter(Boolean).length
+    }
+    return falhas
+  }
+
+  const resumoFinal = (novas: number, atualizadas: number, p: Previa, falhas: number) =>
+    [
+      `${novas} novas`,
+      `${atualizadas} atualizadas`,
+      `${p.plano.semMudanca} sem mudança`,
+      p.plano.outroHospital.length ? `${p.plano.outroHospital.length} de outro hospital` : '',
+      p.invalidos ? `${p.invalidos} ignoradas (formato inválido)` : '',
+      falhas ? `${falhas} com erro` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ')
+
+  const gravarOCs = async (p: Previa & { tipo: 'ocs' }) => {
+    setPrevia(null)
+    try {
+      addLogs(p.plano.outroHospital.map((f) => `⚠ OC ${f.id} já está cadastrada no ${siglaHospital(f.hospital)} — ignorada.`))
+      const falhasNovas = await gravarNovas(p.plano.novas, ocRepository.criarOCsImportadas, ocRepository.criarOCImportada, logOCNova, 'OC')
+      const falhasAtu = await gravarAtualizacoes<OC>(p.plano.atualizacoes, ocRepository.atualizarCamposOC, 'OC')
+      const novas = p.plano.novas.length - falhasNovas
+      const atualizadas = p.plano.atualizacoes.length - falhasAtu
+      if (novas === 0 && atualizadas === 0 && p.plano.semMudanca > 0) {
+        addLog('ℹ Nenhuma OC nova ou alterada — esse arquivo já parece ter sido importado antes.')
+      }
+      const resumo = resumoFinal(novas, atualizadas, p, falhasNovas + falhasAtu)
+      addLog(`─ OCs CSV: ${resumo}`)
+      setCardStatus('ocs', { state: 'done', message: resumo })
+      await queryClient.invalidateQueries({ queryKey: ['ocs', hospitalId] })
+      setAtivo(null)
+    } catch (err) {
+      falhar('ocs', err)
+    }
+  }
+
+  const gravarSols = async (p: Previa & { tipo: 'sols' }) => {
+    setPrevia(null)
+    try {
+      addLogs(p.plano.outroHospital.map((f) => `⚠ Solicitação ${f.id} já está cadastrada no ${siglaHospital(f.hospital)} — ignorada.`))
+      const falhasNovas = await gravarNovas(
+        p.plano.novas,
+        solRepository.salvarSols,
+        solRepository.salvarSol,
+        (n) => `Solicitação ${n.id} — ${n.sit} (nova)`,
+        'Solicitação',
+      )
+      const falhasAtu = await gravarAtualizacoes<Solicitacao>(p.plano.atualizacoes, solRepository.atualizarCamposSol, 'Solicitação')
+      const novas = p.plano.novas.length - falhasNovas
+      const atualizadas = p.plano.atualizacoes.length - falhasAtu
+      if (novas === 0 && atualizadas === 0 && p.plano.semMudanca > 0) {
         addLog('ℹ Nenhuma solicitação nova ou alterada — esse arquivo já parece ter sido importado antes.')
       }
-      const resumo = `${added} novas | ${updated} atualizadas | ${skipped} sem mudança${deOutroHospital ? ` | ${deOutroHospital} de outro hospital` : ''}${invalidos.length ? ` | ${invalidos.length} ignoradas (formato inválido)` : ''}`
+      const resumo = resumoFinal(novas, atualizadas, p, falhasNovas + falhasAtu)
       addLog(`─ Solicitações CSV: ${resumo}`)
       setCardStatus('sols', { state: 'done', message: resumo })
       await queryClient.invalidateQueries({ queryKey: ['sols', hospitalId] })
-    } catch (err) {
-      const msg = mensagemErro(err)
-      addLog(`❌ Erro: ${msg}`)
-      setCardStatus('sols', { state: 'error', message: msg })
-    } finally {
       setAtivo(null)
+    } catch (err) {
+      falhar('sols', err)
     }
+  }
+
+  const confirmarPrevia = () => {
+    if (!previa) return
+    if (previa.tipo === 'ocs') void gravarOCs(previa)
+    else void gravarSols(previa)
+  }
+
+  const cancelarPrevia = () => {
+    if (!previa) return
+    addLog('─ Importação cancelada — nada foi gravado.')
+    setCardStatus(previa.tipo, { state: 'idle' })
+    setPrevia(null)
+    setAtivo(null)
   }
 
   /**
@@ -524,25 +533,25 @@ export default function Importar() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <UploadCard
           title="OCs"
-          description="R_ORD_COM_FOR.csv — nunca regride situação; registra a entrega automaticamente quando a OC vira Atendida; previsão fica em branco pra você registrar."
+          description="R_ORD_COM_FOR.csv — mostra uma prévia antes de gravar; nunca regride situação; registra a entrega automaticamente quando a OC vira Atendida; previsão fica em branco pra você registrar."
           filenameHint="Arquivo .csv"
           accept=".csv"
           accentClass="border-status-blue/30 bg-status-blue-bg text-status-blue"
           icon={ICON_OCS}
           status={status.ocs}
           disabled={processando && ativo !== 'ocs'}
-          onFile={importarOCsCSV}
+          onFile={prepararOCs}
         />
         <UploadCard
           title="Solicitações"
-          description="R_SOL_PEND_DATA.csv — só preenche campos vazios de solicitações já existentes."
+          description="R_SOL_PEND_DATA.csv — mostra uma prévia antes de gravar; só preenche campos vazios de solicitações já existentes."
           filenameHint="Arquivo .csv"
           accept=".csv"
           accentClass="border-status-purple/30 bg-status-purple-bg text-status-purple"
           icon={ICON_SOLS}
           status={status.sols}
           disabled={processando && ativo !== 'sols'}
-          onFile={importarSolsCSV}
+          onFile={prepararSols}
         />
         <UploadCard
           title="Acompanhamento de Compras"
@@ -557,6 +566,8 @@ export default function Importar() {
           onFiles={importarAcomp}
         />
       </div>
+
+      {previa && <PainelPrevia previa={previa} onConfirmar={confirmarPrevia} onCancelar={cancelarPrevia} />}
 
       {log.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-slate-800 shadow-soft-md">
@@ -581,6 +592,77 @@ export default function Importar() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+interface PainelPreviaProps {
+  previa: Previa
+  onConfirmar: () => void
+  onCancelar: () => void
+}
+
+/** Prévia da importação: o que vai acontecer com cada linha do arquivo, antes de gravar. */
+function PainelPrevia({ previa, onConfirmar, onCancelar }: PainelPreviaProps) {
+  const { plano } = previa
+  const ehOC = previa.tipo === 'ocs'
+  const nome = ehOC ? 'OC(s)' : 'solicitação(ões)'
+  const hospitais = [...new Set(plano.outroHospital.map((f) => siglaHospital(f.hospital)))].join('/')
+  const detalheAtu = ehOC
+    ? `${previa.plano.mudamSituacao} mudam de situação`
+    : 'preenchem campo que estava vazio'
+  const ids = (lista: { id: number }[]) => {
+    const amostra = lista.slice(0, 12).map((x) => x.id).join(', ')
+    return lista.length > 12 ? `${amostra} e mais ${lista.length - 12}` : amostra
+  }
+
+  return (
+    <div className="rounded-xl border border-status-blue/30 bg-status-blue-bg/40 p-4 shadow-soft-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">Prévia da importação — nada foi gravado ainda</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{previa.arquivo}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancelar}>
+            Cancelar
+          </Button>
+          <Button onClick={onConfirmar}>Confirmar importação</Button>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <CaixaPrevia valor={plano.novas.length} rotulo={`${nome} nova(s)`} destaque />
+        <CaixaPrevia valor={plano.atualizacoes.length} rotulo="atualização(ões)" destaque />
+        <CaixaPrevia valor={plano.semMudanca} rotulo="sem mudança" />
+        <CaixaPrevia valor={plano.outroHospital.length} rotulo={hospitais ? `do ${hospitais} — puladas` : 'de outro hospital'} alerta={plano.outroHospital.length > 0} />
+        <CaixaPrevia valor={previa.invalidos} rotulo="com formato inválido" alerta={previa.invalidos > 0} />
+      </div>
+      <ul className="mt-3 flex flex-col gap-1 text-xs text-slate-600">
+        {plano.novas.length > 0 && (
+          <li>
+            <span className="font-medium text-slate-700">Novas:</span> {ids(plano.novas)}
+          </li>
+        )}
+        {plano.atualizacoes.length > 0 && (
+          <li>
+            <span className="font-medium text-slate-700">Atualizações ({detalheAtu}):</span> {ids(plano.atualizacoes)}
+          </li>
+        )}
+        {plano.outroHospital.length > 0 && (
+          <li>
+            <span className="font-medium text-slate-700">Puladas (outro hospital):</span> {ids(plano.outroHospital)}
+          </li>
+        )}
+      </ul>
+    </div>
+  )
+}
+
+function CaixaPrevia({ valor, rotulo, destaque, alerta }: { valor: number; rotulo: string; destaque?: boolean; alerta?: boolean }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className={`text-xl font-bold tabular-nums ${alerta ? 'text-status-amber' : destaque && valor > 0 ? 'text-status-blue' : 'text-slate-700'}`}>{valor}</div>
+      <div className="text-[11px] leading-tight text-slate-500">{rotulo}</div>
     </div>
   )
 }
