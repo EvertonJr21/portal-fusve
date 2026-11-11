@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
@@ -5,7 +6,7 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { SolForm } from '@/components/ocs/SolForm'
-import { useConfirm } from '@/hooks/useConfirm'
+import { useDesfazer } from '@/hooks/useDesfazer'
 import { useHospital } from '@/hooks/useHospital'
 import { useOCs } from '@/hooks/useOCs'
 import { useAtualizarSituacaoSol, useExcluirSol, useSols } from '@/hooks/useSols'
@@ -28,7 +29,7 @@ export default function Solicitacoes() {
   const atualizarSituacao = useAtualizarSituacaoSol(hospitalId)
   const excluir = useExcluirSol(hospitalId)
   const toast = useToast()
-  const confirmar = useConfirm()
+  const desfazer = useDesfazer()
   const [searchParams] = useSearchParams()
 
   const [busca, setBusca] = useState(() => searchParams.get('q') ?? '')
@@ -74,10 +75,9 @@ export default function Solicitacoes() {
   }
 
   const handleExcluir = async (s: Solicitacao) => {
-    if (!(await confirmar({ message: `Excluir a Solicitação ${s.id}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(s.id)
-      toast.show(`Solicitação ${s.id} excluída`)
+      desfazer(`Solicitação ${s.id} excluída`, 'sols', s.id, ['sols', hospitalId])
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao excluir solicitação', 'error')
     }
@@ -207,7 +207,7 @@ export default function Solicitacoes() {
                         onClick={() => setModal(s)}
                         className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                       >
-                        ✏
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"

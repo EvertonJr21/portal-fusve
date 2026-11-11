@@ -1,3 +1,4 @@
+import { SearchX, Inbox } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ClasseBadge } from '@/components/ocs/desempenho'
@@ -6,9 +7,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { StatusDot } from '@/components/ui/StatusDot'
+import { useComodatosPorContrato, useContratos } from '@/hooks/useContratos'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
+import { useHospital } from '@/hooks/useHospital'
+import { statusVigencia } from '@/utils/contrato'
 import { fmt } from '@/utils/date'
-import { confiabilidadePrevisao, desempenhoPorFornecedor, formatarDias, formatarPct, type StatusEntrega } from '@/utils/kpis'
+import { confiabilidadePrevisao, desempenhoPorFornecedor, formatarDias, formatarPct, ligarContratosFornecedores, type StatusEntrega } from '@/utils/kpis'
 
 const STATUS: Record<StatusEntrega, { label: string; tone: 'success' | 'danger' | 'warning' | 'neutral' }> = {
   no_prazo: { label: 'Entregue no prazo', tone: 'success' },
@@ -25,6 +29,14 @@ export default function FichaFornecedor() {
   const { fornecedorId } = useParams<{ fornecedorId: string }>()
   const { avaliacoes, forns, isLoading, error } = useAvaliacoesEntrega()
   const forn = forns.find((f) => String(f.id) === fornecedorId)
+  const { hospitalId } = useHospital()
+  const { data: contratos = [] } = useContratos(hospitalId)
+  // Contratos/acordos deste fornecedor e os equipamentos em comodato deles (item 92).
+  const contratosForn = useMemo(
+    () => (forn ? (ligarContratosFornecedores(contratos, [forn]).porFornecedor.get(forn.id) ?? []) : []),
+    [contratos, forn],
+  )
+  const { data: comodatos } = useComodatosPorContrato(contratosForn.map((c) => c.id))
 
   const desempenho = useMemo(() => {
     if (!forn) return null
@@ -36,7 +48,7 @@ export default function FichaFornecedor() {
 
   if (isLoading) return <SkeletonRows linhas={4} colunas={3} />
   if (error) return <p className="text-sm text-status-red">Erro ao carregar: {error.message}</p>
-  if (!forn) return <EmptyState icon="🔍" title="Fornecedor não encontrado." />
+  if (!forn) return <EmptyState icon={<SearchX className="h-8 w-8" strokeWidth={1.5} />} title="Fornecedor não encontrado." />
 
   const r = desempenho?.resumo
   const previsao = confiabilidadePrevisao(desempenho?.avaliacoes ?? [])
@@ -67,8 +79,41 @@ export default function FichaFornecedor() {
         </div>
       </div>
 
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Contratos e acordos</h3>
+        {contratosForn.length === 0 ? (
+          <p className="text-xs text-slate-400">Nenhum contrato cadastrado com este fornecedor (casamento por CNPJ ou nome).</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {contratosForn.map((c) => {
+              const venc = statusVigencia(c)
+              const qtdComodato = comodatos?.get(c.id) ?? 0
+              return (
+                <Link
+                  key={c.id}
+                  to={`/contratos?q=${encodeURIComponent(c.titulo || c.fornecedorNome)}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 bg-white px-3 py-2 text-xs hover:border-slate-300"
+                >
+                  <span className="font-semibold text-slate-700">{c.titulo || c.tipo}</span>
+                  <span className="flex flex-wrap gap-3 text-slate-500">
+                    <span>{c.status}</span>
+                    {c.vigenciaFim && (
+                      <span className={venc === 'vencido' ? 'text-status-red' : venc === 'critico' ? 'text-status-amber' : ''}>
+                        até {c.vigenciaFim.split('-').reverse().join('/')}
+                      </span>
+                    )}
+                    {c.prazoMedioDias ? <span>prazo {c.prazoMedioDias}d</span> : null}
+                    {qtdComodato > 0 && <span className="text-violet-700">{qtdComodato} equip. em comodato</span>}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {!r ? (
-        <EmptyState icon="📭" title="Nenhuma OC deste fornecedor no hospital ativo." />
+        <EmptyState icon={<Inbox className="h-8 w-8" strokeWidth={1.5} />} title="Nenhuma OC deste fornecedor no hospital ativo." />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

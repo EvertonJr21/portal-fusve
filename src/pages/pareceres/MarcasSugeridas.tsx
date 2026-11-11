@@ -1,3 +1,4 @@
+import { Tags } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -138,7 +139,7 @@ export default function MarcasSugeridas() {
       {isLoading ? (
         <SkeletonRows colunas={3} />
       ) : filtradas.length === 0 ? (
-        <EmptyState icon="🏷️" title="Nenhuma categoria encontrada." />
+        <EmptyState icon={<Tags className="h-8 w-8" strokeWidth={1.5} />} title="Nenhuma categoria encontrada." />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtradas.map((cat) => (

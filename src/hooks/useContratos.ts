@@ -80,3 +80,38 @@ export function useSalvarComodatosContrato() {
     },
   })
 }
+
+/** Renovação de contrato: cria a cópia com vigência nova (item 98). */
+export function useRenovarContrato(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: contratoRepository.renovarContrato,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contratos', hospitalId] })
+    },
+  })
+}
+
+/** PDF do contrato assinado: sobe o arquivo e vincula; `file: null` remove o vínculo. */
+export function useDefinirPdfContrato(hospitalId: HospitalId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ contratoId, file }: { contratoId: string; file: File | null }) => {
+      if (!file) return contratoRepository.definirPdfContrato(contratoId, null, null)
+      const path = await contratoRepository.uploadPdfContrato(contratoId, file)
+      return contratoRepository.definirPdfContrato(contratoId, path, file.name)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contratos', hospitalId] })
+    },
+  })
+}
+
+export function useAbrirPdfContrato() {
+  return useMutation({
+    mutationFn: async (path: string) => {
+      const url = await contratoRepository.urlAssinadaPdfContrato(path)
+      window.open(url, '_blank', 'noopener')
+    },
+  })
+}

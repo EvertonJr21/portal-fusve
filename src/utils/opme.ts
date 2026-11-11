@@ -31,6 +31,15 @@ export function construirGradeCalendario(referencia: Date): CelulaCalendario[] {
   return celulas
 }
 
+/** Os 7 dias (domingo a sábado) da semana que contém `referencia` — visão semanal do calendário. */
+export function construirSemana(referencia: Date): CelulaCalendario[] {
+  const inicio = new Date(referencia.getFullYear(), referencia.getMonth(), referencia.getDate() - referencia.getDay())
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)
+    return { data: d, chave: toKey(d) }
+  })
+}
+
 export const STATUS_OPME_TONE: Record<StatusOpme, 'amber' | 'green'> = {
   pendente: 'amber',
   finalizado: 'green',

@@ -57,9 +57,33 @@ export function Sidebar({ title, items, groups, emBreve = [] }: SidebarProps) {
     })
   }
 
+  const todos = (groups ?? [{ items: items ?? [] }]).flatMap((g) => g.items)
+  // Celular (item 8 da revisão): a lateral vira uma faixa de abas rolável no topo do módulo.
+  const faixaCelular = (
+    <nav className="flex items-center gap-1 overflow-x-auto border-b border-slate-200/80 bg-white px-2 py-1.5 md:hidden" aria-label={title}>
+      <Link to="/" className="shrink-0 rounded-md px-2 py-1.5 text-xs font-medium text-slate-400" title="Módulos">
+        ←
+      </Link>
+      {todos.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) =>
+            `shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600'}`
+          }
+        >
+          {item.label}
+        </NavLink>
+      ))}
+    </nav>
+  )
+
   if (colapsada) {
     return (
-      <nav className="flex w-10 shrink-0 flex-col items-center border-r border-slate-200/80 bg-white py-4">
+      <>
+      {faixaCelular}
+      <nav className="hidden w-10 shrink-0 flex-col items-center border-r border-slate-200/80 bg-white py-4 md:flex">
         <button
           type="button"
           onClick={alternar}
@@ -69,11 +93,14 @@ export function Sidebar({ title, items, groups, emBreve = [] }: SidebarProps) {
           »
         </button>
       </nav>
+      </>
     )
   }
 
   return (
-    <nav className="w-56 shrink-0 overflow-y-auto border-r border-slate-200/80 bg-white p-4">
+    <>
+    {faixaCelular}
+    <nav className="hidden w-56 shrink-0 overflow-y-auto border-r border-slate-200/80 bg-white p-4 md:block">
       <div className="mb-3 flex items-center justify-between">
         <Link
           to="/"
@@ -129,5 +156,6 @@ export function Sidebar({ title, items, groups, emBreve = [] }: SidebarProps) {
         </div>
       ))}
     </nav>
+    </>
   )
 }

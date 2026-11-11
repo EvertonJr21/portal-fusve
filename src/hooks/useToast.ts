@@ -2,8 +2,14 @@ import { createContext, useContext } from 'react'
 
 export type ToastKind = 'info' | 'warn' | 'error'
 
+/** Botão dentro do aviso (ex.: "Desfazer") — com ação, o aviso fica mais tempo na tela. */
+export interface ToastAcao {
+  rotulo: string
+  onClick: () => void
+}
+
 export interface ToastContextValue {
-  show: (message: string, kind?: ToastKind) => void
+  show: (message: string, kind?: ToastKind, acao?: ToastAcao) => void
 }
 
 export const ToastContext = createContext<ToastContextValue | null>(null)

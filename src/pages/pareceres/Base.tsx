@@ -1,3 +1,4 @@
+import { Pencil, FileText, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { MarcasBadge } from '@/components/pareceres/MarcasBadge'
 import { ParecerForm } from '@/components/pareceres/ParecerForm'
@@ -229,15 +230,15 @@ export default function Base() {
                   <td className="px-3 py-2 text-xs">
                     <div className="flex gap-1">
                       <IconButton title="Editar" onClick={() => setEditando(p)}>
-                        ✏
+                        <Pencil className="h-3.5 w-3.5" />
                       </IconButton>
                       {(p.pdfPath || p.pdfDataUrl) && (
                         <IconButton title="Ver PDF" onClick={() => abrirPdf.abrir(p)}>
-                          📄
+                          <FileText className="h-3.5 w-3.5" />
                         </IconButton>
                       )}
                       <IconButton title="Apagar" tone="danger" onClick={() => handleExcluir(p)}>
-                        🗑
+                        <Trash2 className="h-3.5 w-3.5" />
                       </IconButton>
                     </div>
                   </td>

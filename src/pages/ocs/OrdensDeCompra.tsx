@@ -11,7 +11,7 @@ import { Dropdown, DropdownItem } from '@/components/ui/Dropdown'
 import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { FINAL_SIT, MOTIVOS_OCORRENCIA, type SituacaoOC } from '@/constants'
-import { useConfirm } from '@/hooks/useConfirm'
+import { useDesfazer } from '@/hooks/useDesfazer'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useEstadoListaOCs } from '@/hooks/useEstadoListaOCs'
 import { useHistoricoRecentePorOC, useMarcarRespondidas } from '@/hooks/useHistOC'
@@ -70,7 +70,7 @@ function TelaOrdensDeCompra() {
   const marcarRespondidas = useMarcarRespondidas()
   const excluir = useExcluirOC(hospitalId)
   const toast = useToast()
-  const confirmar = useConfirm()
+  const desfazer = useDesfazer()
 
   const [modal, setModal] = useState<Modal>(null)
   const [painelId, setPainelId] = useState<number | null>(null)
@@ -140,12 +140,11 @@ function TelaOrdensDeCompra() {
   }
 
   const handleExcluir = async (oc: OC) => {
-    if (!(await confirmar({ message: `Excluir a OC ${oc.id}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(oc.id)
       setPainelId((id) => (id === oc.id ? null : id))
       selecionar([oc.id], false)
-      toast.show(`OC ${oc.id} excluída`)
+      desfazer(`OC ${oc.id} excluída`, 'ocs', oc.id, ['ocs', hospitalId])
     } catch (err) {
       erro(err, 'Erro ao excluir OC')
     }

@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react'
 
-const MODULOS = [
-  { icone: '📋', label: 'Controle de OCs' },
-  { icone: '🩺', label: 'Parecer Técnico' },
-  { icone: '📑', label: 'Gestão de Contratos' },
-  { icone: '🗓️', label: 'Controle de OPME' },
-] as const
+import { MODULOS as MODULOS_APP } from '@/constants'
+import { ICONE_MODULO } from '@/components/ui/iconesModulo'
+
+const MODULOS = MODULOS_APP.map((m) => ({ icone: ICONE_MODULO[m.chave], label: m.label }))
 
 /**
  * Casco compartilhado das telas de autenticação (Login/DefinirSenha) —
@@ -51,7 +49,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             {MODULOS.map((m) => (
               <li key={m.label} className="flex items-center gap-2.5 text-sm text-white/85">
                 <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-xs">
-                  {m.icone}
+                  <m.icone className="h-4 w-4" />
                 </span>
                 {m.label}
               </li>

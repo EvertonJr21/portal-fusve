@@ -1,4 +1,6 @@
+import { Pencil } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
@@ -7,7 +9,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { OpmeForm } from '@/components/opmes/OpmeForm'
 import { STATUS_OPME, type StatusOpme } from '@/constants'
-import { useConfirm } from '@/hooks/useConfirm'
+import { useDesfazer } from '@/hooks/useDesfazer'
 import { useFornecedores } from '@/hooks/useFornecedores'
 import { useHospital } from '@/hooks/useHospital'
 import { useAlternarStatusOpme, useExcluirOpme, useOpmes } from '@/hooks/useOpmes'
@@ -25,9 +27,17 @@ export default function Gestao() {
   const alternarStatus = useAlternarStatusOpme(hospitalId)
   const excluir = useExcluirOpme(hospitalId)
   const toast = useToast()
-  const confirmar = useConfirm()
+  const desfazer = useDesfazer()
 
-  const [busca, setBusca] = useState('')
+  // `?q=` vem da busca global (Ctrl+K).
+  const [params] = useSearchParams()
+  const qUrl = params.get('q')
+  const [busca, setBusca] = useState(qUrl ?? '')
+  const [qAplicada, setQAplicada] = useState(qUrl)
+  if (qUrl !== qAplicada) {
+    setQAplicada(qUrl)
+    if (qUrl) setBusca(qUrl)
+  }
   const [statusFiltro, setStatusFiltro] = useState<'' | StatusOpme>('')
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
@@ -63,10 +73,9 @@ export default function Gestao() {
   }
 
   const handleExcluir = async (o: Opme) => {
-    if (!(await confirmar({ message: `Excluir o OPME de ${o.paciente}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(o.id)
-      toast.show('OPME excluído')
+      desfazer(`OPME de ${o.paciente} excluído`, 'opmes', o.id, ['opmes', hospitalId])
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao excluir OPME', 'error')
     }
@@ -183,7 +192,7 @@ export default function Gestao() {
                   </td>
                   <td className="px-3 py-2 text-xs">
                     <div className="flex gap-1">
-                      <IconButton title="Editar" onClick={() => setModal(o)}>✏</IconButton>
+                      <IconButton title="Editar" onClick={() => setModal(o)}><Pencil className="h-3.5 w-3.5" /></IconButton>
                       <IconButton title="Excluir" tone="danger" onClick={() => handleExcluir(o)}>✕</IconButton>
                     </div>
                   </td>

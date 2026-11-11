@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { SearchFornecedor } from '@/components/ocs/SearchFornecedor'
 import { HOSPITAIS, STATUS_OPME, type HospitalId } from '@/constants'
-import { useConfirm } from '@/hooks/useConfirm'
+import { useDesfazer } from '@/hooks/useDesfazer'
 import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
@@ -39,14 +39,13 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
   const salvar = useSalvarOpme(form.hospitalId)
   const excluir = useExcluirOpme(form.hospitalId)
   const toast = useToast()
-  const confirmar = useConfirm()
+  const desfazer = useDesfazer()
 
   const handleExcluir = async () => {
-    if (!opme || !(await confirmar({ message: `Excluir o OPME de ${opme.paciente}?`, tone: 'danger', confirmLabel: 'Excluir' })))
-      return
+    if (!opme) return
     try {
       await excluir.mutateAsync(opme.id)
-      toast.show('OPME excluído')
+      desfazer(`OPME de ${opme.paciente} excluído`, 'opmes', opme.id, ['opmes', form.hospitalId])
       onClose()
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao excluir OPME', 'error')

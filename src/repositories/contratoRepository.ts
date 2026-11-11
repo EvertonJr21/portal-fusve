@@ -1,6 +1,7 @@
 import type { HospitalId } from '@/constants'
 import { supabase } from '@/lib/supabase'
 import type { ContratoComodato, ContratoHeader, ContratoProduto } from '@/types'
+import { sanitizarParaStorage } from './parecerRepository'
 import type { Database } from '@/types/database'
 
 /** Acesso ao Supabase pra `contratos`/`contrato_produtos` — mesmo padrão de `ocRepository.ts` (Hardening P2). */
@@ -35,9 +36,14 @@ export function toContrato(row: ContratoRow): ContratoHeader {
     hospitalId: row.hospital_id as ContratoHeader['hospitalId'],
     classificacao: row.classificacao ?? '',
     observacoes: row.observacoes ?? '',
+    pdfPath: row.pdf_path ?? null,
+    pdfNome: row.pdf_nome ?? null,
   }
 }
 
+// As colunas do PDF (`pdf_path`/`pdf_nome`) ficam fora daqui de propósito: são
+// gravadas só por `definirPdfContrato`, então salvar um contrato nunca apaga o
+// PDF nem depende de a migration 202611110001 já ter rodado.
 function toContratoRow(c: ContratoHeader) {
   return {
     id: c.id,
@@ -248,4 +254,74 @@ export async function contarComodatosPorContrato(contratoIds: string[]): Promise
     mapa.set(r.contrato_id, (mapa.get(r.contrato_id) ?? 0) + (r.quantidade ?? 1))
   }
   return mapa
+}
+
+// ── PDF do contrato assinado (item 98) ──
+
+const BUCKET_CONTRATOS = 'contratos-pdfs'
+
+export async function uploadPdfContrato(contratoId: string, file: File): Promise<string> {
+  const path = `${contratoId}/${Date.now()}-${sanitizarParaStorage(file.name)}`
+  const { error } = await supabase.storage.from(BUCKET_CONTRATOS).upload(path, file, { contentType: 'application/pdf', upsert: false })
+  if (error) throw error
+  return path
+}
+
+/** Vincula (ou remove, com `null`) o PDF do contrato. O arquivo antigo fica no bucket. */
+export async function definirPdfContrato(contratoId: string, path: string | null, nome: string | null): Promise<void> {
+  const { error } = await supabase.from('contratos').update({ pdf_path: path, pdf_nome: nome }).eq('id', contratoId)
+  if (error) throw error
+}
+
+/** URL temporária (5 min) pra abrir o PDF do bucket privado. */
+export async function urlAssinadaPdfContrato(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET_CONTRATOS).createSignedUrl(path, 300)
+  if (error) throw error
+  return data.signedUrl
+}
+
+// ── Renovação (item 98) ──
+
+/** 'YYYY-MM-DD' + n dias. */
+function somarDias(iso: string, dias: number): string {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + dias)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Cabeçalho da renovação de um contrato: mesmos dados, vigência nova começando
+ * no dia seguinte ao fim da atual e com a mesma duração, status "Em Negociação"
+ * (o atual continua valendo até a renovação ser fechada) e sem PDF.
+ */
+export function cabecalhoRenovacao(c: ContratoHeader, novoId: string): ContratoHeader {
+  let inicio: string | null = null
+  let fim: string | null = null
+  if (c.vigenciaFim) {
+    inicio = somarDias(c.vigenciaFim, 1)
+    const duracao = c.vigenciaInicio
+      ? Math.round((new Date(`${c.vigenciaFim}T00:00:00`).getTime() - new Date(`${c.vigenciaInicio}T00:00:00`).getTime()) / 86_400_000)
+      : 364
+    fim = somarDias(inicio, duracao > 0 ? duracao : 364)
+  }
+  return { ...c, id: novoId, status: 'Em Negociação', vigenciaInicio: inicio, vigenciaFim: fim, pdfPath: null, pdfNome: null }
+}
+
+/**
+ * Cria a renovação: contrato novo + cópia dos produtos (preços atuais como ponto
+ * de partida). Os comodatos não são copiados — o equipamento é o mesmo e
+ * continua registrado no contrato de origem. Devolve o cabeçalho criado.
+ */
+export async function renovarContrato(c: ContratoHeader): Promise<ContratoHeader> {
+  const novo = cabecalhoRenovacao(c, crypto.randomUUID())
+  await salvarContrato(novo)
+  const produtos = await listarContratoProdutos(c.id)
+  if (produtos.length) {
+    await salvarProdutosContrato({
+      contratoId: novo.id,
+      produtosAtuais: produtos.map((p) => ({ ...p, id: crypto.randomUUID(), contratoId: novo.id })),
+      produtosOriginais: [],
+    })
+  }
+  return novo
 }

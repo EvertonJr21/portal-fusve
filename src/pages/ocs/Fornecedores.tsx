@@ -1,10 +1,11 @@
+import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { FornecedorForm } from '@/components/ocs/FornecedorForm'
-import { useConfirm } from '@/hooks/useConfirm'
+import { useDesfazer } from '@/hooks/useDesfazer'
 import { useExcluirFornecedor, useFornecedores } from '@/hooks/useFornecedores'
 import { useToast } from '@/hooks/useToast'
 import type { Fornecedor } from '@/types'
@@ -15,7 +16,7 @@ export default function Fornecedores() {
   const { data: forns = [], isLoading } = useFornecedores()
   const excluir = useExcluirFornecedor()
   const toast = useToast()
-  const confirmar = useConfirm()
+  const desfazer = useDesfazer()
 
   const [busca, setBusca] = useState('')
   const [pagina, setPagina] = useState(0)
@@ -33,10 +34,9 @@ export default function Fornecedores() {
   const paginados = filtrados.slice(inicio, inicio + PG)
 
   const handleExcluir = async (f: Fornecedor) => {
-    if (!(await confirmar({ message: `Excluir o fornecedor ${f.nome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(f.id)
-      toast.show(`Fornecedor ${f.nome} excluído`)
+      desfazer(`Fornecedor ${f.nome} excluído`, 'forns', f.id, ['forns'])
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao excluir fornecedor', 'error')
     }
@@ -101,7 +101,7 @@ export default function Fornecedores() {
                         onClick={() => setModal(f)}
                         className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                       >
-                        ✏
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"

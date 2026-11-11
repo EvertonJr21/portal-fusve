@@ -1,14 +1,19 @@
+import { Link2, Stethoscope, Pencil } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { HistoricoAlteracoes } from '@/components/ui/HistoricoAlteracoes'
 import { Button } from '@/components/ui/Button'
 import { FINAL_SIT, MOTIVOS_OCORRENCIA, SITUACOES_OC, type HospitalId } from '@/constants'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useContratos } from '@/hooks/useContratos'
 import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 import { useHistOC, useMarcarRespondida } from '@/hooks/useHistOC'
 import { useAtualizarOC } from '@/hooks/useOCs'
 import { useToast } from '@/hooks/useToast'
 import type { Fornecedor, HistOC, OC, SituacaoOC } from '@/types'
 import { diasEntre, fmt, fromInput, getHoje, parseDMY, toInput } from '@/utils/date'
+import { statusVigencia } from '@/utils/contrato'
+import { ligarContratosFornecedores } from '@/utils/kpis'
 import type { LinhaOC } from '@/utils/ocLista'
 import { BadgePrazo, BadgePrioridade } from './ocVisual'
 
@@ -50,6 +55,9 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
   const toast = useToast()
   const confirmar = useConfirm()
   const navigate = useNavigate()
+  // Contratos do fornecedor desta OC (item 92) — mesmo casamento CNPJ/nome do prazo contratual.
+  const { data: contratos = [] } = useContratos(hospitalId)
+  const contratosForn = forn ? (ligarContratosFornecedores(contratos, [forn]).porFornecedor.get(forn.id) ?? []) : []
 
   const [sit, setSit] = useState<string>(oc.sit)
   const [previsaoForn, setPrevisaoForn] = useState(toInput(oc.previsaoForn))
@@ -187,15 +195,15 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
             💬 WhatsApp
           </Button>
           <Button variant="ghost" onClick={() => onAcao('vincular', oc)}>
-            🔗 {oc.solicitacaoId ? 'Trocar solicitação' : 'Vincular solicitação'}
+            <Link2 className="h-3.5 w-3.5" /> {oc.solicitacaoId ? 'Trocar solicitação' : 'Vincular solicitação'}
           </Button>
           {sol && (
             <Button variant="ghost" onClick={() => navigate(`/pareceres?produto=${encodeURIComponent(sol.produto)}`)}>
-              🩺 Parecer
+              <Stethoscope className="h-3.5 w-3.5" /> Parecer
             </Button>
           )}
           <Button variant="ghost" onClick={() => onAcao('editar', oc)}>
-            ✏ Editar
+            <Pencil className="h-3.5 w-3.5" /> Editar
           </Button>
           <Button variant="ghost" className="text-status-red" onClick={() => onAcao('excluir', oc)}>
             Excluir
@@ -227,6 +235,33 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
               {linha.diasSemMov !== null ? `há ${linha.diasSemMov}d` : oc.ultimaMovimentacao || '—'}
             </Info>
             <Info rotulo="Contato do fornecedor">{[forn?.email, forn?.wpp].filter(Boolean).join(' · ') || '—'}</Info>
+            <Info rotulo="Contrato com o fornecedor">
+              {contratosForn.length === 0 ? (
+                <span className="text-slate-400">nenhum — compra avulsa</span>
+              ) : (
+                contratosForn.map((c) => {
+                  const venc = statusVigencia(c)
+                  return (
+                    <Link
+                      key={c.id}
+                      to={`/contratos?q=${encodeURIComponent(c.titulo || c.fornecedorNome)}`}
+                      className={`block hover:underline ${c.status === 'Ativo' && venc !== 'vencido' ? 'text-status-green' : 'text-status-amber'}`}
+                    >
+                      {c.titulo || 'Contrato'} · {c.status}
+                      {venc === 'vencido' ? ' (vencido)' : ''}
+                      {c.prazoMedioDias ? ` · prazo ${c.prazoMedioDias}d` : ''}
+                    </Link>
+                  )
+                })
+              )}
+            </Info>
+            {forn && (
+              <Info rotulo="Fornecedor">
+                <Link to={`/ocs/ranking/${forn.id}`} className="text-blue-700 hover:underline">
+                  Ver ficha e nota de entrega →
+                </Link>
+              </Info>
+            )}
             {oc.dataEntregaReal && (
               <Info rotulo="Entrega">
                 {oc.dataEntregaReal} ({ORIGEM[oc.dataEntregaOrigem ?? 'estimada']})
@@ -330,6 +365,10 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
                 ))}
               </ol>
             )}
+          </section>
+
+          <section className="mt-5">
+            <HistoricoAlteracoes tabela="ocs" registroId={oc.id} limite={15} />
           </section>
         </div>
       </aside>

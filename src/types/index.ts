@@ -141,6 +141,20 @@ export interface ContratoHeader {
   hospitalId: HospitalId | 'ambos'
   classificacao: string
   observacoes: string
+  /** PDF do contrato assinado no bucket `contratos-pdfs` (item 98). Gravado à parte, por `definirPdfContrato`. */
+  pdfPath?: string | null
+  pdfNome?: string | null
+}
+
+/** Uma alteração registrada pelo banco em OC/contrato (tabela `historico_alteracoes`, item 93). */
+export interface AlteracaoHistorico {
+  id: number
+  campo: string
+  de: string | null
+  para: string | null
+  userEmail: string
+  /** ISO. */
+  em: string
 }
 
 /** Equipamento deixado pelo fornecedor em comodato, vinculado ao contrato (item 83). */

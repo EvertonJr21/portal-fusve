@@ -8,8 +8,10 @@ import { HospitalProvider } from './components/HospitalProvider.tsx'
 import { ConfirmProvider } from './components/ui/ConfirmDialog.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { useAuth } from './hooks/useAuth.ts'
+import { aplicarTema } from './hooks/useTema.ts'
 import './index.css'
 import { queryClient } from './lib/queryClient.ts'
+import { registrarErro } from './repositories/erroRepository.ts'
 import DefinirSenha from './pages/DefinirSenha.tsx'
 import Login from './pages/Login.tsx'
 
@@ -38,6 +40,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>
 }
+
+aplicarTema()
+
+// Erros fora do React (promessa rejeitada, script) também vão pro registro.
+window.addEventListener('error', (e) => void registrarErro(e.message, e.error?.stack ?? `${e.filename}:${e.lineno}`))
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e.reason
+  void registrarErro(r?.message ? String(r.message) : String(r), r?.stack ?? '')
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

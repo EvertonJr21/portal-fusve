@@ -1,28 +1,33 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { BuscaGlobal } from '@/components/ocs/BuscaGlobal'
+import { lazy, Suspense } from 'react'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { ModuloGuard } from '@/components/ui/ModuloGuard'
+import { PaletaComandos } from '@/components/ui/PaletaComandos'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Sidebar, type NavGroup, type NavItem } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
-import Admin from '@/pages/Admin'
-import Exportar from '@/pages/ocs/Exportar'
-import FichaFornecedor from '@/pages/ocs/FichaFornecedor'
-import Fornecedores from '@/pages/ocs/Fornecedores'
-import Importar from '@/pages/ocs/Importar'
-import Metricas from '@/pages/ocs/Metricas'
-import OrdensDeCompra from '@/pages/ocs/OrdensDeCompra'
-import RankingFornecedores from '@/pages/ocs/RankingFornecedores'
-import Solicitacoes from '@/pages/ocs/Solicitacoes'
-import Modulos from '@/pages/Modulos'
-import Calendario from '@/pages/opmes/Calendario'
-import Gestao from '@/pages/opmes/Gestao'
-import Cadastrar from '@/pages/pareceres/Cadastrar'
-import Base from '@/pages/pareceres/Base'
-import Consultar from '@/pages/pareceres/Consultar'
-import DashboardPareceres from '@/pages/pareceres/Dashboard'
-import MarcasSugeridas from '@/pages/pareceres/MarcasSugeridas'
-import TabelaMestre from '@/pages/contratos/TabelaMestre'
+
+// Cada tela é baixada só quando é aberta (item 9 da revisão) — a abertura do portal fica mais leve.
+const Admin = lazy(() => import('@/pages/Admin'))
+const Exportar = lazy(() => import('@/pages/ocs/Exportar'))
+const FichaFornecedor = lazy(() => import('@/pages/ocs/FichaFornecedor'))
+const Fornecedores = lazy(() => import('@/pages/ocs/Fornecedores'))
+const Importar = lazy(() => import('@/pages/ocs/Importar'))
+const Metricas = lazy(() => import('@/pages/ocs/Metricas'))
+const OrdensDeCompra = lazy(() => import('@/pages/ocs/OrdensDeCompra'))
+const RankingFornecedores = lazy(() => import('@/pages/ocs/RankingFornecedores'))
+const Solicitacoes = lazy(() => import('@/pages/ocs/Solicitacoes'))
+const Modulos = lazy(() => import('@/pages/Modulos'))
+const Calendario = lazy(() => import('@/pages/opmes/Calendario'))
+const Gestao = lazy(() => import('@/pages/opmes/Gestao'))
+const Cadastrar = lazy(() => import('@/pages/pareceres/Cadastrar'))
+const Base = lazy(() => import('@/pages/pareceres/Base'))
+const Consultar = lazy(() => import('@/pages/pareceres/Consultar'))
+const DashboardPareceres = lazy(() => import('@/pages/pareceres/Dashboard'))
+const MarcasSugeridas = lazy(() => import('@/pages/pareceres/MarcasSugeridas'))
+const TabelaMestre = lazy(() => import('@/pages/contratos/TabelaMestre'))
 
 // Agrupado por seção funcional. Enxugado de 12 pra 7 itens no item 82: Central de
 // Pendências e Por Fornecedor viraram visões/agrupamento da própria tela de OCs,
@@ -59,12 +64,9 @@ const OCS_GROUPS: NavGroup[] = [
 function OCsLayout() {
   return (
     <ModuloGuard modulo="ocs">
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
         <Sidebar title="Controle de OCs" groups={OCS_GROUPS} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mb-4">
-            <BuscaGlobal />
-          </div>
+        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
           <PageTransition>
             <Outlet />
           </PageTransition>
@@ -86,9 +88,9 @@ function PareceresLayout() {
   return (
     <ModuloGuard modulo="pareceres">
       <HistoricoConsultasProvider>
-        <div className="flex flex-1">
+        <div className="flex min-w-0 flex-1 flex-col md:flex-row">
           <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
             <PageTransition>
               <Outlet />
             </PageTransition>
@@ -104,9 +106,9 @@ const CONTRATOS_ITEMS: NavItem[] = [{ to: '/contratos', label: 'Tabela Mestre', 
 function ContratosLayout() {
   return (
     <ModuloGuard modulo="contratos">
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
         <Sidebar title="Gestão de Contratos" items={CONTRATOS_ITEMS} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
           <PageTransition>
             <Outlet />
           </PageTransition>
@@ -124,9 +126,9 @@ const OPMES_ITEMS: NavItem[] = [
 function OpmesLayout() {
   return (
     <ModuloGuard modulo="opmes">
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
         <Sidebar title="Controle de OPME" items={OPMES_ITEMS} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
           <PageTransition>
             <Outlet />
           </PageTransition>
@@ -137,10 +139,14 @@ function OpmesLayout() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
   return (
     <div className="flex min-h-svh flex-col">
       <Topbar />
-      <div className="flex flex-1">
+      <PaletaComandos />
+      <div className="flex min-w-0 flex-1">
+        <ErrorBoundary chave={pathname}>
+        <Suspense fallback={<div className="flex-1 p-6"><SkeletonRows /></div>}>
         <Routes>
           <Route
             path="/"
@@ -199,6 +205,8 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   )

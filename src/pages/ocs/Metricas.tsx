@@ -1,3 +1,4 @@
+import { BarChart3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -198,7 +199,7 @@ export default function Metricas() {
       <div>
         <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Por fornecedor — pior OTIF primeiro</h3>
         {fornecedores.length === 0 ? (
-          <EmptyState icon="📊" title="Nenhuma OC no período." />
+          <EmptyState icon={<BarChart3 className="h-8 w-8" strokeWidth={1.5} />} title="Nenhuma OC no período." />
         ) : (
           <Table>
             <TableHead>

@@ -84,6 +84,77 @@
   }
 }
 
+/* Tema escuro (item 13 da revisão): em vez de uma variante `dark:` em cada classe
+   do app, inverte a escala de cinzas e escurece os fundos de status. Tudo que usa
+   `bg-white`/`slate-*`/`status-*` acompanha sozinho. */
+:root.dark {
+  color-scheme: dark;
+  --color-white: #131c2e;
+  --color-slate-50: #0b1220;
+  --color-slate-100: #1a2437;
+  --color-slate-200: #263247;
+  --color-slate-300: #36445c;
+  --color-slate-400: #7c8aa0;
+  --color-slate-500: #9aa7ba;
+  --color-slate-600: #b9c3d2;
+  --color-slate-700: #d3dae5;
+  --color-slate-800: #e6eaf1;
+  --color-slate-900: #f3f5f9;
+  --color-slate-950: #ffffff;
+  --color-blue-50: #16264a;
+  --color-blue-100: #1c3160;
+  --color-blue-700: #8fb4ff;
+  --color-blue-800: #a9c5ff;
+  --color-violet-50: #251d47;
+  --color-violet-700: #c0aaff;
+  --color-status-red: #ff8a7a;
+  --color-status-red-bg: #3a1614;
+  --color-status-amber: #f5b65a;
+  --color-status-amber-bg: #33240c;
+  --color-status-green: #6fd493;
+  --color-status-green-bg: #10291a;
+  --color-status-gray: #a8b3c4;
+  --color-status-gray-bg: #1a2437;
+  --color-status-blue: #8fb4ff;
+  --color-status-blue-bg: #16264a;
+  --color-status-purple: #c0aaff;
+  --color-status-purple-bg: #251d47;
+  --shadow-soft-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-soft-md: 0 4px 10px -2px rgba(0, 0, 0, 0.5);
+  --shadow-soft-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.6);
+}
+/* Blocos que já são escuros no tema claro (log de importação, toast) continuam
+   escuros: dentro deles a escala de cinzas volta ao valor original. */
+:root.dark .bg-slate-900,
+:root.dark .bg-slate-800 {
+  --color-white: #ffffff;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-status-green: #4ade80;
+  --color-status-blue: #60a5fa;
+}
+/* Botões primários: fundo azul forte com texto branco (a variável blue-700 virou tom claro, pra texto). */
+:root.dark .bg-blue-700 {
+  background-color: #1d4ed8;
+}
+:root.dark .bg-blue-700:hover,
+:root.dark .hover\:bg-blue-800:hover {
+  background-color: #2563eb;
+}
+/* Texto branco sobre botão/selo colorido continua branco (a variável --color-white virou o fundo escuro). */
+:root.dark .text-white {
+  color: #fff;
+}
+:root.dark ::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105 / 0.8);
+  background-clip: padding-box;
+}
+
 body {
   @apply bg-slate-50 text-slate-900;
   font-feature-settings: 'cv11', 'ss01';
@@ -96,10 +167,13 @@ body {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-blue-500, #3b82f6);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* Em @layer base para que `outline-none` de um componente (ex.: campo da busca Ctrl+K) possa desligar. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-blue-500, #3b82f6);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* Scrollbar mais fina e discreta (Chromium/Edge — o que o SoulMV/Windows do setor usa). */

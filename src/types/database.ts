@@ -169,6 +169,8 @@ export type Database = {
           observacoes: string | null
           origem_embarque: string | null
           owner_id: string | null
+          pdf_nome: string | null
+          pdf_path: string | null
           prazo_medio_dias: number | null
           reajuste_regra: string | null
           renovacao_automatica: boolean | null
@@ -199,6 +201,8 @@ export type Database = {
           observacoes?: string | null
           origem_embarque?: string | null
           owner_id?: string | null
+          pdf_nome?: string | null
+          pdf_path?: string | null
           prazo_medio_dias?: number | null
           reajuste_regra?: string | null
           renovacao_automatica?: boolean | null
@@ -229,6 +233,8 @@ export type Database = {
           observacoes?: string | null
           origem_embarque?: string | null
           owner_id?: string | null
+          pdf_nome?: string | null
+          pdf_path?: string | null
           prazo_medio_dias?: number | null
           reajuste_regra?: string | null
           renovacao_automatica?: boolean | null
@@ -239,6 +245,39 @@ export type Database = {
           updated_at?: string | null
           vigencia_fim?: string | null
           vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
+      erros_app: {
+        Row: {
+          created_at: string
+          detalhe: string
+          id: string
+          mensagem: string
+          navegador: string
+          url: string
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detalhe?: string
+          id?: string
+          mensagem: string
+          navegador?: string
+          url?: string
+          user_email?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detalhe?: string
+          id?: string
+          mensagem?: string
+          navegador?: string
+          url?: string
+          user_email?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -272,6 +311,42 @@ export type Database = {
           nome?: string
           updated_at?: string | null
           wpp?: string | null
+        }
+        Relationships: []
+      }
+      historico_alteracoes: {
+        Row: {
+          campo: string
+          created_at: string
+          de: string | null
+          id: number
+          para: string | null
+          registro_id: string
+          tabela: string
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          campo: string
+          created_at?: string
+          de?: string | null
+          id?: number
+          para?: string | null
+          registro_id: string
+          tabela: string
+          user_email?: string
+          user_id?: string | null
+        }
+        Update: {
+          campo?: string
+          created_at?: string
+          de?: string | null
+          id?: number
+          para?: string | null
+          registro_id?: string
+          tabela?: string
+          user_email?: string
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -1,3 +1,4 @@
+import { BarChart3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ClasseBadge } from '@/components/ocs/desempenho'
@@ -96,7 +97,7 @@ export default function RankingFornecedores() {
       {isLoading ? (
         <SkeletonRows colunas={6} />
       ) : filtrados.length === 0 ? (
-        <EmptyState icon="📊" title="Nenhum fornecedor nesse filtro." />
+        <EmptyState icon={<BarChart3 className="h-8 w-8" strokeWidth={1.5} />} title="Nenhum fornecedor nesse filtro." />
       ) : (
         <Table>
           <TableHead>

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { CopyPlus, FileText, Pencil, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
@@ -9,12 +10,16 @@ import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
-import { useConfirm } from '@/hooks/useConfirm'
-import { useComodatosPorContrato, useContratos, useExcluirContrato } from '@/hooks/useContratos'
+import { useDesfazer } from '@/hooks/useDesfazer'
+import { useAbrirPdfContrato, useComodatosPorContrato, useContratos, useExcluirContrato, useRenovarContrato } from '@/hooks/useContratos'
+import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useHospital } from '@/hooks/useHospital'
 import { useToast } from '@/hooks/useToast'
 import type { ContratoHeader } from '@/types'
+import { ClasseBadge } from '@/components/ocs/desempenho'
+import { useConfirm } from '@/hooks/useConfirm'
 import { statusVigencia } from '@/utils/contrato'
+import { desempenhoPorFornecedor, ligarContratosFornecedores, type DesempenhoFornecedor } from '@/utils/kpis'
 
 const PG = 15
 type VigenciaFiltro = '' | 'vencendo' | 'vencido'
@@ -26,13 +31,31 @@ export default function TabelaMestre() {
   const { data: comodatos } = useComodatosPorContrato(contratos.map((c) => c.id))
   const excluir = useExcluirContrato(hospitalId)
   const toast = useToast()
+  const desfazer = useDesfazer()
   const confirmar = useConfirm()
+  const renovar = useRenovarContrato(hospitalId)
+  const abrirPdf = useAbrirPdfContrato()
+  // Nota de entrega do fornecedor de cada contrato (item 92) — mesma do Desempenho de Entrega.
+  const { avaliacoes, forns } = useAvaliacoesEntrega()
+  const desempenhoDoContrato = useMemo(() => {
+    const { fornecedorDoContrato } = ligarContratosFornecedores(contratos, forns)
+    const porForn = new Map(desempenhoPorFornecedor(avaliacoes, forns).map((d) => [d.fornecedorId, d]))
+    const m = new Map<string, { fornId: number; d: DesempenhoFornecedor | null }>()
+    for (const [contratoId, fornId] of fornecedorDoContrato) m.set(contratoId, { fornId, d: porForn.get(fornId) ?? null })
+    return m
+  }, [contratos, forns, avaliacoes])
 
+  // `?vigencia=vencendo|vencido` (resumo do dia / sino) e `?q=` (busca global).
+  const [params] = useSearchParams()
   const [status, setStatus] = useState('')
   const [tipo, setTipo] = useState('')
   const [busca, setBusca] = useState('')
-  // `?vigencia=vencendo|vencido` — vindo do resumo do dia / sino.
-  const [params] = useSearchParams()
+  const qUrl = params.get('q')
+  const [qAplicada, setQAplicada] = useState<string | null>(null)
+  if (qUrl !== qAplicada) {
+    setQAplicada(qUrl)
+    if (qUrl) setBusca(qUrl)
+  }
   const vigenciaUrl = params.get('vigencia')
   const [vigenciaFiltro, setVigenciaFiltro] = useState<VigenciaFiltro>(
     vigenciaUrl === 'vencendo' || vigenciaUrl === 'vencido' ? vigenciaUrl : '',
@@ -76,18 +99,63 @@ export default function TabelaMestre() {
   const vencidos = contratos.filter((c) => statusVigencia(c) === 'vencido').length
 
   const handleExcluir = async (c: ContratoHeader) => {
-    if (!(await confirmar({ message: `Excluir o contrato ${c.titulo ? `"${c.titulo}" ` : ''}com ${c.fornecedorNome}?`, tone: 'danger', confirmLabel: 'Excluir' }))) return
     try {
       await excluir.mutateAsync(c.id)
-      toast.show('Contrato excluído')
+      desfazer(c.titulo ? `Contrato "${c.titulo}" excluído` : 'Contrato excluído', 'contratos', c.id, ['contratos', hospitalId])
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao excluir contrato', 'error')
     }
   }
 
+  const handleRenovar = async (c: ContratoHeader) => {
+    if (
+      !(await confirmar({
+        message: `Criar a renovação de ${c.titulo ? `"${c.titulo}"` : c.fornecedorNome}? Um contrato novo "Em Negociação" é criado com os mesmos produtos e a vigência seguinte; o atual continua como está.`,
+        confirmLabel: 'Criar renovação',
+      }))
+    )
+      return
+    try {
+      const novo = await renovar.mutateAsync(c)
+      toast.show('Renovação criada — ajuste vigência e preços')
+      setModal(novo)
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao criar a renovação', 'error')
+    }
+  }
+
+  const nota = (c: ContratoHeader) => {
+    const x = desempenhoDoContrato.get(c.id)
+    if (!x?.d) return null
+    return (
+      <span className="inline-flex items-center gap-1" title={`Entregas do fornecedor: ${x.d.resumo.avaliadas} OC(s) avaliadas`}>
+        <ClasseBadge classe={x.d.classe} avaliadas={x.d.resumo.avaliadas} />
+      </span>
+    )
+  }
+
+  const acoes = (c: ContratoHeader) => (
+    <div className="flex gap-1">
+      {c.pdfPath && (
+        <IconButton title={`Abrir PDF do contrato${c.pdfNome ? ` (${c.pdfNome})` : ''}`} onClick={() => abrirPdf.mutate(c.pdfPath as string)}>
+          <FileText className="h-3.5 w-3.5" />
+        </IconButton>
+      )}
+      <IconButton title="Editar" onClick={() => setModal(c)}>
+        <Pencil className="h-3.5 w-3.5" />
+      </IconButton>
+      <IconButton title="Renovar (cria uma cópia com nova vigência)" onClick={() => handleRenovar(c)}>
+        <CopyPlus className="h-3.5 w-3.5" />
+      </IconButton>
+      <IconButton title="Excluir" tone="danger" onClick={() => handleExcluir(c)}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </IconButton>
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">Contratos</h2>
           <p className="text-sm text-slate-500">Contratos e acordos comerciais com fornecedores</p>
@@ -152,7 +220,7 @@ export default function TabelaMestre() {
         <input
           type="text"
           placeholder="Buscar por título, fornecedor ou CNPJ..."
-          className="min-w-64 flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          className="min-w-0 flex-1 basis-48 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
@@ -161,6 +229,30 @@ export default function TabelaMestre() {
       {isLoading ? (
         <SkeletonRows colunas={6} />
       ) : (
+        <>
+        <ul className="flex flex-col gap-2 md:hidden">
+          {filtrados.length === 0 && <li className="py-8 text-center text-sm text-slate-500">Nenhum contrato encontrado.</li>}
+          {paginados.map((c) => (
+            <li key={c.id} className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-soft-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-800">{c.titulo || c.fornecedorNome}</div>
+                  {c.titulo && <div className="truncate text-xs text-slate-600">{c.fornecedorNome}</div>}
+                  <div className="text-[11px] text-slate-400">
+                    {c.tipo} · {c.hospitalId === 'ambos' ? 'Ambos' : HOSPITAIS[c.hospitalId].sigla}
+                  </div>
+                </div>
+                {nota(c)}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusContratoBadge status={c.status} />
+                <VigenciaBadge contrato={c} />
+              </div>
+              <div className="mt-2">{acoes(c)}</div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden md:block">
         <Table>
           <TableHead>
             <tr>
@@ -169,14 +261,14 @@ export default function TabelaMestre() {
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Hospital</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Vigência</th>
+              <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500" title="Nota de entrega do fornecedor nas OCs do hospital ativo">Entrega</th>
               <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Ações</th>
             </tr>
           </TableHead>
           <tbody>
             {filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-12 text-center animate-fade-in">
-                  <span className="mb-1 block text-2xl opacity-60">📑</span>
+                <td colSpan={7} className="px-3 py-12 text-center animate-fade-in">
                   <span className="text-sm font-medium text-slate-500">Nenhum contrato encontrado.</span>
                 </td>
               </tr>
@@ -203,16 +295,14 @@ export default function TabelaMestre() {
                 <td className="px-3 py-2 text-xs">{c.hospitalId === 'ambos' ? 'Ambos' : HOSPITAIS[c.hospitalId].sigla}</td>
                 <td className="px-3 py-2"><StatusContratoBadge status={c.status} /></td>
                 <td className="px-3 py-2"><VigenciaBadge contrato={c} /></td>
-                <td className="px-3 py-2 text-xs">
-                  <div className="flex gap-1">
-                    <IconButton title="Editar" onClick={() => setModal(c)}>✏</IconButton>
-                    <IconButton title="Excluir" tone="danger" onClick={() => handleExcluir(c)}>✕</IconButton>
-                  </div>
-                </td>
+                <td className="px-3 py-2">{nota(c) ?? <span className="text-xs text-slate-300">—</span>}</td>
+                <td className="px-3 py-2 text-xs">{acoes(c)}</td>
               </tr>
             ))}
           </tbody>
         </Table>
+        </div>
+        </>
       )}
 
       {!isLoading && filtrados.length > 0 && (

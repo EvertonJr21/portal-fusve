@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ResumoDoDia } from '@/components/inicio/ResumoDoDia'
+import { ICONE_MODULO } from '@/components/ui/iconesModulo'
 import type { ModuloChave } from '@/constants'
 import { useMeuPerfil, useMinhasPermissoes } from '@/hooks/usePermissoes'
 
@@ -9,7 +10,6 @@ const MODULOS = [
     chave: 'ocs' as ModuloChave,
     titulo: 'Controle de OCs',
     descricao: 'Ordens de Compra, pendências, cobrança e fornecedores.',
-    icone: '📋',
     tone: 'blue',
   },
   {
@@ -17,7 +17,6 @@ const MODULOS = [
     chave: 'pareceres' as ModuloChave,
     titulo: 'Parecer Técnico',
     descricao: 'Marcas aprovadas, restritas e proibidas por produto.',
-    icone: '🩺',
     tone: 'purple',
   },
   {
@@ -25,7 +24,6 @@ const MODULOS = [
     chave: 'contratos' as ModuloChave,
     titulo: 'Gestão de Contratos',
     descricao: 'Fornecedores, produtos, vigência e renovação.',
-    icone: '📑',
     tone: 'green',
   },
   {
@@ -33,7 +31,6 @@ const MODULOS = [
     chave: 'opmes' as ModuloChave,
     titulo: 'Controle de OPME',
     descricao: 'Calendário de cirurgias, fornecedor e status de entrega.',
-    icone: '🗓️',
     tone: 'amber',
   },
 ] as const
@@ -94,6 +91,7 @@ export default function Modulos() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {modulosVisiveis.map((m, i) => {
           const t = TONE_CLASS[m.tone]
+          const Icone = ICONE_MODULO[m.chave]
           return (
             <Link
               key={m.to}
@@ -101,8 +99,8 @@ export default function Modulos() {
               style={{ animationDelay: `${i * 60}ms` }}
               className={`group relative flex animate-slide-up flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 opacity-0 shadow-soft-sm ring-1 ring-transparent transition-all duration-300 ease-out [animation-fill-mode:forwards] hover:-translate-y-1 ${t.glow} ${t.ring}`}
             >
-              <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${t.iconBg}`}>
-                {m.icone}
+              <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${t.iconBg}`}>
+                <Icone className="h-6 w-6" strokeWidth={1.75} />
               </span>
               <div className="flex flex-col gap-1">
                 <span className="text-base font-semibold text-slate-800">{m.titulo}</span>

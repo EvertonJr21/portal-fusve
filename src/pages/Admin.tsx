@@ -21,6 +21,8 @@ import type { Perfil } from '@/repositories/permissaoRepository'
 import { useToast } from '@/hooks/useToast'
 import { fmt } from '@/utils/date'
 import { useGuardaSaida } from '@/hooks/useGuardaSaida'
+import { useErrosApp } from '@/hooks/useHistorico'
+import { dataHora } from '@/utils/historico'
 
 function ModalReatribuir({ usuario, outros, onClose }: { usuario: Perfil; outros: Perfil[]; onClose: () => void }) {
   const toast = useToast()
@@ -409,6 +411,47 @@ export default function Admin() {
       </div>
 
       <TabelaUsuarios />
+      <ErrosRegistrados />
     </div>
+  )
+}
+
+/** Erros de tela registrados automaticamente (item 95) — os 50 mais recentes. */
+function ErrosRegistrados() {
+  const { data: erros, error, isLoading } = useErrosApp(true)
+  const [aberto, setAberto] = useState<string | null>(null)
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-800">Erros registrados</h2>
+        <p className="text-xs text-slate-500">
+          Quando uma tela quebra para alguém, o erro aparece aqui automaticamente — sem depender de print.
+        </p>
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-slate-400">Carregando…</p>
+      ) : error ? (
+        <p className="text-xs text-slate-400">Registro de erros indisponível — rode a migration 202611110001 no Supabase.</p>
+      ) : !erros?.length ? (
+        <p className="rounded-lg border border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">Nenhum erro registrado.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {erros.map((e) => (
+            <li key={e.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+              <button type="button" className="w-full text-left" onClick={() => setAberto(aberto === e.id ? null : e.id)}>
+                <div className="font-medium text-status-red">{e.mensagem}</div>
+                <div className="text-[11px] text-slate-400">
+                  {dataHora(e.criadoEm)} · {e.userEmail || 'sem usuário'} · {e.url}
+                </div>
+              </button>
+              {aberto === e.id && e.detalhe && (
+                <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-[10px] text-slate-600">{e.detalhe}</pre>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }

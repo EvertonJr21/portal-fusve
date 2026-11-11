@@ -64,7 +64,8 @@ function normalizarNome(s: string): string {
  * casamento é por CNPJ (o mais confiável) e, sem CNPJ, pelo nome idêntico.
  * Com mais de um contrato ativo pro mesmo fornecedor, vale o menor prazo.
  */
-export function prazosContratuais(contratos: ContratoHeader[], forns: Fornecedor[]): Map<number, number> {
+/** Índice pra casar contrato ↔ fornecedor do SoulMV: por CNPJ e, sem CNPJ, pelo nome idêntico. */
+function indiceFornecedores(forns: Fornecedor[]) {
   const porCnpj = new Map<string, number>()
   const porNome = new Map<string, number>()
   for (const f of forns) {
@@ -72,15 +73,39 @@ export function prazosContratuais(contratos: ContratoHeader[], forns: Fornecedor
     if (cnpj.length === 14) porCnpj.set(cnpj, f.id)
     porNome.set(normalizarNome(f.nome), f.id)
   }
+  return (c: Pick<ContratoHeader, 'fornecedorCnpj' | 'fornecedorNome'>): number | undefined =>
+    porCnpj.get(soDigitos(c.fornecedorCnpj)) ?? porNome.get(normalizarNome(c.fornecedorNome))
+}
+
+export function prazosContratuais(contratos: ContratoHeader[], forns: Fornecedor[]): Map<number, number> {
+  const idDe = indiceFornecedores(forns)
   const prazos = new Map<number, number>()
   for (const c of contratos) {
     if (c.status !== 'Ativo' || !c.prazoMedioDias || c.prazoMedioDias <= 0) continue
-    const id = porCnpj.get(soDigitos(c.fornecedorCnpj)) ?? porNome.get(normalizarNome(c.fornecedorNome))
+    const id = idDe(c)
     if (id === undefined) continue
     const atual = prazos.get(id)
     prazos.set(id, atual === undefined ? c.prazoMedioDias : Math.min(atual, c.prazoMedioDias))
   }
   return prazos
+}
+
+/**
+ * Contratos de cada fornecedor (`forns.id` → contratos) e o caminho inverso
+ * (contrato → `forns.id`), pelo mesmo casamento de `prazosContratuais`. É o que
+ * liga os módulos OCs e Contratos (item 92).
+ */
+export function ligarContratosFornecedores(contratos: ContratoHeader[], forns: Fornecedor[]) {
+  const idDe = indiceFornecedores(forns)
+  const porFornecedor = new Map<number, ContratoHeader[]>()
+  const fornecedorDoContrato = new Map<string, number>()
+  for (const c of contratos) {
+    const id = idDe(c)
+    if (id === undefined) continue
+    fornecedorDoContrato.set(c.id, id)
+    porFornecedor.set(id, [...(porFornecedor.get(id) ?? []), c])
+  }
+  return { porFornecedor, fornecedorDoContrato }
 }
 
 export function avaliarOC(oc: OC, prazos: Map<number, number>, prazoPadrao: number, hoje: Date): AvaliacaoOC {

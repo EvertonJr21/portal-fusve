@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { DesempenhoDoFornecedor } from '@/components/contratos/DesempenhoDoFornecedor'
+import { HistoricoAlteracoes } from '@/components/ui/HistoricoAlteracoes'
 import { Modal } from '@/components/ui/Modal'
 import {
   AVISO_RENOVACAO_OPCOES,
@@ -13,7 +15,9 @@ import {
 import { ComodatosContratoEditor } from '@/components/contratos/ComodatosContratoEditor'
 import { ProdutosContratoEditor } from '@/components/contratos/ProdutosContratoEditor'
 import {
+  useAbrirPdfContrato,
   useContratoComodatos,
+  useDefinirPdfContrato,
   useContratoProdutos,
   useSalvarComodatosContrato,
   useSalvarContrato,
@@ -93,6 +97,10 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
   const salvarContrato = useSalvarContrato(header.hospitalId === 'ambos' ? hospitalIdPadrao : header.hospitalId)
   const salvarProdutos = useSalvarProdutosContrato()
   const salvarComodatos = useSalvarComodatosContrato()
+  const definirPdf = useDefinirPdfContrato(header.hospitalId === 'ambos' ? hospitalIdPadrao : header.hospitalId)
+  const abrirPdf = useAbrirPdfContrato()
+  const [pdfNovo, setPdfNovo] = useState<File | null>(null)
+  const [pdfRemover, setPdfRemover] = useState(false)
   const toast = useToast()
 
   const set = <K extends keyof ContratoHeader>(key: K, value: ContratoHeader[K]) =>
@@ -129,6 +137,16 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
       if (comodatosValidos.length || comodatosOriginais.length) {
         await salvarComodatos.mutateAsync({ contratoId: header.id, atuais: comodatosValidos, originais: comodatosOriginais })
       }
+      // PDF por último e à parte: se a migration do PDF ainda não rodou, o contrato já está salvo.
+      if (pdfNovo || pdfRemover) {
+        try {
+          await definirPdf.mutateAsync({ contratoId: header.id, file: pdfNovo })
+        } catch (err) {
+          toast.show(`Contrato salvo, mas o PDF não foi gravado: ${err instanceof Error ? err.message : 'erro'}`, 'warn')
+          onClose()
+          return
+        }
+      }
       toast.show(isNovo ? 'Contrato cadastrado!' : 'Contrato atualizado!')
       onClose()
     } catch (err) {
@@ -136,9 +154,11 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
     }
   }
 
-  const salvando = salvarContrato.isPending || salvarProdutos.isPending || salvarComodatos.isPending
+  const salvando = salvarContrato.isPending || salvarProdutos.isPending || salvarComodatos.isPending || definirPdf.isPending
   const alterado =
     JSON.stringify(header) !== headerInicial ||
+    !!pdfNovo ||
+    pdfRemover ||
     (produtosInicializados && JSON.stringify(produtos) !== JSON.stringify(produtosOriginais)) ||
     (comodatosInicializados && JSON.stringify(comodatos) !== JSON.stringify(comodatosOriginais))
 
@@ -340,6 +360,47 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
             <textarea className={`${inputClass} h-20`} value={header.observacoes} onChange={(e) => set('observacoes', e.target.value)} />
           </label>
         </section>
+
+        {/* Contrato assinado (PDF) — item 98 */}
+        <section>
+          <h4 className={sectionTitleClass}>Contrato assinado (PDF)</h4>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              {pdfNovo || (header.pdfPath && !pdfRemover) ? 'Trocar arquivo' : 'Anexar PDF'}
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="sr-only"
+                onChange={(e) => {
+                  setPdfNovo(e.target.files?.[0] ?? null)
+                  setPdfRemover(false)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {pdfNovo ? (
+              <span className="text-xs text-slate-600">{pdfNovo.name} — será enviado ao salvar</span>
+            ) : header.pdfPath && !pdfRemover ? (
+              <>
+                <button type="button" className="text-xs font-medium text-blue-700 hover:underline" onClick={() => abrirPdf.mutate(header.pdfPath as string)}>
+                  {header.pdfNome || 'Abrir PDF'}
+                </button>
+                <button type="button" className="text-xs text-status-red hover:underline" onClick={() => setPdfRemover(true)}>
+                  remover
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-slate-400">{pdfRemover ? 'O PDF será desvinculado ao salvar.' : 'Nenhum arquivo anexado.'}</span>
+            )}
+          </div>
+        </section>
+
+        {!isNovo && contrato && (
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <DesempenhoDoFornecedor contrato={contrato} />
+            <HistoricoAlteracoes tabela="contratos" registroId={contrato.id} limite={12} />
+          </section>
+        )}
       </form>
     </Modal>
   )
