@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useResumoDia } from '@/hooks/useResumoDia'
@@ -26,7 +27,12 @@ const TOM_PONTO: Record<TomAlerta, string> = {
  * não vistos (abrir o sino marca como vistos, neste navegador); um aviso volta a
  * contar quando a situação muda (ex.: "amanhã" vira "hoje").
  */
-export function Sino() {
+interface SinoProps {
+  /** `barra`: botão com rótulo na barra escura de módulos, menu abre ao lado. `topo`: ícone no topo (celular). */
+  variante?: 'barra' | 'topo'
+}
+
+export function Sino({ variante = 'topo' }: SinoProps) {
   const { alertas } = useResumoDia()
   const [aberto, setAberto] = useState(false)
   const [vistos, setVistos] = useState<string[]>(lerVistos)
@@ -71,20 +77,25 @@ export function Sino() {
         onClick={alternar}
         title={alertas.length ? `${alertas.length} aviso(s)` : 'Sem avisos'}
         aria-label={`Avisos${novos.length ? ` — ${novos.length} novo(s)` : ''}`}
-        className="relative flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        className={
+          variante === 'barra'
+            ? `relative flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10.5px] font-semibold transition-colors ${aberto ? 'bg-claro/15 text-claro' : 'text-claro/60 hover:bg-claro/10 hover:text-claro'}`
+            : 'relative flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+        }
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
-        </svg>
+        <Bell className="h-5 w-5" strokeWidth={1.8} />
+        {variante === 'barra' && 'Avisos'}
         {novos.length > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-red px-1 text-[10px] font-bold leading-none text-white">
+          <span
+            className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-status-red px-1 text-[10px] font-bold leading-none text-white ${variante === 'barra' ? 'right-3 top-1' : '-right-0.5 -top-0.5'}`}
+          >
             {novos.length > 9 ? '9+' : novos.length}
           </span>
         )}
       </button>
 
       {aberto && (
-        <div className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] animate-scale-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft-lg">
+        <div className={`absolute z-40 w-[min(22rem,calc(100vw-2rem))] animate-scale-in ${variante === 'barra' ? 'bottom-0 left-full ml-3' : 'right-0 mt-2'} overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft-lg`}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
             <span className="text-sm font-semibold text-slate-800">Avisos</span>
             <span className="text-[11px] text-slate-400">hospital ativo</span>
@@ -106,9 +117,6 @@ export function Sino() {
               ))}
             </ul>
           )}
-          <Link to="/" onClick={() => setAberto(false)} className="block border-t border-slate-100 px-4 py-2 text-center text-xs font-medium text-blue-700 hover:bg-slate-50">
-            Ver o resumo do dia
-          </Link>
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ import { iniciais } from './usuario'
 import { dataHora, descreverAlteracao } from './historico'
 import { ligarContratosFornecedores } from './kpis'
 import { construirSemana } from './opme'
-import { rotuloDia } from './resumoDia'
+import { contadoresModulos } from './resumoDia'
 
 // Dados fictícios — nenhum fornecedor/contrato real.
 function contrato(over: Partial<ContratoHeader> = {}): ContratoHeader {
@@ -84,11 +84,13 @@ describe('construirSemana', () => {
   })
 })
 
-describe('rotuloDia', () => {
-  it('hoje, amanhã e dia da semana com data', () => {
-    const quarta = new Date(2026, 10, 11)
-    expect(rotuloDia(0, quarta)).toBe('Hoje')
-    expect(rotuloDia(1, quarta)).toBe('Amanhã')
-    expect(rotuloDia(2, quarta)).toBe('sex · 13/11')
+describe('contadoresModulos', () => {
+  it('soma o que pede ação em cada módulo e zera sem permissão', () => {
+    const c = contadoresModulos(
+      { abertas: 5, precisaAcao: 3, criticas: 1, vencidas: 1, semPrevisao: 0, previsaoDescumprida: 0, aConfirmar: 0, entregas: [] },
+      { ativos: 4, vencidos: 1, em30: 2, em90: 1, lista: [] },
+      null,
+    )
+    expect(c).toEqual({ ocs: 3, contratos: 3, opmes: 0, pareceres: 0 })
   })
 })

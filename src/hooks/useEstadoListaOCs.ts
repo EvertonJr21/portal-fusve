@@ -48,7 +48,7 @@ function ler(): EstadoSalvo {
 /**
  * Estado da tela de OCs (item 82): visão, filtros, colunas, agrupamento e ordem
  * ficam salvos no navegador (preferência por usuário/máquina, mesmo padrão de
- * `fusve:sidebarColapsada`). Visão e busca também vão pro endereço (`?visao=`,
+ * `fusve:tema`). Visão e busca também vão pro endereço (`?visao=`,
  * `?q=`), pra o "voltar" do navegador e links da Busca Global funcionarem.
  */
 export function useEstadoListaOCs() {

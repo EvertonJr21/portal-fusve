@@ -9,7 +9,7 @@ import { usePermissaoModulo } from '@/hooks/usePermissoes'
 import type { HistOC } from '@/types'
 import { getHoje } from '@/utils/date'
 import { montarLinhas } from '@/utils/ocLista'
-import { montarAlertas, resumoContratos, resumoOCs, resumoOpmes } from '@/utils/resumoDia'
+import { contadoresModulos, montarAlertas, resumoContratos, resumoOCs, resumoOpmes } from '@/utils/resumoDia'
 
 /**
  * Resumo do dia do hospital ativo (tela inicial + sino do topo). Reaproveita as
@@ -47,12 +47,14 @@ export function useResumoDia() {
     [pOpmes.podeVer, opmesQ.data],
   )
   const alertas = useMemo(() => montarAlertas(ocs, contratos, opmes), [ocs, contratos, opmes])
+  const contadores = useMemo(() => contadoresModulos(ocs, contratos, opmes), [ocs, contratos, opmes])
 
   return {
     ocs,
     contratos,
     opmes,
     alertas,
+    contadores,
     forns: entrega.forns,
     carregando: pOcs.carregando || entrega.isLoading || contratosQ.isLoading || opmesQ.isLoading,
     erro: entrega.error ?? contratosQ.error ?? opmesQ.error,

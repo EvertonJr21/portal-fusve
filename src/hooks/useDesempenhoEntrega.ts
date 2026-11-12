@@ -18,7 +18,7 @@ function lerPrazo(): number {
   }
 }
 
-/** Prazo padrão de entrega (sem contrato) — preferência por navegador, mesmo padrão de `fusve:sidebarColapsada`. */
+/** Prazo padrão de entrega (sem contrato) — preferência por navegador, mesmo padrão de `fusve:tema`. */
 export function usePrazoPadraoEntrega() {
   const [prazo, setPrazoState] = useState<number>(lerPrazo)
   const setPrazo = useCallback((dias: number) => {

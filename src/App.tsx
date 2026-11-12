@@ -1,13 +1,14 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BarraModulos } from '@/components/layout/BarraModulos'
+import { ModuloLayout } from '@/components/layout/ModuloLayout'
+import { NAV_MODULOS } from '@/components/layout/navegacao'
+import { TopoPagina } from '@/components/layout/TopoPagina'
 import { HistoricoConsultasProvider } from '@/components/pareceres/HistoricoConsultasProvider'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { ModuloGuard } from '@/components/ui/ModuloGuard'
 import { PaletaComandos } from '@/components/ui/PaletaComandos'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { SkeletonRows } from '@/components/ui/Skeleton'
-import { Sidebar, type NavGroup, type NavItem } from '@/components/ui/Sidebar'
-import { Topbar } from '@/components/ui/Topbar'
 
 // Cada tela é baixada só quando é aberta (item 9 da revisão) — a abertura do portal fica mais leve.
 const Admin = lazy(() => import('@/pages/Admin'))
@@ -29,120 +30,37 @@ const DashboardPareceres = lazy(() => import('@/pages/pareceres/Dashboard'))
 const MarcasSugeridas = lazy(() => import('@/pages/pareceres/MarcasSugeridas'))
 const TabelaMestre = lazy(() => import('@/pages/contratos/TabelaMestre'))
 
-// Agrupado por seção funcional. Enxugado de 12 pra 7 itens no item 82: Central de
-// Pendências e Por Fornecedor viraram visões/agrupamento da própria tela de OCs,
-// Análise de Causas virou coluna/filtro de motivo, Ciclo interno e Dashboard
-// Executivo entraram em Desempenho de Entrega.
-const OCS_GROUPS: NavGroup[] = [
-  {
-    title: 'Operação',
-    items: [
-      { to: '/ocs/ordens', label: 'Ordens de Compra' },
-      { to: '/ocs/solicitacoes', label: 'Solicitações' },
-    ],
-  },
-  {
-    title: 'Fornecedores',
-    items: [
-      { to: '/ocs/ranking', label: 'Ranking de Fornecedores' },
-      { to: '/ocs/cadastro-fornecedores', label: 'Cadastro de Fornecedores' },
-    ],
-  },
-  {
-    title: 'Análise',
-    items: [{ to: '/ocs/metricas', label: 'Desempenho de Entrega' }],
-  },
-  {
-    title: 'Dados',
-    items: [
-      { to: '/ocs/importar', label: 'Importar' },
-      { to: '/ocs/exportar', label: 'Exportar' },
-    ],
-  },
-]
-
-function OCsLayout() {
-  return (
-    <ModuloGuard modulo="ocs">
-      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-        <Sidebar title="Controle de OCs" groups={OCS_GROUPS} />
-        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </main>
-      </div>
-    </ModuloGuard>
-  )
-}
-
-const PARECERES_ITEMS: NavItem[] = [
-  { to: '/pareceres', label: 'Consultar', end: true },
-  { to: '/pareceres/cadastrar', label: 'Cadastrar' },
-  { to: '/pareceres/base', label: 'Base de Pareceres' },
-  { to: '/pareceres/marcas-sugeridas', label: 'Marcas Sugeridas' },
-  { to: '/pareceres/dashboard', label: 'Dashboard' },
-]
+const [NAV_OCS, NAV_PARECERES, NAV_CONTRATOS, NAV_OPMES] = (['ocs', 'pareceres', 'contratos', 'opmes'] as const).map(
+  (chave) => NAV_MODULOS.find((m) => m.chave === chave)!,
+)
 
 function PareceresLayout() {
   return (
-    <ModuloGuard modulo="pareceres">
-      <HistoricoConsultasProvider>
-        <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-          <Sidebar title="Parecer Técnico" items={PARECERES_ITEMS} />
-          <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
-            <PageTransition>
-              <Outlet />
-            </PageTransition>
-          </main>
-        </div>
-      </HistoricoConsultasProvider>
-    </ModuloGuard>
+    <HistoricoConsultasProvider>
+      <ModuloLayout modulo={NAV_PARECERES} />
+    </HistoricoConsultasProvider>
   )
 }
 
-const CONTRATOS_ITEMS: NavItem[] = [{ to: '/contratos', label: 'Tabela Mestre', end: true }]
-
-function ContratosLayout() {
+/** Telas fora dos módulos (início, admin): só o topo + a página. */
+function TelaSolta({ titulo, children, topoNoComputador = true }: { titulo?: string; children: React.ReactNode; topoNoComputador?: boolean }) {
   return (
-    <ModuloGuard modulo="contratos">
-      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-        <Sidebar title="Gestão de Contratos" items={CONTRATOS_ITEMS} />
-        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </main>
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className={topoNoComputador ? '' : 'md:hidden'}>
+        <TopoPagina titulo={titulo} />
       </div>
-    </ModuloGuard>
-  )
-}
-
-const OPMES_ITEMS: NavItem[] = [
-  { to: '/opmes', label: 'Calendário', end: true },
-  { to: '/opmes/gestao', label: 'Gestão' },
-]
-
-function OpmesLayout() {
-  return (
-    <ModuloGuard modulo="opmes">
-      <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-        <Sidebar title="Controle de OPME" items={OPMES_ITEMS} />
-        <main className="min-w-0 flex-1 overflow-y-auto p-3 md:p-6">
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
-        </main>
-      </div>
-    </ModuloGuard>
+      <main className="min-w-0 flex-1 pb-20 md:pb-0">
+        <PageTransition>{children}</PageTransition>
+      </main>
+    </div>
   )
 }
 
 export default function App() {
   const { pathname } = useLocation()
   return (
-    <div className="flex min-h-svh flex-col">
-      <Topbar />
+    <div className="flex min-h-svh">
+      <BarraModulos />
       <PaletaComandos />
       <div className="flex min-w-0 flex-1">
         <ErrorBoundary chave={pathname}>
@@ -151,9 +69,9 @@ export default function App() {
           <Route
             path="/"
             element={
-              <PageTransition>
+              <TelaSolta topoNoComputador={false}>
                 <Modulos />
-              </PageTransition>
+              </TelaSolta>
             }
           />
 
@@ -162,13 +80,13 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <PageTransition>
+              <TelaSolta titulo="Administração">
                 <Admin />
-              </PageTransition>
+              </TelaSolta>
             }
           />
 
-          <Route path="/ocs" element={<OCsLayout />}>
+          <Route path="/ocs" element={<ModuloLayout modulo={NAV_OCS} />}>
             {/* Telas antigas (item 82) redirecionam pra onde o conteúdo foi parar. */}
             <Route index element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="executivo" element={<Navigate to="/ocs/metricas" replace />} />
@@ -193,11 +111,11 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPareceres />} />
           </Route>
 
-          <Route path="/contratos" element={<ContratosLayout />}>
+          <Route path="/contratos" element={<ModuloLayout modulo={NAV_CONTRATOS} />}>
             <Route index element={<TabelaMestre />} />
           </Route>
 
-          <Route path="/opmes" element={<OpmesLayout />}>
+          <Route path="/opmes" element={<ModuloLayout modulo={NAV_OPMES} />}>
             <Route index element={<Calendario />} />
             <Route path="gestao" element={<Gestao />} />
           </Route>

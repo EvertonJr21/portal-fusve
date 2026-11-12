@@ -23,7 +23,7 @@ function assinar(fn: () => void) {
   return () => ouvintes.delete(fn)
 }
 
-/** Tema claro/escuro — preferência por navegador (`fusve:tema`), mesmo padrão de `fusve:sidebarColapsada`. */
+/** Tema claro/escuro — preferência por navegador (`fusve:tema`). */
 export function useTema() {
   const tema = useSyncExternalStore(assinar, ler)
   const setTema = useCallback((t: Tema) => {

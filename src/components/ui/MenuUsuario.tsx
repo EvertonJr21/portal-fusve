@@ -7,7 +7,12 @@ import { useMeuPerfil } from '@/hooks/usePermissoes'
 import { useTema } from '@/hooks/useTema'
 
 /** Avatar com iniciais + menu (tema, admin, sair) — item 12 da revisão. */
-export function MenuUsuario() {
+interface MenuUsuarioProps {
+  /** `barra`: avatar na barra escura de módulos, menu abre ao lado. `topo`: avatar no topo (celular). */
+  variante?: 'barra' | 'topo'
+}
+
+export function MenuUsuario({ variante = 'topo' }: MenuUsuarioProps) {
   const { session, signOut } = useAuth()
   const { data: perfil } = useMeuPerfil()
   const { tema, alternar } = useTema()
@@ -39,12 +44,12 @@ export function MenuUsuario() {
         onClick={() => setAberto((v) => !v)}
         title={email}
         aria-label="Menu da conta"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-huv text-xs font-bold text-white hover:opacity-90"
+        className={`flex items-center justify-center rounded-full text-xs font-bold hover:opacity-90 ${variante === 'barra' ? 'h-9 w-9 bg-claro text-marinho' : 'h-8 w-8 bg-huv text-white'}`}
       >
         {iniciais(perfil?.nome || email || '?')}
       </button>
       {aberto && (
-        <div className="absolute right-0 z-30 mt-2 w-60 animate-scale-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft-lg">
+        <div className={`absolute z-40 w-60 animate-scale-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft-lg ${variante === 'barra' ? 'bottom-0 left-full ml-3' : 'right-0 mt-2'}`}>
           <div className="border-b border-slate-100 px-3 py-2.5">
             <div className="truncate text-sm font-semibold text-slate-800">{nome}</div>
             <div className="truncate text-xs text-slate-400">{email}</div>

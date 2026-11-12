@@ -3,6 +3,10 @@
 @theme {
   --color-huv: #1a4a80;
   --color-hmk: #196030;
+  /* Barra de módulos (item 101). */
+  --color-marinho: #0f2d52;
+  /* Branco que não vira escuro no tema escuro (texto da barra de módulos). */
+  --color-claro: #ffffff;
   --font-sans: 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 
@@ -125,6 +129,9 @@
 }
 /* Blocos que já são escuros no tema claro (log de importação, toast) continuam
    escuros: dentro deles a escala de cinzas volta ao valor original. */
+:root.dark .bg-marinho {
+  background-color: #0b1b31;
+}
 :root.dark .bg-slate-900,
 :root.dark .bg-slate-800 {
   --color-white: #ffffff;

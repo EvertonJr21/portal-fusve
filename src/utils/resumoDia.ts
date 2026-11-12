@@ -2,7 +2,6 @@ import type { ContratoHeader, Opme } from '@/types'
 import { diasParaVencer } from './contrato'
 import { diasEntre, fmt, fromInput, parseDMY } from './date'
 import type { LinhaOC } from './ocLista'
-import type { Prioridade } from './prioridade'
 
 /**
  * Resumo do dia — o que a tela inicial e o sino do topo mostram. Funções puras
@@ -20,27 +19,10 @@ export interface EntregaPrevista {
   dias: number
 }
 
-/** Dias à frente da agenda de entregas da tela inicial. */
-export const DIAS_ENTREGAS_PROXIMAS = 7
-
-/** OC crítica/alta pra lista "Prioridades" da tela inicial. */
-export interface OCPrioritaria {
-  ocId: number
-  fornecedor: string
-  prioridade: Prioridade
-  acao: string
-  /** Dias até a data prometida (negativo = vencida). */
-  diasPrazo: number | null
-}
-
 export interface ResumoOCs {
   abertas: number
   precisaAcao: number
   criticas: number
-  /** Críticas primeiro, depois as mais atrasadas/próximas do prazo. */
-  prioritarias: OCPrioritaria[]
-  /** Previsões de hoje até {@link DIAS_ENTREGAS_PROXIMAS} dias. */
-  proximasEntregas: EntregaPrevista[]
   vencidas: number
   semPrevisao: number
   previsaoDescumprida: number
@@ -49,10 +31,8 @@ export interface ResumoOCs {
   entregas: EntregaPrevista[]
 }
 
-const PESO_PRIORIDADE: Record<Prioridade, number> = { critica: 0, alta: 1, media: 2, normal: 3 }
-
 export function resumoOCs(linhas: LinhaOC[], hoje: Date): ResumoOCs {
-  const r: ResumoOCs = { abertas: 0, precisaAcao: 0, criticas: 0, prioritarias: [], proximasEntregas: [], vencidas: 0, semPrevisao: 0, previsaoDescumprida: 0, aConfirmar: 0, entregas: [] }
+  const r: ResumoOCs = { abertas: 0, precisaAcao: 0, criticas: 0, vencidas: 0, semPrevisao: 0, previsaoDescumprida: 0, aConfirmar: 0, entregas: [] }
   for (const l of linhas) {
     if (!l.aberta) {
       if ((l.oc.sit === 'Atendida' || l.oc.sit === 'Fechada') && !l.avaliacao.confirmada) r.aConfirmar++
@@ -62,7 +42,6 @@ export function resumoOCs(linhas: LinhaOC[], hoje: Date): ResumoOCs {
     if (l.prioridade === 'critica' || l.prioridade === 'alta') {
       r.precisaAcao++
       if (l.prioridade === 'critica') r.criticas++
-      r.prioritarias.push({ ocId: l.oc.id, fornecedor: l.oc.fornecedorNome, prioridade: l.prioridade, acao: l.acao, diasPrazo: l.diasPrazo })
     }
     if (l.statusPrazo === 'vencida') r.vencidas++
     if (!l.oc.previsaoForn) r.semPrevisao++
@@ -70,20 +49,10 @@ export function resumoOCs(linhas: LinhaOC[], hoje: Date): ResumoOCs {
     const prev = parseDMY(l.oc.previsaoForn)
     if (prev) {
       const dias = diasEntre(hoje, prev)
-      const e = { ocId: l.oc.id, fornecedor: l.oc.fornecedorNome, dias }
-      if (dias === 0 || dias === 1) r.entregas.push(e)
-      if (dias >= 0 && dias <= DIAS_ENTREGAS_PROXIMAS) r.proximasEntregas.push(e)
+      if (dias === 0 || dias === 1) r.entregas.push({ ocId: l.oc.id, fornecedor: l.oc.fornecedorNome, dias })
     }
   }
-  const porDia = (a: EntregaPrevista, b: EntregaPrevista) => a.dias - b.dias || a.ocId - b.ocId
-  r.entregas.sort(porDia)
-  r.proximasEntregas.sort(porDia)
-  r.prioritarias.sort(
-    (a, b) =>
-      PESO_PRIORIDADE[a.prioridade] - PESO_PRIORIDADE[b.prioridade] ||
-      (a.diasPrazo ?? Infinity) - (b.diasPrazo ?? Infinity) ||
-      a.ocId - b.ocId,
-  )
+  r.entregas.sort((a, b) => a.dias - b.dias || a.ocId - b.ocId)
   return r
 }
 
@@ -146,16 +115,6 @@ export function resumoOpmes(opmes: Opme[], hoje: Date): ResumoOpmes {
   r.proximos.sort((a, b) => a.dias - b.dias)
   r.atrasados.sort((a, b) => b.dias - a.dias)
   return r
-}
-
-const DIA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
-
-/** "Hoje", "Amanhã" ou "sex · 14/11". */
-export function rotuloDia(dias: number, hoje = new Date()): string {
-  if (dias === 0) return 'Hoje'
-  if (dias === 1) return 'Amanhã'
-  const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias)
-  return `${DIA_SEMANA[d.getDay()]} · ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 export type TomAlerta = 'red' | 'amber' | 'blue'
@@ -246,4 +205,17 @@ export function montarAlertas(ocs: ResumoOCs | null, contratos: ResumoContratos 
   }
   const ordem: Record<TomAlerta, number> = { red: 0, amber: 1, blue: 2 }
   return a.sort((x, y) => ordem[x.tom] - ordem[y.tom])
+}
+
+/**
+ * Número de pendências por módulo — o selo vermelho da barra de módulos e o
+ * contador ao lado da página no menu do módulo. 0 = sem selo.
+ */
+export function contadoresModulos(ocs: ResumoOCs | null, contratos: ResumoContratos | null, opmes: ResumoOpmes | null) {
+  return {
+    ocs: ocs?.precisaAcao ?? 0,
+    contratos: contratos ? contratos.vencidos + contratos.em30 : 0,
+    opmes: opmes ? opmes.proximos.length + opmes.atrasados.length : 0,
+    pareceres: 0,
+  }
 }
