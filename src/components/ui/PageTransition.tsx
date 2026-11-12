@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom'
 export function PageTransition({ children }: { children: ReactNode }) {
   const location = useLocation()
   return (
-    <div key={location.pathname} className="animate-fade-in">
+    <div key={location.pathname} className="min-w-0 flex-1 animate-fade-in">
       {children}
     </div>
   )
