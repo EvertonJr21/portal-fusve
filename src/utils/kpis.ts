@@ -26,6 +26,16 @@ import { addDias, diasEntre, parseDMY } from './date'
 
 export type StatusEntrega = 'no_prazo' | 'atrasada' | 'aberta_vencida' | 'aberta_no_prazo' | 'sem_data' | 'cancelada'
 
+/** Rótulo e cor de cada situação de entrega (ficha do fornecedor e página do contrato). */
+export const STATUS_ENTREGA_INFO: Record<StatusEntrega, { label: string; tone: 'success' | 'danger' | 'warning' | 'neutral' }> = {
+  no_prazo: { label: 'Entregue no prazo', tone: 'success' },
+  atrasada: { label: 'Entregue com atraso', tone: 'danger' },
+  aberta_vencida: { label: 'Aberta e vencida', tone: 'danger' },
+  aberta_no_prazo: { label: 'Aberta no prazo', tone: 'neutral' },
+  sem_data: { label: 'Concluída sem data', tone: 'warning' },
+  cancelada: { label: 'Cancelada', tone: 'neutral' },
+}
+
 export interface AvaliacaoOC {
   oc: OC
   status: StatusEntrega

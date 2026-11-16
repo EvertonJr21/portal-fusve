@@ -1,6 +1,6 @@
-import { CopyPlus, FileText, Pencil, Trash2 } from 'lucide-react'
+import { CopyPlus, Eye, FileText, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { Button } from '@/components/ui/Button'
@@ -26,6 +26,7 @@ type VigenciaFiltro = '' | 'vencendo' | 'vencido'
 
 export default function TabelaMestre() {
   const { hospitalId } = useHospital()
+  const navigate = useNavigate()
   const { data: contratos = [], isLoading, error } = useContratos(hospitalId)
   // Erro aqui (ex.: tabela de comodatos ainda não criada) só esconde o selo — não quebra a lista.
   const { data: comodatos } = useComodatosPorContrato(contratos.map((c) => c.id))
@@ -118,7 +119,7 @@ export default function TabelaMestre() {
     try {
       const novo = await renovar.mutateAsync(c)
       toast.show('Renovação criada — ajuste vigência e preços')
-      setModal(novo)
+      navigate(`/contratos/${novo.id}?editar=1`)
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao criar a renovação', 'error')
     }
@@ -135,7 +136,11 @@ export default function TabelaMestre() {
   }
 
   const acoes = (c: ContratoHeader) => (
-    <div className="flex gap-1">
+    // Cliques nas ações não abrem a página do contrato (a linha inteira abre).
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      <IconButton title="Explorar contrato" onClick={() => navigate(`/contratos/${c.id}`)}>
+        <Eye className="h-3.5 w-3.5" />
+      </IconButton>
       {c.pdfPath && (
         <IconButton title={`Abrir PDF do contrato${c.pdfNome ? ` (${c.pdfNome})` : ''}`} onClick={() => abrirPdf.mutate(c.pdfPath as string)}>
           <FileText className="h-3.5 w-3.5" />
@@ -236,7 +241,9 @@ export default function TabelaMestre() {
             <li key={c.id} className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-soft-sm">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-800">{c.titulo || c.fornecedorNome}</div>
+                  <Link to={`/contratos/${c.id}`} className="block truncate text-sm font-semibold text-slate-800 hover:text-blue-700">
+                    {c.titulo || c.fornecedorNome}
+                  </Link>
                   {c.titulo && <div className="truncate text-xs text-slate-600">{c.fornecedorNome}</div>}
                   <div className="text-[11px] text-slate-400">
                     {c.tipo} · {c.hospitalId === 'ambos' ? 'Ambos' : HOSPITAIS[c.hospitalId].sigla}
@@ -274,15 +281,19 @@ export default function TabelaMestre() {
               </tr>
             )}
             {paginados.map((c) => (
-              <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+              <tr key={c.id} onClick={() => navigate(`/contratos/${c.id}`)} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-3 py-2 text-xs">
                   {c.titulo ? (
                     <>
-                      <div className="font-semibold text-slate-800">{c.titulo}</div>
+                      <Link to={`/contratos/${c.id}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-slate-800 hover:text-blue-700 hover:underline">
+                        {c.titulo}
+                      </Link>
                       <div className="text-slate-600">{c.fornecedorNome}</div>
                     </>
                   ) : (
-                    <div className="font-medium text-slate-800">{c.fornecedorNome}</div>
+                    <Link to={`/contratos/${c.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-slate-800 hover:text-blue-700 hover:underline">
+                      {c.fornecedorNome}
+                    </Link>
                   )}
                   {c.fornecedorCnpj && <div className="text-[11px] text-slate-400">{c.fornecedorCnpj}</div>}
                   {!!comodatos?.get(c.id) && (

@@ -91,3 +91,35 @@ export function lerListaColada(texto: string): LinhaColada[] {
   }
   return saida
 }
+
+/** `YYYY-MM-DD` → Date local (meia-noite), ou null. */
+function dataIso(s: string | null): Date | null {
+  if (!s) return null
+  const d = new Date(`${s}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+export interface MarcosVigencia {
+  inicio: Date | null
+  fim: Date | null
+  /** Quando o aviso de renovação começa (fim − `avisoRenovacaoDias`). */
+  avisoEm: Date | null
+  /** 0–100 do tempo de vigência já decorrido; null sem início/fim. */
+  pctDecorrido: number | null
+  /** Duração total em dias; null sem início/fim. */
+  duracaoDias: number | null
+}
+
+/** Datas-chave do contrato pra página do contrato (item 102). */
+export function marcosVigencia(
+  c: Pick<ContratoHeader, 'vigenciaInicio' | 'vigenciaFim' | 'avisoRenovacaoDias'>,
+  hoje: Date,
+): MarcosVigencia {
+  const inicio = dataIso(c.vigenciaInicio)
+  const fim = dataIso(c.vigenciaFim)
+  const avisoEm = fim ? new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - c.avisoRenovacaoDias) : null
+  if (!inicio || !fim || fim <= inicio) return { inicio, fim, avisoEm, pctDecorrido: null, duracaoDias: null }
+  const duracaoDias = diasEntre(inicio, fim)
+  const pct = (diasEntre(inicio, hoje) / duracaoDias) * 100
+  return { inicio, fim, avisoEm, pctDecorrido: Math.min(100, Math.max(0, Math.round(pct))), duracaoDias }
+}

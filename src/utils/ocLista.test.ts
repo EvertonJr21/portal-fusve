@@ -113,14 +113,18 @@ describe('montarLinhas — prazo igual ao do Desempenho de Entrega', () => {
 })
 
 describe('visões', () => {
-  const ls = linhas([
-    oc({ id: 1, previsaoForn: null }), // aberta, sem previsão → alta
-    oc({ id: 2, dataSolic: '01/10/2026' }), // vencida → crítica
-    oc({ id: 3, sit: 'Parcialmente Atendida' }),
-    oc({ id: 4, sit: 'Atendida', dataEntregaReal: '05/11/2026', dataEntregaOrigem: 'estimada' }),
-    oc({ id: 5, sit: 'Atendida', dataEntregaReal: '05/11/2026', dataEntregaOrigem: 'mv' }),
-    oc({ id: 6 }), // aberta, normal
-  ])
+  // Monta dentro do beforeAll pra usar o relógio fixo (no nível do describe roda antes dele, com a data real).
+  let ls: ReturnType<typeof linhas> = []
+  beforeAll(() => {
+    ls = linhas([
+      oc({ id: 1, previsaoForn: null }), // aberta, sem previsão → alta
+      oc({ id: 2, dataSolic: '01/10/2026' }), // vencida → crítica
+      oc({ id: 3, sit: 'Parcialmente Atendida' }),
+      oc({ id: 4, sit: 'Atendida', dataEntregaReal: '05/11/2026', dataEntregaOrigem: 'estimada' }),
+      oc({ id: 5, sit: 'Atendida', dataEntregaReal: '05/11/2026', dataEntregaOrigem: 'mv' }),
+      oc({ id: 6 }), // aberta, normal
+    ])
+  })
   const ids = (v: Parameters<typeof naVisao>[1]) => ls.filter((l) => naVisao(l, v)).map((l) => l.oc.id)
 
   it('cada visão pega o conjunto certo', () => {

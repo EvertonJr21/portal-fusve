@@ -12,16 +12,7 @@ import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useHospital } from '@/hooks/useHospital'
 import { statusVigencia } from '@/utils/contrato'
 import { fmt } from '@/utils/date'
-import { confiabilidadePrevisao, desempenhoPorFornecedor, formatarDias, formatarPct, ligarContratosFornecedores, type StatusEntrega } from '@/utils/kpis'
-
-const STATUS: Record<StatusEntrega, { label: string; tone: 'success' | 'danger' | 'warning' | 'neutral' }> = {
-  no_prazo: { label: 'Entregue no prazo', tone: 'success' },
-  atrasada: { label: 'Entregue com atraso', tone: 'danger' },
-  aberta_vencida: { label: 'Aberta e vencida', tone: 'danger' },
-  aberta_no_prazo: { label: 'Aberta no prazo', tone: 'neutral' },
-  sem_data: { label: 'Concluída sem data', tone: 'warning' },
-  cancelada: { label: 'Cancelada', tone: 'neutral' },
-}
+import { confiabilidadePrevisao, desempenhoPorFornecedor, formatarDias, formatarPct, ligarContratosFornecedores, STATUS_ENTREGA_INFO as STATUS } from '@/utils/kpis'
 
 const ORIGEM = { mv: 'entrada MV', manual: 'manual', estimada: 'estimada' } as const
 

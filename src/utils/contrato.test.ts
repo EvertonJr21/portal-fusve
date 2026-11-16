@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarPrecoBR, lerListaColada, parsePrecoBR } from './contrato'
+import { formatarPrecoBR, lerListaColada, marcosVigencia, parsePrecoBR } from './contrato'
 
 describe('formatarPrecoBR', () => {
   it('formata com vírgula decimal e milhar', () => {
@@ -48,5 +48,24 @@ describe('lerListaColada', () => {
       { cod: '16874', preco: null },
       { cod: '100', preco: 1234.56 },
     ])
+  })
+})
+
+describe('marcosVigencia', () => {
+  const c = { vigenciaInicio: '2026-01-01', vigenciaFim: '2026-12-31', avisoRenovacaoDias: 90 }
+  it('calcula o aviso e o tempo decorrido', () => {
+    const m = marcosVigencia(c, new Date(2026, 6, 2))
+    expect(m.avisoEm?.toLocaleDateString('pt-BR')).toBe('02/10/2026')
+    expect(m.duracaoDias).toBe(364)
+    expect(m.pctDecorrido).toBe(50)
+  })
+  it('limita entre 0 e 100', () => {
+    expect(marcosVigencia(c, new Date(2025, 5, 1)).pctDecorrido).toBe(0)
+    expect(marcosVigencia(c, new Date(2027, 5, 1)).pctDecorrido).toBe(100)
+  })
+  it('sem início não calcula progresso', () => {
+    const m = marcosVigencia({ ...c, vigenciaInicio: null }, new Date(2026, 6, 2))
+    expect(m.pctDecorrido).toBeNull()
+    expect(m.fim).not.toBeNull()
   })
 })

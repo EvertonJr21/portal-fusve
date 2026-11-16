@@ -109,7 +109,7 @@ export const NAV_MODULOS: ModuloNav[] = [
     icone: FileSignature,
     cor: 'bg-status-green-bg text-status-green',
     porHospital: true,
-    grupos: [{ paginas: [{ to: '/contratos', rotulo: 'Tabela mestre', exato: true, contador: true }] }],
+    grupos: [{ paginas: [{ to: '/contratos', rotulo: 'Tabela mestre', contador: true }] }],
   },
   {
     chave: 'opmes',
