@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { SortableTh, Table, TableHead } from '@/components/ui/Table'
 import { SITUACOES_OC } from '@/constants'
 import type { ColunaOpcional } from '@/hooks/useEstadoListaOCs'
@@ -148,7 +149,15 @@ function BlocoTabela(
               <input type="checkbox" aria-label={`Selecionar OC ${o.id}`} checked={marcada} onChange={(e) => onSelecionar([o.id], e.target.checked)} />
             </td>
             <td className="px-3 py-2 text-xs">
-              <div className="font-mono font-semibold text-slate-800">{o.id}</div>
+              {/* Número abre a página da OC (dá pra abrir em outra aba); o resto da linha abre o painel rápido. */}
+              <Link
+                to={`/ocs/ordens/${o.id}`}
+                onClick={parar}
+                title="Abrir a página da OC"
+                className="font-mono font-semibold text-slate-800 hover:text-blue-700 hover:underline"
+              >
+                {o.id}
+              </Link>
               <div className="text-[11px] text-slate-400">{fmt(l.avaliacao.dataOC)}</div>
             </td>
             <td className="max-w-[16rem] px-3 py-2 text-xs">

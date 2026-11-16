@@ -125,7 +125,9 @@ export default function FichaFornecedor() {
                   <div key={a.oc.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-100 bg-white px-3 py-2 text-xs">
                     <span className="flex items-center gap-2">
                       <StatusDot tone={st.tone} label={st.label} />
-                      <span className="font-mono font-semibold">OC {a.oc.id}</span>
+                      <Link to={`/ocs/ordens/${a.oc.id}`} className="font-mono font-semibold hover:text-blue-700 hover:underline">
+                        OC {a.oc.id}
+                      </Link>
                       <span className="text-slate-500">{st.label}</span>
                       {a.inFull === false && a.dataEntrega && <span className="text-status-amber">· fracionada</span>}
                     </span>

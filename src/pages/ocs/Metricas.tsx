@@ -300,7 +300,9 @@ function EntregasAConfirmar({ grupos }: { grupos: GrupoAConfirmar[] }) {
                     <ul className="flex flex-col gap-0.5">
                       {g.avaliacoes.map((a) => (
                         <li key={a.oc.id}>
-                          <span className="font-mono">{a.oc.id}</span>
+                          <Link to={`/ocs/ordens/${a.oc.id}`} className="font-mono hover:text-blue-700 hover:underline">
+                            {a.oc.id}
+                          </Link>
                           <span className="text-slate-500"> · {a.oc.fornecedorNome} · </span>
                           {a.oc.dataEntregaReal ? (
                             <span className="text-status-amber">{a.oc.dataEntregaReal} (estimada)</span>

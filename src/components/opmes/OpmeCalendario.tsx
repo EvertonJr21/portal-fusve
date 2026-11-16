@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { GripVertical } from 'lucide-react'
 import type { Opme } from '@/types'
 import { construirGradeCalendario, construirSemana, STATUS_OPME_LABEL } from '@/utils/opme'
@@ -32,6 +33,8 @@ export function OpmeCalendario({ modo, referencia, opmesPorDia, nomeFornecedor, 
   const [arrastando, setArrastando] = useState<Opme | null>(null)
   const [alvo, setAlvo] = useState<string | null>(null)
   const semana = modo === 'semana'
+  // "+N mais" (como no Google Calendar): abre a lista completa do dia por cima da grade.
+  const [diaAberto, setDiaAberto] = useState<{ chave: string; data: Date; x: number; y: number } | null>(null)
 
   const soltar = (chave: string) => {
     if (arrastando && arrastando.dataCirurgia !== chave) onMover(arrastando, chave)
@@ -75,6 +78,7 @@ export function OpmeCalendario({ modo, referencia, opmesPorDia, nomeFornecedor, 
                 e.preventDefault()
                 soltar(c.chave)
               }}
+              data-dia
               className={`flex cursor-pointer flex-col items-stretch gap-1 border-b border-r border-slate-100 p-1 text-left transition-colors hover:bg-blue-50/50 md:p-1.5 ${
                 semana ? 'min-h-16 md:min-h-64' : 'min-h-14 md:min-h-28'
               } ${alvo === c.chave ? 'bg-blue-50 ring-2 ring-inset ring-blue-400' : ''}`}
@@ -145,13 +149,105 @@ export function OpmeCalendario({ modo, referencia, opmesPorDia, nomeFornecedor, 
                   </span>
                 ))}
                 {!semana && opmesDoDia.length > 3 && (
-                  <span className="px-1.5 text-[11px] text-slate-400">+{opmesDoDia.length - 3} mais</span>
+                  <button
+                    type="button"
+                    title={opmesDoDia
+                      .slice(3)
+                      .map((o) => `${o.paciente} — ${nomeFornecedor(o.fornecedorId)}`)
+                      .join('\n')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const r = (e.currentTarget.closest('[data-dia]') ?? e.currentTarget).getBoundingClientRect()
+                      setDiaAberto({ chave: c.chave, data: c.data as Date, x: r.left, y: r.top })
+                    }}
+                    className="self-start rounded px-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                  >
+                    +{opmesDoDia.length - 3} mais
+                  </button>
                 )}
               </div>
             </div>
           )
         })}
       </div>
+      {diaAberto && (
+        <ListaDoDia
+          {...diaAberto}
+          opmes={opmesPorDia.get(diaAberto.chave) ?? []}
+          nomeFornecedor={nomeFornecedor}
+          onAbrir={(o) => {
+            setDiaAberto(null)
+            onOpmeClick(o)
+          }}
+          onFechar={() => setDiaAberto(null)}
+        />
+      )}
     </div>
+  )
+}
+
+const DATA_DIA = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+
+interface ListaDoDiaProps {
+  data: Date
+  x: number
+  y: number
+  opmes: Opme[]
+  nomeFornecedor: (id: number | null) => string
+  onAbrir: (o: Opme) => void
+  onFechar: () => void
+}
+
+/** Lista de todas as cirurgias de um dia, aberta pelo "+N mais" — fica na tela (portal), sem ser cortada pela grade. */
+function ListaDoDia({ data, x, y, opmes, nomeFornecedor, onAbrir, onFechar }: ListaDoDiaProps) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onFechar()
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [onFechar])
+
+  const largura = 288
+  const left = Math.max(8, Math.min(x, window.innerWidth - largura - 8))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 360))
+  const titulo = DATA_DIA.format(data)
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-40" onClick={onFechar} aria-hidden />
+      <div
+        role="dialog"
+        aria-label={`Cirurgias de ${titulo}`}
+        style={{ left, top, width: largura }}
+        className="fixed z-50 flex max-h-[22rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft-lg animate-scale-in"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+          <span className="text-sm font-semibold text-slate-800">{titulo.charAt(0).toUpperCase() + titulo.slice(1)}</span>
+          <button type="button" onClick={onFechar} aria-label="Fechar" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            ✕
+          </button>
+        </div>
+        <ul className="flex flex-col overflow-y-auto p-1.5">
+          {opmes.map((o) => (
+            <li key={o.id}>
+              <button
+                type="button"
+                onClick={() => onAbrir(o)}
+                title={`${o.paciente} — ${nomeFornecedor(o.fornecedorId)}`}
+                className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-slate-100"
+              >
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${COR_STATUS[o.status]}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold text-slate-800">{o.paciente}</span>
+                  <span className="block truncate text-[11px] text-slate-500">
+                    {nomeFornecedor(o.fornecedorId)} · {STATUS_OPME_LABEL[o.status]}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>,
+    document.body,
   )
 }

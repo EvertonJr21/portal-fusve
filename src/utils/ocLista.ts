@@ -30,6 +30,9 @@ export type StatusPrazoLista = 'vencida' | 'urgente' | 'ok' | 'entregue' | 'canc
 /** Dias até vencer que já contam como "urgente" (mesmo limite do semáforo antigo). */
 export const DIAS_URGENTE = 3
 
+/** Rótulo da origem da data de entrega (`ocs.data_entrega_origem`). */
+export const ORIGEM_ENTREGA: Record<string, string> = { mv: 'entrada do MV', manual: 'digitada', estimada: 'estimada' }
+
 export interface LinhaOC {
   oc: OC
   avaliacao: AvaliacaoOC

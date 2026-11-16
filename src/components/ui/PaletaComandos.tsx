@@ -155,7 +155,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'Ordens de Compra',
           titulo: `OC ${o.id}`,
           detalhe: `${o.fornecedorNome} · ${o.sit}`,
-          executar: () => navigate(`/ocs/ordens?visao=todas&q=${o.id}`),
+          executar: () => navigate(`/ocs/ordens/${o.id}`),
         })),
     )
     juntar(

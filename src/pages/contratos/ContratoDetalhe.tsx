@@ -603,7 +603,7 @@ export default function ContratoDetalhe() {
                       return (
                         <tr key={a.oc.id} className="border-t border-slate-100">
                           <td className="px-3 py-2">
-                            <Link to={`/ocs/ordens?visao=todas&q=${a.oc.id}`} className="font-mono text-xs font-semibold text-blue-700 hover:underline">
+                            <Link to={`/ocs/ordens/${a.oc.id}`} className="font-mono text-xs font-semibold text-blue-700 hover:underline">
                               {a.oc.id}
                             </Link>
                           </td>

@@ -18,6 +18,7 @@ const Fornecedores = lazy(() => import('@/pages/ocs/Fornecedores'))
 const Importar = lazy(() => import('@/pages/ocs/Importar'))
 const Metricas = lazy(() => import('@/pages/ocs/Metricas'))
 const OrdensDeCompra = lazy(() => import('@/pages/ocs/OrdensDeCompra'))
+const OCDetalhe = lazy(() => import('@/pages/ocs/OCDetalhe'))
 const RankingFornecedores = lazy(() => import('@/pages/ocs/RankingFornecedores'))
 const Solicitacoes = lazy(() => import('@/pages/ocs/Solicitacoes'))
 const Modulos = lazy(() => import('@/pages/Modulos'))
@@ -93,6 +94,7 @@ export default function App() {
             <Route index element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="executivo" element={<Navigate to="/ocs/metricas" replace />} />
             <Route path="ordens" element={<OrdensDeCompra />} />
+            <Route path="ordens/:ocId" element={<OCDetalhe />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
             <Route path="fornecedores" element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="ranking" element={<RankingFornecedores />} />

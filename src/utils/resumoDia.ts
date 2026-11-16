@@ -140,7 +140,7 @@ export function montarAlertas(ocs: ResumoOCs | null, contratos: ResumoContratos 
         tom: e.dias === 0 ? 'amber' : 'blue',
         titulo: `OC ${e.ocId} — entrega ${quando(e.dias)}`,
         detalhe: e.dias === 0 ? `${e.fornecedor} · conferir recebimento` : `${e.fornecedor} · confirmar com o fornecedor`,
-        to: `/ocs/ordens?visao=acao&q=${e.ocId}`,
+        to: `/ocs/ordens/${e.ocId}`,
       })
     }
     if (ocs.vencidas) {
