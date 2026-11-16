@@ -298,8 +298,8 @@ export default function OpmeDetalhe() {
                   </p>
                 )}
                 {forn.email && <p className="text-[11px] text-slate-400">No e-mail, a mensagem já vai copiada — é só colar.</p>}
-                <Link to={`/ocs/ranking/${forn.id}`} className="text-xs font-medium text-blue-700 hover:underline">
-                  Ver ficha do fornecedor →
+                <Link to={`/ocs/fornecedores/${forn.id}`} className="text-xs font-medium text-blue-700 hover:underline">
+                  Ver página do fornecedor →
                 </Link>
                 {contratosDoForn.map((c) => (
                   <Link key={c.id} to={`/contratos/${c.id}`} className="text-xs font-medium text-blue-700 hover:underline">

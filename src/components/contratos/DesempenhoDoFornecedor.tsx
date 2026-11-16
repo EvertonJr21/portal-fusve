@@ -42,8 +42,8 @@ export function DesempenhoDoFornecedor({ contrato }: { contrato: ContratoHeader 
           </span>
           <span>{dados.d.resumo.avaliadas} OC(s) avaliadas</span>
           {dados.d.resumo.abertasVencidas > 0 && <span className="text-status-red">{dados.d.resumo.abertasVencidas} aberta(s) vencida(s)</span>}
-          <Link to={`/ocs/ranking/${dados.fornId}`} className="font-medium text-blue-700 hover:underline">
-            Ver ficha →
+          <Link to={`/ocs/fornecedores/${dados.fornId}`} className="font-medium text-blue-700 hover:underline">
+            Ver fornecedor →
           </Link>
         </div>
       )}

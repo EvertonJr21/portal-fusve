@@ -378,8 +378,8 @@ export default function ContratoDetalhe() {
                   <p className="text-xs text-slate-400">Nenhum contato cadastrado.</p>
                 )}
                 {entregas && (
-                  <Link to={`/ocs/ranking/${entregas.fornId}`} className="text-xs font-medium text-blue-700 hover:underline">
-                    Ver ficha do fornecedor →
+                  <Link to={`/ocs/fornecedores/${entregas.fornId}`} className="text-xs font-medium text-blue-700 hover:underline">
+                    Ver página do fornecedor →
                   </Link>
                 )}
               </div>
@@ -459,8 +459,8 @@ export default function ContratoDetalhe() {
                       <td className="px-3 py-2 text-right">
                         {p.codSoulmv && (
                           <Link
-                            to={`/pareceres?produto=${encodeURIComponent(p.codSoulmv)}`}
-                            title="Ver parecer técnico do produto"
+                            to={`/pareceres/produto/${encodeURIComponent(p.codSoulmv)}`}
+                            title="Ver o produto: parecer técnico, outros contratos e solicitações"
                             className="inline-flex text-slate-400 hover:text-blue-700"
                           >
                             <Stethoscope className="h-4 w-4" />
@@ -590,7 +590,7 @@ export default function ContratoDetalhe() {
                     ? `Mostrando as ${entregas.recentes.length} OCs mais recentes de ${entregas.total}.`
                     : `${entregas.total} OC(s) deste fornecedor no ${HOSPITAIS[hospitalId].sigla}.`}
                 </span>
-                <Link to={`/ocs/ranking/${entregas.fornId}`} className="font-medium text-blue-700 hover:underline">
+                <Link to={`/ocs/fornecedores/${entregas.fornId}`} className="font-medium text-blue-700 hover:underline">
                   Ficha completa do fornecedor →
                 </Link>
               </div>

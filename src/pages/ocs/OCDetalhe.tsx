@@ -225,7 +225,7 @@ export default function OCDetalhe() {
               </div>
             </dl>
             {forn && (
-              <Link to={`/ocs/ranking/${forn.id}`} className="mt-3 inline-block text-xs font-medium text-blue-700 hover:underline">
+              <Link to={`/ocs/fornecedores/${forn.id}`} className="mt-3 inline-block text-xs font-medium text-blue-700 hover:underline">
                 Ficha e nota de entrega →
               </Link>
             )}

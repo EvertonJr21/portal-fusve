@@ -11,6 +11,7 @@ import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useDesfazer } from '@/hooks/useDesfazer'
 import { useHospital } from '@/hooks/useHospital'
 import { usePareceres } from '@/hooks/usePareceres'
+import { useProdutos } from '@/hooks/useProdutos'
 import { useAtualizarSituacaoSol, useExcluirSol, useSols } from '@/hooks/useSols'
 import { useToast } from '@/hooks/useToast'
 import type { HistOC } from '@/types'
@@ -41,6 +42,7 @@ export default function SolicitacaoDetalhe() {
   const { data: sols = [], isLoading, isFetching, error } = useSols(hospitalId)
   const { avaliacoes } = useAvaliacoesEntrega()
   const { data: pareceres = [] } = usePareceres()
+  const { data: produtos } = useProdutos()
   const atualizarSituacao = useAtualizarSituacaoSol(hospitalId)
   const excluir = useExcluirSol(hospitalId)
   const desfazer = useDesfazer()
@@ -61,6 +63,13 @@ export default function SolicitacaoDetalhe() {
     const alvo = normalizarTexto(sol.produto)
     return pareceres.find((p) => normalizarTexto(p.nome) === alvo) ?? null
   }, [sol, pareceres])
+
+  // Produto da base do SoulMV com o mesmo nome — leva à página do produto (contratos e preços).
+  const codProduto = (() => {
+    if (!sol?.produto) return null
+    const alvo = normalizarTexto(sol.produto)
+    return parecer?.cod ?? produtos?.find((p) => normalizarTexto(p.nome) === alvo)?.cod ?? null
+  })()
 
   if (isLoading || (!sol && isFetching)) return <SkeletonRows />
   if (error) return <p className="text-sm text-status-red">Erro ao carregar a solicitação: {error.message}</p>
@@ -191,7 +200,7 @@ export default function SolicitacaoDetalhe() {
                       className="flex flex-col gap-1 py-2.5 hover:text-blue-700 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                     >
                       <span className="min-w-0">
-                        <span className="font-mono text-sm font-semibold text-slate-800">OC {l.oc.id}</span>
+                        <span className="whitespace-nowrap font-mono text-sm font-semibold text-slate-800">OC {l.oc.id}</span>
                         <span className="ml-2 text-xs text-slate-500">{l.oc.fornecedorNome}</span>
                       </span>
                       <span className="flex shrink-0 flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -236,6 +245,14 @@ export default function SolicitacaoDetalhe() {
               </div>
             )}
           </Secao>
+          {codProduto && (
+            <Link
+              to={`/pareceres/produto/${encodeURIComponent(codProduto)}`}
+              className="rounded-xl border border-slate-200/80 bg-white p-4 text-sm font-medium text-blue-700 shadow-soft-sm hover:border-slate-300 md:px-5"
+            >
+              Página do produto (cód. {codProduto}): contratos, preços e outras solicitações →
+            </Link>
+          )}
           <Secao titulo="Detalhes">
             <dl className="grid grid-cols-2 gap-3">
               <Campo rotulo="Solicitante">{s.solicitante}</Campo>

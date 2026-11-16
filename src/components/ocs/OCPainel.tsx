@@ -142,8 +142,8 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
             </Info>
             {forn && (
               <Info rotulo="Fornecedor">
-                <Link to={`/ocs/ranking/${forn.id}`} className="text-blue-700 hover:underline">
-                  Ver ficha e nota de entrega →
+                <Link to={`/ocs/fornecedores/${forn.id}`} className="text-blue-700 hover:underline">
+                  Ver página do fornecedor →
                 </Link>
               </Info>
             )}

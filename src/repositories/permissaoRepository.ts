@@ -115,6 +115,27 @@ export async function reatribuirDados(deUserId: string, paraUserId: string): Pro
   }
 }
 
+export type RegistrosDoUsuario = Record<(typeof TABELAS_COM_DONO)[number], number>
+
+/**
+ * Admin: quantos registros a conta é dona em cada tabela (página do usuário, item 107).
+ * Conta também os excluídos (soft delete) — eles também impedem `delete-user`
+ * de apagar a conta, porque o `owner_id` continua apontando pra ela.
+ */
+export async function contarRegistrosDoUsuario(userId: string): Promise<RegistrosDoUsuario> {
+  const pares = await Promise.all(
+    TABELAS_COM_DONO.map(async (tabela) => {
+      const { count, error } = await supabase
+        .from(tabela)
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+      if (error) throw error
+      return [tabela, count ?? 0] as const
+    }),
+  )
+  return Object.fromEntries(pares) as RegistrosDoUsuario
+}
+
 /**
  * Admin: suspende/reativa uma conta (Edge Function `toggle-suspensao` —
  * bloquear login via `ban_duration` só dá pra fazer com `service_role`).

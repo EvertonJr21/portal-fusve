@@ -246,8 +246,8 @@ export default function ParecerDetalhe() {
               <Campo rotulo="Responsável">{p.responsavel}</Campo>
               <Campo rotulo="Data do parecer">{p.dataParecer}</Campo>
             </dl>
-            <Link to={`/pareceres?produto=${encodeURIComponent(p.cod)}`} className="mt-3 inline-block text-xs font-medium text-blue-700 hover:underline">
-              Ver como aparece na consulta →
+            <Link to={`/pareceres/produto/${encodeURIComponent(p.cod)}`} className="mt-3 inline-block text-xs font-medium text-blue-700 hover:underline">
+              Página do produto: contratos, preços e solicitações →
             </Link>
           </Secao>
           <Secao titulo={`Marcas sugeridas para ${p.cat || 'a categoria'}`}>

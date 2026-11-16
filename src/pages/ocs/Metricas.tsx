@@ -219,7 +219,7 @@ export default function Metricas() {
                 <tr key={f.fornecedorId} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 text-xs">
                     {f.fornecedorId ? (
-                      <Link to={`/ocs/ranking/${f.fornecedorId}`} className="font-medium text-blue-700 hover:underline">
+                      <Link to={`/ocs/fornecedores/${f.fornecedorId}`} className="font-medium text-blue-700 hover:underline">
                         {f.fornecedorNome}
                       </Link>
                     ) : (

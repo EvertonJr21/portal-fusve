@@ -99,9 +99,23 @@ export function useExcluirUsuario() {
 
 /** Admin: transfere OCs/Sols/Pareceres/Contratos/OPMEs de uma conta pra outra. */
 export function useReatribuirDados() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ deUserId, paraUserId }: { deUserId: string; paraUserId: string }) =>
       permissaoRepository.reatribuirDados(deUserId, paraUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['registros-usuario'] })
+    },
+  })
+}
+
+/** Admin: quantos registros a conta é dona em cada módulo (página do usuário). */
+export function useRegistrosDoUsuario(userId: string | null) {
+  const { data: perfil } = useMeuPerfil()
+  return useQuery({
+    queryKey: ['registros-usuario', userId],
+    queryFn: () => permissaoRepository.contarRegistrosDoUsuario(userId as string),
+    enabled: !!userId && perfil?.role === 'admin',
   })
 }
 

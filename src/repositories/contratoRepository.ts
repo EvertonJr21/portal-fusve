@@ -129,6 +129,17 @@ export async function listarContratoProdutos(contratoId: string): Promise<Contra
   return (data as ContratoProdutoRow[]).map(toContratoProduto)
 }
 
+/** Produtos de contrato com este código SoulMV, de qualquer contrato (página do produto, item 106). */
+export async function listarProdutosContratadosPorCodigo(codSoulmv: string): Promise<ContratoProduto[]> {
+  const { data, error } = await supabase
+    .from('contrato_produtos')
+    .select('*')
+    .eq('cod_soulmv', codSoulmv)
+    .is('deleted_at', null)
+  if (error) throw error
+  return (data as ContratoProdutoRow[]).map(toContratoProduto)
+}
+
 export async function salvarContrato(c: ContratoHeader): Promise<void> {
   const { error } = await supabase.from('contratos').upsert(toContratoRow(c))
   if (error) throw error

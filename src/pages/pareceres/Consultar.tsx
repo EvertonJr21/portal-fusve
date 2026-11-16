@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ParecerCard } from '@/components/pareceres/ParecerCard'
 import { ParecerForm } from '@/components/pareceres/ParecerForm'
 import { SearchProduto } from '@/components/pareceres/SearchProduto'
@@ -40,9 +40,14 @@ export default function Consultar() {
       {produto && !editando && (
         <>
           <ParecerCard produto={produto} parecer={parecer} marcasSugeridas={marcasSugeridas[produto.cat] ?? []} />
-          <Button variant="outline" className="self-start" onClick={() => setEditando(true)}>
-            {parecer ? 'Editar Parecer' : 'Cadastrar Parecer'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => setEditando(true)}>
+              {parecer ? 'Editar Parecer' : 'Cadastrar Parecer'}
+            </Button>
+            <Link to={`/pareceres/produto/${encodeURIComponent(produto.cod)}`} className="text-sm font-medium text-blue-700 hover:underline">
+              Página do produto (contratos, preços e solicitações) →
+            </Link>
+          </div>
         </>
       )}
 

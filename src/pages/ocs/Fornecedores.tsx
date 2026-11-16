@@ -92,15 +92,15 @@ export default function Fornecedores() {
                 <tr
                   key={f.id}
                   onClick={(e) => {
-                    // Clique na linha abre a ficha do fornecedor (desempenho, OCs e contratos).
+                    // Clique na linha abre a página do fornecedor (desempenho, OCs e contratos).
                     if ((e.target as HTMLElement).closest('button, a')) return
-                    navigate(`/ocs/ranking/${f.id}`)
+                    navigate(`/ocs/fornecedores/${f.id}`)
                   }}
                   className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
                 >
                   <td className="px-3 py-2 font-mono text-xs">{f.id}</td>
                   <td className="px-3 py-2 text-xs font-medium text-slate-800">
-                    <Link to={`/ocs/ranking/${f.id}`} className="hover:text-blue-700 hover:underline">
+                    <Link to={`/ocs/fornecedores/${f.id}`} className="hover:text-blue-700 hover:underline">
                       {f.nome}
                     </Link>
                   </td>
@@ -111,8 +111,8 @@ export default function Fornecedores() {
                     <div className="flex gap-1">
                       <button
                         type="button"
-                        title="Abrir ficha do fornecedor"
-                        onClick={() => navigate(`/ocs/ranking/${f.id}`)}
+                        title="Abrir página do fornecedor"
+                        onClick={() => navigate(`/ocs/fornecedores/${f.id}`)}
                         className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
                       >
                         <Eye className="h-3.5 w-3.5" />

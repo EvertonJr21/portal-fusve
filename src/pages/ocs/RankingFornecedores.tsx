@@ -119,7 +119,7 @@ export default function RankingFornecedores() {
                 <td className="px-3 py-2 text-xs text-slate-400">{i + 1}</td>
                 <td className="px-3 py-2 text-xs">
                   {d.fornecedorId ? (
-                    <Link to={`/ocs/ranking/${d.fornecedorId}`} className="font-medium text-blue-700 hover:underline">
+                    <Link to={`/ocs/fornecedores/${d.fornecedorId}`} className="font-medium text-blue-700 hover:underline">
                       {d.fornecedorNome}
                     </Link>
                   ) : (

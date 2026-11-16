@@ -20,6 +20,15 @@ export function useContratoProdutos(contratoId: string | null) {
   })
 }
 
+/** Em que contratos este código SoulMV aparece (página do produto). */
+export function useProdutosContratadosPorCodigo(codSoulmv: string | null) {
+  return useQuery({
+    queryKey: ['contrato-produtos', 'por-codigo', codSoulmv],
+    enabled: !!codSoulmv,
+    queryFn: () => contratoRepository.listarProdutosContratadosPorCodigo(codSoulmv as string),
+  })
+}
+
 export function useSalvarContrato(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({

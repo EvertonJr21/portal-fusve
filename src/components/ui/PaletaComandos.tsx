@@ -210,7 +210,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'Fornecedores',
           titulo: f.nome,
           detalhe: f.cnpj ? `CNPJ ${f.cnpj}` : `Cód. ${f.id}`,
-          executar: () => navigate(`/ocs/ranking/${f.id}`),
+          executar: () => navigate(`/ocs/fornecedores/${f.id}`),
         })),
     )
     return achados

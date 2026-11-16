@@ -61,7 +61,7 @@ export const NAV_MODULOS: ModuloNav[] = [
         titulo: 'Fornecedores',
         paginas: [
           { to: '/ocs/ranking', rotulo: 'Ranking de fornecedores' },
-          { to: '/ocs/cadastro-fornecedores', rotulo: 'Cadastro de fornecedores' },
+          { to: '/ocs/cadastro-fornecedores', rotulo: 'Cadastro de fornecedores', tambem: '/ocs/fornecedores/' },
         ],
       },
       { titulo: 'Análise', paginas: [{ to: '/ocs/metricas', rotulo: 'Desempenho de entrega' }] },
@@ -87,7 +87,7 @@ export const NAV_MODULOS: ModuloNav[] = [
     grupos: [
       {
         paginas: [
-          { to: '/pareceres', rotulo: 'Consultar', exato: true },
+          { to: '/pareceres', rotulo: 'Consultar', exato: true, tambem: '/pareceres/produto/' },
           { to: '/pareceres/base', rotulo: 'Base de pareceres' },
           { to: '/pareceres/cadastrar', rotulo: 'Cadastrar parecer' },
         ],
