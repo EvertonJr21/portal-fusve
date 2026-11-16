@@ -1,13 +1,26 @@
-import { useState } from 'react'
+import { Copy } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { BuscaPacienteOpme } from '@/components/opmes/BuscaPacienteOpme'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { SearchFornecedor } from '@/components/ocs/SearchFornecedor'
 import { HOSPITAIS, STATUS_OPME, type HospitalId } from '@/constants'
 import { useDesfazer } from '@/hooks/useDesfazer'
-import { useExcluirOpme, useSalvarOpme } from '@/hooks/useOpmes'
+import { useContratos } from '@/hooks/useContratos'
+import { useFornecedores } from '@/hooks/useFornecedores'
+import { useExcluirOpme, useOpmes, useSalvarOpme } from '@/hooks/useOpmes'
 import { useToast } from '@/hooks/useToast'
 import type { Opme } from '@/types'
-import { STATUS_OPME_LABEL } from '@/utils/opme'
+import { statusVigencia } from '@/utils/contrato'
+import { ligarContratosFornecedores } from '@/utils/kpis'
+import {
+  acharPaciente,
+  copiarDadosPaciente,
+  pacientesDeOpmes,
+  STATUS_OPME_LABEL,
+  usoFornecedoresEmOpme,
+  type PacienteOpme,
+} from '@/utils/opme'
 import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 
 interface OpmeFormProps {
@@ -40,6 +53,38 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
   const excluir = useExcluirOpme(form.hospitalId)
   const toast = useToast()
   const desfazer = useDesfazer()
+
+  // Item 109: pacientes e fornecedores já usados nos OPMEs (dos dois hospitais) e fornecedores com contrato ativo.
+  const { data: opmesHuv = [] } = useOpmes('huv')
+  const { data: opmesMkr = [] } = useOpmes('mkr')
+  const { data: contratosHuv = [] } = useContratos('huv')
+  const { data: contratosMkr = [] } = useContratos('mkr')
+  const { data: fornecedores = [] } = useFornecedores()
+  const [sugestaoDispensada, setSugestaoDispensada] = useState<string | null>(null)
+
+  const pacientes = useMemo(() => pacientesDeOpmes([...opmesHuv, ...opmesMkr], opme?.id), [opmesHuv, opmesMkr, opme?.id])
+  const usoFornecedores = useMemo(() => usoFornecedoresEmOpme([...opmesHuv, ...opmesMkr]), [opmesHuv, opmesMkr])
+  const comContrato = useMemo(() => {
+    const ativos = [...contratosHuv, ...contratosMkr].filter((c) => c.status === 'Ativo' && statusVigencia(c) !== 'vencido')
+    return new Set(ligarContratosFornecedores(ativos, fornecedores).porFornecedor.keys())
+  }, [contratosHuv, contratosMkr, fornecedores])
+  const nomeFornecedor = (id: number | null) => (id === null ? '' : (fornecedores.find((f) => f.id === id)?.nome ?? `cód. ${id}`))
+
+  const aplicarPaciente = (p: PacienteOpme) => {
+    const { opme: copiado, preenchidos } = copiarDadosPaciente({ ...form, paciente: p.nome }, p.ultimo)
+    setForm(copiado)
+    guarda.marcar()
+    setSugestaoDispensada(p.chave)
+    toast.show(preenchidos.length ? `Copiado da última cirurgia: ${preenchidos.join(' e ')}` : `Paciente ${p.nome} selecionado`)
+  }
+
+  // Paciente digitado que já tem OPME: oferece copiar o que ainda está vazio.
+  const sugestao = (() => {
+    if (!isNovo) return null
+    const p = acharPaciente(pacientes, form.paciente)
+    if (!p || p.chave === sugestaoDispensada) return null
+    return copiarDadosPaciente(form, p.ultimo).preenchidos.length > 0 ? p : null
+  })()
 
   const handleExcluir = async () => {
     if (!opme) return
@@ -89,16 +134,34 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
       }
     >
       <div className="flex flex-col gap-3">
-        <label className={labelClass}>
-          Paciente
-          <input
-            type="text"
-            className={inputClass}
+        <div className={labelClass}>
+          <span>Paciente</span>
+          <BuscaPacienteOpme
             value={form.paciente}
-            onChange={(e) => setForm({ ...form, paciente: e.target.value })}
+            onChange={(paciente) => setForm({ ...form, paciente })}
+            pacientes={pacientes}
+            nomeFornecedor={nomeFornecedor}
+            onEscolher={aplicarPaciente}
+            className={inputClass}
             autoFocus
           />
-        </label>
+        </div>
+        {sugestao && (
+          <div className="flex flex-col gap-2 rounded-lg border border-status-blue/30 bg-status-blue-bg px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-slate-700">
+              <strong>{sugestao.nome}</strong> já tem {sugestao.opmes.length} cirurgia(s) com OPME — a última com{' '}
+              {nomeFornecedor(sugestao.ultimo.fornecedorId) || 'fornecedor não definido'}. Copiar o que falta?
+            </span>
+            <span className="flex shrink-0 gap-2">
+              <Button type="button" variant="ghost" onClick={() => setSugestaoDispensada(sugestao.chave)}>
+                Agora não
+              </Button>
+              <Button type="button" onClick={() => aplicarPaciente(sugestao)}>
+                <Copy className="h-4 w-4" /> Copiar dados
+              </Button>
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className={labelClass}>
@@ -124,14 +187,16 @@ export function OpmeForm({ opme, hospitalIdPadrao, dataCirurgiaPadrao, onClose }
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className={labelClass}>
-            Fornecedor
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={labelClass}>
+            <span>Fornecedor</span>
             <SearchFornecedor
               value={form.fornecedorId}
               onChange={(fornecedorId) => setForm({ ...form, fornecedorId })}
+              uso={usoFornecedores}
+              comContrato={comContrato}
             />
-          </label>
+          </div>
           <label className={labelClass}>
             Status
             <select

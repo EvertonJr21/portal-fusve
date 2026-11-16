@@ -1,4 +1,6 @@
 import type { StatusOpme } from '@/constants'
+import type { Opme } from '@/types'
+import { normalizarTexto } from '@/utils/produtos'
 
 /** Uma célula da grade do calendário — `data` é null nos espaços de preenchimento antes/depois do mês. */
 export interface CelulaCalendario {
@@ -78,4 +80,60 @@ export function mensagemConfirmacaoOpme(o: { paciente: string; dataCirurgia: str
     'Atenciosamente,',
     `Setor de Compras — ${hospitalNome}`,
   ].join('\n')
+}
+
+/** Paciente que já tem OPME cadastrado (item 109) — base da busca do formulário. */
+export interface PacienteOpme {
+  chave: string
+  nome: string
+  opmes: Opme[]
+  /** OPME com a cirurgia mais recente — modelo dos dados copiados. */
+  ultimo: Opme
+}
+
+/** Agrupa os OPMEs por paciente (nome sem acento/maiúsculas), o de cirurgia mais recente primeiro. */
+export function pacientesDeOpmes(opmes: Opme[], ignorarId?: string): PacienteOpme[] {
+  const grupos = new Map<string, Opme[]>()
+  for (const o of opmes) {
+    if (o.id === ignorarId) continue
+    const chave = normalizarTexto(o.paciente)
+    if (!chave) continue
+    grupos.set(chave, [...(grupos.get(chave) ?? []), o])
+  }
+  return [...grupos.entries()]
+    .map(([chave, lista]) => {
+      const ordenada = [...lista].sort((a, b) => b.dataCirurgia.localeCompare(a.dataCirurgia))
+      return { chave, nome: ordenada[0].paciente, opmes: ordenada, ultimo: ordenada[0] }
+    })
+    .sort((a, b) => b.ultimo.dataCirurgia.localeCompare(a.ultimo.dataCirurgia))
+}
+
+export function acharPaciente(lista: PacienteOpme[], nome: string): PacienteOpme | null {
+  const chave = normalizarTexto(nome)
+  return chave ? (lista.find((p) => p.chave === chave) ?? null) : null
+}
+
+/**
+ * Copia do último OPME do paciente o fornecedor e a observação — só nos
+ * campos ainda vazios, nunca apaga o que já foi digitado.
+ */
+export function copiarDadosPaciente(destino: Opme, origem: Opme): { opme: Opme; preenchidos: string[] } {
+  const opme = { ...destino }
+  const preenchidos: string[] = []
+  if (opme.fornecedorId === null && origem.fornecedorId !== null) {
+    opme.fornecedorId = origem.fornecedorId
+    preenchidos.push('fornecedor')
+  }
+  if (!opme.observacao.trim() && origem.observacao.trim()) {
+    opme.observacao = origem.observacao
+    preenchidos.push('observação')
+  }
+  return { opme, preenchidos }
+}
+
+/** Quantas vezes cada fornecedor aparece nos OPMEs (sugestões da busca de fornecedor). */
+export function usoFornecedoresEmOpme(opmes: Opme[]): Map<number, number> {
+  const uso = new Map<number, number>()
+  for (const o of opmes) if (o.fornecedorId !== null) uso.set(o.fornecedorId, (uso.get(o.fornecedorId) ?? 0) + 1)
+  return uso
 }

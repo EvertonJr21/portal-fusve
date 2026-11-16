@@ -4,7 +4,16 @@ import { cabecalhoRenovacao } from '@/repositories/contratoRepository'
 import { iniciais } from './usuario'
 import { dataHora, descreverAlteracao } from './historico'
 import { ligarContratosFornecedores } from './kpis'
-import { construirSemana, diasAteCirurgia, mensagemConfirmacaoOpme, rotuloPrazoCirurgia } from './opme'
+import {
+  acharPaciente,
+  construirSemana,
+  copiarDadosPaciente,
+  diasAteCirurgia,
+  mensagemConfirmacaoOpme,
+  pacientesDeOpmes,
+  rotuloPrazoCirurgia,
+  usoFornecedoresEmOpme,
+} from './opme'
 import { contadoresModulos } from './resumoDia'
 
 // Dados fictícios — nenhum fornecedor/contrato real.
@@ -113,5 +122,42 @@ describe('página do OPME', () => {
     const m = mensagemConfirmacaoOpme({ paciente: 'Paciente Teste', dataCirurgia: '2026-11-20' }, 'HUV')
     expect(m).toContain('Paciente Teste')
     expect(m).toContain('20/11/2026')
+  })
+})
+
+describe('reaproveitar dados no formulário de OPME (item 109)', () => {
+  const base = { status: 'pendente' as const, hospitalId: 'huv' as const }
+  const opmes = [
+    { ...base, id: 'a', paciente: 'José da Silva', dataCirurgia: '2026-03-10', fornecedorId: 7, observacao: 'Kit coluna' },
+    { ...base, id: 'b', paciente: 'JOSE  DA SILVA', dataCirurgia: '2026-05-02', fornecedorId: 9, observacao: '' },
+    { ...base, id: 'c', paciente: 'Maria Souza', dataCirurgia: '2026-04-01', fornecedorId: null, observacao: 'x' },
+  ]
+
+  it('agrupa por paciente sem acento e usa a cirurgia mais recente como modelo', () => {
+    const lista = pacientesDeOpmes(opmes)
+    expect(lista).toHaveLength(2)
+    const jose = acharPaciente(lista, 'jose da silva')!
+    expect(jose.opmes).toHaveLength(2)
+    expect(jose.ultimo.id).toBe('b')
+    expect(pacientesDeOpmes(opmes, 'b').find((p) => p.chave === jose.chave)!.ultimo.id).toBe('a')
+  })
+
+  it('copia fornecedor e observação só nos campos vazios', () => {
+    const destino = { ...base, id: 'n', paciente: 'José', dataCirurgia: '', fornecedorId: null, observacao: '' }
+    const r = copiarDadosPaciente(destino, opmes[0])
+    expect(r.opme.fornecedorId).toBe(7)
+    expect(r.opme.observacao).toBe('Kit coluna')
+    expect(r.preenchidos).toEqual(['fornecedor', 'observação'])
+    const preenchido = copiarDadosPaciente({ ...destino, fornecedorId: 3, observacao: 'minha' }, opmes[0])
+    expect(preenchido.opme.fornecedorId).toBe(3)
+    expect(preenchido.opme.observacao).toBe('minha')
+    expect(preenchido.preenchidos).toEqual([])
+  })
+
+  it('conta o uso de cada fornecedor', () => {
+    const uso = usoFornecedoresEmOpme([...opmes, { ...opmes[0], id: 'd' }])
+    expect(uso.get(7)).toBe(2)
+    expect(uso.get(9)).toBe(1)
+    expect(uso.has(0)).toBe(false)
   })
 })
