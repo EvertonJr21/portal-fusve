@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { Copy } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { DesempenhoDoFornecedor } from '@/components/contratos/DesempenhoDoFornecedor'
 import { HistoricoAlteracoes } from '@/components/ui/HistoricoAlteracoes'
@@ -12,6 +13,7 @@ import {
   TIPOS_CONTRATO,
   type HospitalId,
 } from '@/constants'
+import { BuscaFornecedorContrato } from '@/components/contratos/BuscaFornecedorContrato'
 import { ComodatosContratoEditor } from '@/components/contratos/ComodatosContratoEditor'
 import { ProdutosContratoEditor } from '@/components/contratos/ProdutosContratoEditor'
 import {
@@ -19,14 +21,18 @@ import {
   useContratoComodatos,
   useDefinirPdfContrato,
   useContratoProdutos,
+  useContratos,
   useSalvarComodatosContrato,
   useSalvarContrato,
   useSalvarProdutosContrato,
 } from '@/hooks/useContratos'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useFornecedores } from '@/hooks/useFornecedores'
 import { useToast } from '@/hooks/useToast'
-import type { ContratoComodato, ContratoHeader, ContratoProduto } from '@/types'
+import type { ContratoComodato, ContratoHeader, ContratoProduto, Fornecedor } from '@/types'
+import { acharFornecedorDeContrato, copiarDadosFornecedor, fornecedoresDeContratos, type FornecedorDeContrato } from '@/utils/contrato'
 import { consultarCNPJ, formatarCNPJ } from '@/utils/cnpj'
+import { normalizarTexto } from '@/utils/produtos'
 
 interface ContratoFormProps {
   contrato: ContratoHeader | null
@@ -106,7 +112,64 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
   const set = <K extends keyof ContratoHeader>(key: K, value: ContratoHeader[K]) =>
     setHeader((prev) => ({ ...prev, [key]: value }))
 
+  // Fornecedores que já têm contrato (nos dois hospitais) e o cadastro do SoulMV — busca do campo Nome (item 108).
+  const { data: contratosHuv = [] } = useContratos('huv')
+  const { data: contratosMkr = [] } = useContratos('mkr')
+  const { data: cadastro = [] } = useFornecedores()
+  const fornContratos = useMemo(() => {
+    const porId = new Map([...contratosHuv, ...contratosMkr].map((c) => [c.id, c]))
+    return fornecedoresDeContratos([...porId.values()], header.id)
+  }, [contratosHuv, contratosMkr, header.id])
+  const [sugestaoDispensada, setSugestaoDispensada] = useState<string | null>(null)
+
+  const aplicarContrato = (f: FornecedorDeContrato) => {
+    const base = { ...header, fornecedorNome: f.modelo.fornecedorNome }
+    const { header: novo, preenchidos } = copiarDadosFornecedor(base, f.modelo)
+    // Contrato antigo sem CNPJ: completa pelo cadastro de fornecedores, se o nome bater.
+    if (!novo.fornecedorCnpj) {
+      const doCadastro = cadastro.find((c) => c.cnpj && normalizarTexto(c.nome) === normalizarTexto(novo.fornecedorNome))
+      if (doCadastro?.cnpj) novo.fornecedorCnpj = formatarCNPJ(doCadastro.cnpj)
+    }
+    setHeader(novo)
+    setSugestaoDispensada(f.chave)
+    toast.show(
+      preenchidos
+        ? `Dados copiados de "${f.modelo.titulo || f.modelo.tipo}" (${preenchidos} campo(s)) — confira prazo e condições`
+        : `Fornecedor ${f.nome} selecionado`,
+    )
+  }
+
+  const aplicarCadastro = (f: Fornecedor) => {
+    setHeader((prev) => ({
+      ...prev,
+      fornecedorNome: f.nome,
+      fornecedorCnpj: prev.fornecedorCnpj || (f.cnpj ? formatarCNPJ(f.cnpj) : ''),
+      contatoEmail: prev.contatoEmail || f.email,
+      contatoWhatsapp: prev.contatoWhatsapp || f.wpp,
+    }))
+  }
+
+  // Fornecedor digitado (nome exato ou CNPJ) que já tem contrato: oferece copiar os dados que faltam.
+  const sugestao = (() => {
+    const f = acharFornecedorDeContrato(fornContratos, header.fornecedorNome, header.fornecedorCnpj)
+    if (!f || f.chave === sugestaoDispensada) return null
+    return copiarDadosFornecedor(header, f.modelo).preenchidos > 0 ? f : null
+  })()
+
   const buscarCnpj = async () => {
+    const digitos = header.fornecedorCnpj.replace(/\D/g, '')
+    // Primeiro o que o portal já conhece: contrato com esse CNPJ, depois o cadastro de fornecedores.
+    const doContrato = acharFornecedorDeContrato(fornContratos, '', header.fornecedorCnpj)
+    if (doContrato) {
+      aplicarContrato(doContrato)
+      return
+    }
+    const doCadastro = digitos.length === 14 ? cadastro.find((f) => (f.cnpj ?? '').replace(/\D/g, '') === digitos) : undefined
+    if (doCadastro && !header.fornecedorNome.trim()) {
+      aplicarCadastro(doCadastro)
+      toast.show(`Encontrado no cadastro: ${doCadastro.nome}`)
+      return
+    }
     setBuscandoCnpj(true)
     try {
       const dados = await consultarCNPJ(header.fornecedorCnpj)
@@ -257,9 +320,17 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
         <section>
           <h4 className={sectionTitleClass}>Fornecedor</h4>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <label className={`${labelClass} md:col-span-2`}>
+            <label className={`${labelClass} col-span-2`}>
               <span className="font-medium text-slate-700">Nome / Razão Social *</span>
-              <input type="text" className={inputClass} value={header.fornecedorNome} onChange={(e) => set('fornecedorNome', e.target.value)} required />
+              <BuscaFornecedorContrato
+                className={inputClass}
+                value={header.fornecedorNome}
+                onChange={(nome) => set('fornecedorNome', nome)}
+                fornecedoresContrato={fornContratos}
+                cadastro={cadastro}
+                onEscolherContrato={aplicarContrato}
+                onEscolherCadastro={aplicarCadastro}
+              />
             </label>
             <label className={labelClass}>
               <span className="font-medium text-slate-700">CNPJ</span>
@@ -283,6 +354,22 @@ export function ContratoForm({ contrato, hospitalIdPadrao, onClose }: ContratoFo
               <input type="text" className={inputClass} value={header.contatoWhatsapp} onChange={(e) => set('contatoWhatsapp', e.target.value)} placeholder="55 24 999999999" />
             </label>
           </div>
+          {sugestao && (
+            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-status-blue/30 bg-status-blue-bg px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-slate-700">
+                <strong>{sugestao.nome}</strong> já tem {sugestao.contratos.length} contrato(s) — último: "{sugestao.modelo.titulo || sugestao.modelo.tipo}". Copiar
+                contato, logística e condições comerciais para este acordo?
+              </span>
+              <span className="flex shrink-0 gap-2">
+                <Button type="button" variant="ghost" onClick={() => setSugestaoDispensada(sugestao.chave)}>
+                  Agora não
+                </Button>
+                <Button type="button" onClick={() => aplicarContrato(sugestao)}>
+                  <Copy className="h-4 w-4" /> Copiar dados
+                </Button>
+              </span>
+            </div>
+          )}
         </section>
 
         {/* Logística */}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatarPrecoBR, lerListaColada, marcosVigencia, parsePrecoBR } from './contrato'
+import type { ContratoHeader } from '@/types'
+import { acharFornecedorDeContrato, copiarDadosFornecedor, formatarPrecoBR, fornecedoresDeContratos, lerListaColada, marcosVigencia, parsePrecoBR } from './contrato'
 
 describe('formatarPrecoBR', () => {
   it('formata com vírgula decimal e milhar', () => {
@@ -67,5 +68,44 @@ describe('marcosVigencia', () => {
     const m = marcosVigencia({ ...c, vigenciaInicio: null }, new Date(2026, 6, 2))
     expect(m.pctDecorrido).toBeNull()
     expect(m.fim).not.toBeNull()
+  })
+})
+
+describe('fornecedor de contratos (item 108)', () => {
+  const base = (o: Partial<ContratoHeader>): ContratoHeader => ({
+    id: 'x', titulo: '', tipo: 'Contrato', status: 'Ativo', fornecedorNome: '', fornecedorCnpj: '', contatoNome: '', contatoEmail: '',
+    contatoWhatsapp: '', freteTipo: '', prazoMedioDias: null, origemEmbarque: '', toleranciaAtrasoDias: null, horarioCutoff: '',
+    gatilhoDesconto: '', reajusteRegra: '', condicaoPagamento: '', vigenciaInicio: null, vigenciaFim: null, avisoRenovacaoDias: 60,
+    renovacaoAutomatica: false, hospitalId: 'huv', classificacao: '', observacoes: '', ...o,
+  })
+  const a = base({ id: 'a', titulo: 'Stent', fornecedorNome: 'Fornecedor Teste', fornecedorCnpj: '11.222.333/0001-44', contatoEmail: 'a@x.org', prazoMedioDias: 10, vigenciaFim: '2026-05-01' })
+  const b = base({ id: 'b', titulo: 'Balão', fornecedorNome: 'FORNECEDOR TESTE', fornecedorCnpj: '11222333000144', freteTipo: 'CIF', vigenciaFim: '2027-01-01' })
+  const c = base({ id: 'c', fornecedorNome: 'Outro Fornecedor' })
+
+  it('agrupa pelo CNPJ e usa o contrato mais recente como modelo', () => {
+    const lista = fornecedoresDeContratos([a, b, c])
+    expect(lista).toHaveLength(2)
+    const f = lista.find((x) => x.contratos.length === 2)!
+    expect(f.modelo.id).toBe('b')
+    expect(fornecedoresDeContratos([a, b, c], 'b').find((x) => x.chave.startsWith('cnpj'))!.contratos).toHaveLength(1)
+  })
+
+  it('acha por CNPJ ou nome sem acento', () => {
+    const lista = fornecedoresDeContratos([a, c])
+    expect(acharFornecedorDeContrato(lista, '', '11.222.333/0001-44')?.modelo.id).toBe('a')
+    expect(acharFornecedorDeContrato(lista, 'outro  fornecedor', '')?.modelo.id).toBe('c')
+    expect(acharFornecedorDeContrato(lista, 'nada', '')).toBeNull()
+  })
+
+  it('copia só nos campos vazios', () => {
+    const destino = base({ id: 'novo', titulo: 'Novo', fornecedorNome: 'Mais', contatoEmail: 'meu@x.org' })
+    const { header, preenchidos } = copiarDadosFornecedor(destino, a)
+    expect(header.fornecedorNome).toBe('Mais')
+    expect(header.contatoEmail).toBe('meu@x.org')
+    expect(header.fornecedorCnpj).toBe('11.222.333/0001-44')
+    expect(header.prazoMedioDias).toBe(10)
+    expect(header.titulo).toBe('Novo')
+    expect(header.id).toBe('novo')
+    expect(preenchidos).toBe(2)
   })
 })

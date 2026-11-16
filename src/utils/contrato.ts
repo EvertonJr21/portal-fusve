@@ -123,3 +123,86 @@ export function marcosVigencia(
   const pct = (diasEntre(inicio, hoje) / duracaoDias) * 100
   return { inicio, fim, avisoEm, pctDecorrido: Math.min(100, Math.max(0, Math.round(pct))), duracaoDias }
 }
+
+/** Fornecedor que já aparece em contratos cadastrados (busca do formulário de contrato, item 108). */
+export interface FornecedorDeContrato {
+  chave: string
+  nome: string
+  cnpj: string
+  contratos: ContratoHeader[]
+  /** Contrato mais recente do fornecedor — de onde os dados são copiados. */
+  modelo: ContratoHeader
+}
+
+const soDigitos = (s: string) => s.replace(/\D/g, '')
+const normalizarNome = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
+
+/** Chave de agrupamento: CNPJ quando tem 14 dígitos, senão o nome sem acento. */
+export function chaveFornecedorContrato(nome: string, cnpj: string): string {
+  const d = soDigitos(cnpj)
+  return d.length === 14 ? `cnpj:${d}` : `nome:${normalizarNome(nome)}`
+}
+
+/** Agrupa os contratos por fornecedor; o modelo é o contrato com vigência mais recente. */
+export function fornecedoresDeContratos(contratos: ContratoHeader[], ignorarId?: string): FornecedorDeContrato[] {
+  const grupos = new Map<string, ContratoHeader[]>()
+  for (const c of contratos) {
+    if (c.id === ignorarId || !c.fornecedorNome.trim()) continue
+    const k = chaveFornecedorContrato(c.fornecedorNome, c.fornecedorCnpj)
+    grupos.set(k, [...(grupos.get(k) ?? []), c])
+  }
+  return [...grupos.entries()]
+    .map(([chave, lista]) => {
+      const ordenados = [...lista].sort((a, b) => (b.vigenciaFim ?? b.vigenciaInicio ?? '').localeCompare(a.vigenciaFim ?? a.vigenciaInicio ?? ''))
+      const modelo = ordenados[0]
+      return { chave, nome: modelo.fornecedorNome, cnpj: lista.find((c) => c.fornecedorCnpj)?.fornecedorCnpj ?? '', contratos: ordenados, modelo }
+    })
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+}
+
+/** Acha o fornecedor de contrato pelo CNPJ (14 dígitos) ou pelo nome exato (sem acento). */
+export function acharFornecedorDeContrato(lista: FornecedorDeContrato[], nome: string, cnpj: string): FornecedorDeContrato | null {
+  const d = soDigitos(cnpj)
+  if (d.length === 14) {
+    const porCnpj = lista.find((f) => soDigitos(f.cnpj) === d)
+    if (porCnpj) return porCnpj
+  }
+  const n = normalizarNome(nome)
+  return n ? (lista.find((f) => normalizarNome(f.nome) === n) ?? null) : null
+}
+
+/** Campos que valem pro fornecedor em qualquer acordo dele: identificação, contato, logística e condições comerciais. */
+const CAMPOS_DO_FORNECEDOR = [
+  'fornecedorNome',
+  'fornecedorCnpj',
+  'contatoNome',
+  'contatoEmail',
+  'contatoWhatsapp',
+  'freteTipo',
+  'prazoMedioDias',
+  'origemEmbarque',
+  'toleranciaAtrasoDias',
+  'horarioCutoff',
+  'condicaoPagamento',
+  'reajusteRegra',
+  'gatilhoDesconto',
+] as const satisfies readonly (keyof ContratoHeader)[]
+
+/**
+ * Copia os dados do fornecedor de outro contrato só nos campos ainda vazios —
+ * nunca apaga o que já foi digitado. Devolve o cabeçalho novo e quantos campos mudaram.
+ */
+export function copiarDadosFornecedor(destino: ContratoHeader, origem: ContratoHeader): { header: ContratoHeader; preenchidos: number } {
+  const header = { ...destino }
+  let preenchidos = 0
+  for (const campo of CAMPOS_DO_FORNECEDOR) {
+    const atual = header[campo]
+    const novo = origem[campo]
+    const vazio = atual === null || atual === ''
+    if (vazio && novo !== null && novo !== '') {
+      ;(header as Record<string, unknown>)[campo] = novo
+      preenchidos++
+    }
+  }
+  return { header, preenchidos }
+}
