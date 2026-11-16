@@ -120,7 +120,6 @@ export default function TabelaMestre() {
           contrato: c,
           itens: itensPorContrato ? (itensPorContrato.get(c.id) ?? 0) : null,
           comodatos: comodatos?.get(c.id) ?? 0,
-          desempenho: desempenhoDoContrato.get(c.id)?.d ?? null,
         })),
         hospitalId,
         filtro,

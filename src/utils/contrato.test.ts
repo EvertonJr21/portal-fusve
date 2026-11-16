@@ -132,15 +132,15 @@ describe('resumo impresso do contrato (item 110)', () => {
   })
 
   it('contrato em dia não tem ponto de atenção', () => {
-    expect(pontosDeAtencaoContrato(base, { produtos: [{ precoUnitario: 10 }], classe: 'A', temPdfAssinado: true })).toEqual([])
+    expect(pontosDeAtencaoContrato(base, { produtos: [{ precoUnitario: 10 }], temPdfAssinado: true })).toEqual([])
   })
 
-  it('lista vencimento, preço faltando, nota D, cadastro e PDF', () => {
+  it('lista vencimento, preço faltando, cadastro e PDF', () => {
     const p = pontosDeAtencaoContrato(
       { ...base, vigenciaFim: iso(-5), fornecedorCnpj: '', contatoEmail: '' },
-      { produtos: [{ precoUnitario: 0 }, { precoUnitario: 5 }], classe: 'D', temPdfAssinado: false },
+      { produtos: [{ precoUnitario: 0 }, { precoUnitario: 5 }], temPdfAssinado: false },
     )
-    expect(p.map((x) => x.nivel)).toEqual(['alto', 'medio', 'alto', 'medio', 'medio', 'medio'])
+    expect(p.map((x) => x.nivel)).toEqual(['alto', 'medio', 'medio', 'medio', 'medio'])
     expect(p[0].texto).toContain('vencida há 5')
     expect(p[1].texto).toContain('1 produto(s) sem preço')
   })

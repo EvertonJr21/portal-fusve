@@ -224,11 +224,11 @@ export interface PontoAtencao {
 /**
  * Pontos de atenção do contrato pro resumo impresso (item 110) — o que a
  * gerência precisa ver primeiro: vigência, preço faltando, dados cadastrais e
- * desempenho de entrega do fornecedor.
+ * condições do cadastro (o desempenho de entrega ficou de fora do relatório).
  */
 export function pontosDeAtencaoContrato(
   c: ContratoHeader,
-  extras: { produtos: { precoUnitario: number }[]; classe: string | null; temPdfAssinado: boolean },
+  extras: { produtos: { precoUnitario: number }[]; temPdfAssinado: boolean },
 ): PontoAtencao[] {
   const pontos: PontoAtencao[] = []
   const dias = diasParaVencer(c.vigenciaFim)
@@ -239,8 +239,6 @@ export function pontosDeAtencaoContrato(
   if (st === 'sem_vigencia') pontos.push({ nivel: 'medio', texto: 'Contrato sem data de término cadastrada.' })
   const semPreco = extras.produtos.filter((p) => !p.precoUnitario).length
   if (semPreco > 0) pontos.push({ nivel: 'medio', texto: `${semPreco} produto(s) sem preço unitário cadastrado.` })
-  if (extras.classe === 'D') pontos.push({ nivel: 'alto', texto: 'Fornecedor com nota D de entrega (OTIF abaixo de 60%) — reavaliar.' })
-  else if (extras.classe === 'C') pontos.push({ nivel: 'medio', texto: 'Fornecedor com nota C de entrega (OTIF entre 60% e 75%) — plano de ação.' })
   if (!c.fornecedorCnpj.replace(/\D/g, '')) pontos.push({ nivel: 'medio', texto: 'CNPJ do fornecedor não cadastrado.' })
   if (!c.contatoEmail && !c.contatoWhatsapp) pontos.push({ nivel: 'medio', texto: 'Sem contato (e-mail ou WhatsApp) do fornecedor.' })
   if (c.status === 'Ativo' && !extras.temPdfAssinado) pontos.push({ nivel: 'medio', texto: 'Contrato assinado (PDF) não anexado ao portal.' })

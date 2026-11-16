@@ -203,7 +203,7 @@ export default function ContratoDetalhe() {
     setGerandoResumo(true)
     try {
       const { gerarResumoContratoPDF } = await import('@/utils/relatorioContrato')
-      gerarResumoContratoPDF({ contrato: c, produtos, comodatos, desempenho: entregas?.d ?? null })
+      gerarResumoContratoPDF({ contrato: c, produtos, comodatos })
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao gerar o resumo', 'error')
     } finally {
@@ -270,7 +270,7 @@ export default function ContratoDetalhe() {
               variant="outline"
               onClick={handleImprimir}
               loading={gerandoResumo}
-              disabled={produtosQ.isLoading || comodatosQ.isLoading || carregandoEntregas}
+              disabled={produtosQ.isLoading || comodatosQ.isLoading}
               title="Resumo completo em PDF, pronto para imprimir ou enviar à gerência"
             >
               <Printer className="h-4 w-4" /> Imprimir resumo
