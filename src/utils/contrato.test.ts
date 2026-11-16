@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ContratoHeader } from '@/types'
-import { acharFornecedorDeContrato, copiarDadosFornecedor, formatarPrecoBR, fornecedoresDeContratos, lerListaColada, marcosVigencia, parsePrecoBR } from './contrato'
+import { acharFornecedorDeContrato, copiarDadosFornecedor, formatarPrecoBR, fornecedoresDeContratos, lerListaColada, marcosVigencia, parsePrecoBR, pontosDeAtencaoContrato, textoVigencia } from './contrato'
+import { getHoje } from './date'
 
 describe('formatarPrecoBR', () => {
   it('formata com vírgula decimal e milhar', () => {
@@ -107,5 +108,40 @@ describe('fornecedor de contratos (item 108)', () => {
     expect(header.titulo).toBe('Novo')
     expect(header.id).toBe('novo')
     expect(preenchidos).toBe(2)
+  })
+})
+
+describe('resumo impresso do contrato (item 110)', () => {
+  const iso = (dias: number) => {
+    const d = getHoje()
+    d.setDate(d.getDate() + dias)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const base = {
+    id: 'x', titulo: 'Teste', tipo: 'Contrato', status: 'Ativo', fornecedorNome: 'FORNECEDOR TESTE', fornecedorCnpj: '00.000.000/0001-00',
+    contatoNome: '', contatoEmail: 'a@exemplo.org', contatoWhatsapp: '', freteTipo: 'CIF', prazoMedioDias: 10, origemEmbarque: '',
+    toleranciaAtrasoDias: null, horarioCutoff: '', gatilhoDesconto: '', reajusteRegra: '', condicaoPagamento: '', vigenciaInicio: iso(-100),
+    vigenciaFim: iso(200), avisoRenovacaoDias: 90, renovacaoAutomatica: false, hospitalId: 'huv', classificacao: '', observacoes: '',
+  } as ContratoHeader
+
+  it('textoVigencia', () => {
+    expect(textoVigencia(iso(45))).toBe('Vence em 45 dias')
+    expect(textoVigencia(iso(-3))).toBe('Vencido há 3 dias')
+    expect(textoVigencia(iso(0))).toBe('Vence hoje')
+    expect(textoVigencia(null)).toBe('Sem data de término')
+  })
+
+  it('contrato em dia não tem ponto de atenção', () => {
+    expect(pontosDeAtencaoContrato(base, { produtos: [{ precoUnitario: 10 }], classe: 'A', temPdfAssinado: true })).toEqual([])
+  })
+
+  it('lista vencimento, preço faltando, nota D, cadastro e PDF', () => {
+    const p = pontosDeAtencaoContrato(
+      { ...base, vigenciaFim: iso(-5), fornecedorCnpj: '', contatoEmail: '' },
+      { produtos: [{ precoUnitario: 0 }, { precoUnitario: 5 }], classe: 'D', temPdfAssinado: false },
+    )
+    expect(p.map((x) => x.nivel)).toEqual(['alto', 'medio', 'alto', 'medio', 'medio', 'medio'])
+    expect(p[0].texto).toContain('vencida há 5')
+    expect(p[1].texto).toContain('1 produto(s) sem preço')
   })
 })

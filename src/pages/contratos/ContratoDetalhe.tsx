@@ -9,6 +9,7 @@ import {
   Package,
   Pencil,
   Phone,
+  Printer,
   Search,
   Stethoscope,
   Trash2,
@@ -135,6 +136,7 @@ export default function ContratoDetalhe() {
   }
   const [editando, setEditando] = useState(params.get('editar') === '1')
   const [buscaProduto, setBuscaProduto] = useState('')
+  const [gerandoResumo, setGerandoResumo] = useState(false)
 
   const entregas = useMemo(() => {
     if (!contrato) return null
@@ -197,6 +199,18 @@ export default function ContratoDetalhe() {
     }
   }
 
+  const handleImprimir = async () => {
+    setGerandoResumo(true)
+    try {
+      const { gerarResumoContratoPDF } = await import('@/utils/relatorioContrato')
+      gerarResumoContratoPDF({ contrato: c, produtos, comodatos, desempenho: entregas?.d ?? null })
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao gerar o resumo', 'error')
+    } finally {
+      setGerandoResumo(false)
+    }
+  }
+
   const handleExcluir = async () => {
     try {
       await excluir.mutateAsync(c.id)
@@ -252,6 +266,15 @@ export default function ContratoDetalhe() {
                 <FileText className="h-4 w-4" /> Contrato assinado
               </Button>
             )}
+            <Button
+              variant="outline"
+              onClick={handleImprimir}
+              loading={gerandoResumo}
+              disabled={produtosQ.isLoading || comodatosQ.isLoading || carregandoEntregas}
+              title="Resumo completo em PDF, pronto para imprimir ou enviar à gerência"
+            >
+              <Printer className="h-4 w-4" /> Imprimir resumo
+            </Button>
             <Button variant="outline" onClick={handleRenovar}>
               <CopyPlus className="h-4 w-4" /> Renovar
             </Button>

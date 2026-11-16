@@ -1,4 +1,4 @@
-import { CopyPlus, Eye, FileText, Pencil, Trash2 } from 'lucide-react'
+import { CopyPlus, Eye, FileText, Pencil, Printer, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
@@ -11,7 +11,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { HOSPITAIS, STATUS_CONTRATO, TIPOS_CONTRATO } from '@/constants'
 import { useDesfazer } from '@/hooks/useDesfazer'
-import { useAbrirPdfContrato, useComodatosPorContrato, useContratos, useExcluirContrato, useRenovarContrato } from '@/hooks/useContratos'
+import { useAbrirPdfContrato, useComodatosPorContrato, useContratos, useProdutosPorContrato, useExcluirContrato, useRenovarContrato } from '@/hooks/useContratos'
 import { useAvaliacoesEntrega } from '@/hooks/useDesempenhoEntrega'
 import { useHospital } from '@/hooks/useHospital'
 import { useToast } from '@/hooks/useToast'
@@ -30,6 +30,8 @@ export default function TabelaMestre() {
   const { data: contratos = [], isLoading, error } = useContratos(hospitalId)
   // Erro aqui (ex.: tabela de comodatos ainda não criada) só esconde o selo — não quebra a lista.
   const { data: comodatos } = useComodatosPorContrato(contratos.map((c) => c.id))
+  const { data: itensPorContrato } = useProdutosPorContrato(contratos.map((c) => c.id), true)
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false)
   const excluir = useExcluirContrato(hospitalId)
   const toast = useToast()
   const desfazer = useDesfazer()
@@ -99,6 +101,37 @@ export default function TabelaMestre() {
   }).length
   const vencidos = contratos.filter((c) => statusVigencia(c) === 'vencido').length
 
+  // Relatório para a gerência (item 110) — a lista que está na tela, com os filtros aplicados.
+  const handleRelatorio = async () => {
+    setGerandoRelatorio(true)
+    try {
+      const { gerarRelatorioContratosPDF } = await import('@/utils/relatorioContrato')
+      const filtro = [
+        status && `Status: ${status}`,
+        tipo && `Tipo: ${tipo}`,
+        vigenciaFiltro === 'vencendo' && 'Vencendo em breve',
+        vigenciaFiltro === 'vencido' && 'Vencidos',
+        busca && `Busca: "${busca}"`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      gerarRelatorioContratosPDF(
+        filtrados.map((c) => ({
+          contrato: c,
+          itens: itensPorContrato ? (itensPorContrato.get(c.id) ?? 0) : null,
+          comodatos: comodatos?.get(c.id) ?? 0,
+          desempenho: desempenhoDoContrato.get(c.id)?.d ?? null,
+        })),
+        hospitalId,
+        filtro,
+      )
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao gerar o relatório', 'error')
+    } finally {
+      setGerandoRelatorio(false)
+    }
+  }
+
   const handleExcluir = async (c: ContratoHeader) => {
     try {
       await excluir.mutateAsync(c.id)
@@ -165,7 +198,18 @@ export default function TabelaMestre() {
           <h2 className="text-lg font-semibold text-slate-800">Contratos</h2>
           <p className="text-sm text-slate-500">Contratos e acordos comerciais com fornecedores</p>
         </div>
-        <Button onClick={() => setModal('novo')}>+ Novo Contrato</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRelatorio}
+            loading={gerandoRelatorio}
+            disabled={!filtrados.length}
+            title="PDF com todos os contratos desta lista, pronto para imprimir ou enviar à gerência"
+          >
+            <Printer className="h-4 w-4" /> Relatório para a gerência
+          </Button>
+          <Button onClick={() => setModal('novo')}>+ Novo Contrato</Button>
+        </div>
       </div>
 
       {error && (

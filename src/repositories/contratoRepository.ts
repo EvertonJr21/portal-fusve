@@ -267,6 +267,29 @@ export async function contarComodatosPorContrato(contratoIds: string[]): Promise
   return mapa
 }
 
+/** Quantos produtos (não excluídos) cada contrato tem — relatório geral de contratos (item 110). */
+export async function contarProdutosPorContrato(contratoIds: string[]): Promise<Map<string, number>> {
+  const mapa = new Map<string, number>()
+  // PostgREST devolve no máximo 1.000 linhas por chamada (item 41): pagina com .range().
+  for (let i = 0; i < contratoIds.length; i += 100) {
+    const lote = contratoIds.slice(i, i + 100)
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabase
+        .from('contrato_produtos')
+        .select('id, contrato_id')
+        .in('contrato_id', lote)
+        .is('deleted_at', null)
+        .order('id')
+        .range(de, de + 999)
+      if (error) throw error
+      const linhas = data as { contrato_id: string }[]
+      for (const r of linhas) mapa.set(r.contrato_id, (mapa.get(r.contrato_id) ?? 0) + 1)
+      if (linhas.length < 1000) break
+    }
+  }
+  return mapa
+}
+
 // ── PDF do contrato assinado (item 98) ──
 
 const BUCKET_CONTRATOS = 'contratos-pdfs'

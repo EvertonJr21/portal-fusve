@@ -17,6 +17,20 @@ export function useOCs(hospitalId: HospitalId) {
   })
 }
 
+/**
+ * Hospital de uma OC que não está na lista do hospital ativo (formulário de
+ * OC nova, item 110) — o nº do SoulMV é único no banco inteiro, então salvar
+ * por cima de uma OC do outro hospital a sobrescreveria.
+ */
+export function useHospitalDaOC(id: number | null) {
+  return useQuery({
+    queryKey: ['oc-hospital', id],
+    enabled: id !== null && id >= 1000,
+    staleTime: 60_000,
+    queryFn: async () => (await ocRepository.hospitaisDasOCs([id as number])).get(id as number) ?? null,
+  })
+}
+
 export function useSalvarOC(hospitalId: HospitalId) {
   const queryClient = useQueryClient()
   return useMutation({

@@ -70,6 +70,16 @@ export function useContratoComodatos(contratoId: string | null) {
 }
 
 /** Todos os comodatos de vários contratos — contagem na Tabela Mestre. */
+/** Contagem de produtos por contrato — só busca quando pedido (relatório geral, item 110). */
+export function useProdutosPorContrato(contratoIds: string[], habilitado: boolean) {
+  const ids = [...contratoIds].sort()
+  return useQuery({
+    queryKey: ['contrato-produtos-contagem', ids],
+    enabled: habilitado && ids.length > 0,
+    queryFn: () => contratoRepository.contarProdutosPorContrato(ids),
+  })
+}
+
 export function useComodatosPorContrato(contratoIds: string[]) {
   const ids = [...contratoIds].sort()
   return useQuery({

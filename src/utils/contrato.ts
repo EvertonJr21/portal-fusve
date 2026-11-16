@@ -206,3 +206,43 @@ export function copiarDadosFornecedor(destino: ContratoHeader, origem: ContratoH
   }
   return { header, preenchidos }
 }
+
+/** Frase curta da vigência pro relatório: "Vence em 45 dias", "Vencido há 3 dias", "Vence hoje", "Sem data de término". */
+export function textoVigencia(vigenciaFim: string | null): string {
+  const dias = diasParaVencer(vigenciaFim)
+  if (dias === null) return 'Sem data de término'
+  if (dias === 0) return 'Vence hoje'
+  if (dias < 0) return `Vencido há ${-dias} dia${dias === -1 ? '' : 's'}`
+  return `Vence em ${dias} dia${dias === 1 ? '' : 's'}`
+}
+
+export interface PontoAtencao {
+  nivel: 'alto' | 'medio'
+  texto: string
+}
+
+/**
+ * Pontos de atenção do contrato pro resumo impresso (item 110) — o que a
+ * gerência precisa ver primeiro: vigência, preço faltando, dados cadastrais e
+ * desempenho de entrega do fornecedor.
+ */
+export function pontosDeAtencaoContrato(
+  c: ContratoHeader,
+  extras: { produtos: { precoUnitario: number }[]; classe: string | null; temPdfAssinado: boolean },
+): PontoAtencao[] {
+  const pontos: PontoAtencao[] = []
+  const dias = diasParaVencer(c.vigenciaFim)
+  const st = statusVigencia(c)
+  if (c.status === 'Ativo' && st === 'vencido') pontos.push({ nivel: 'alto', texto: `Contrato ativo com vigência vencida há ${-(dias ?? 0)} dia(s) — renovar ou encerrar.` })
+  else if (st === 'critico') pontos.push({ nivel: 'alto', texto: `Vigência termina em ${dias} dia(s) — decidir a renovação.` })
+  else if (st === 'atencao') pontos.push({ nivel: 'medio', texto: `Dentro da janela de aviso de renovação (${c.avisoRenovacaoDias} dias) — vence em ${dias} dia(s).` })
+  if (st === 'sem_vigencia') pontos.push({ nivel: 'medio', texto: 'Contrato sem data de término cadastrada.' })
+  const semPreco = extras.produtos.filter((p) => !p.precoUnitario).length
+  if (semPreco > 0) pontos.push({ nivel: 'medio', texto: `${semPreco} produto(s) sem preço unitário cadastrado.` })
+  if (extras.classe === 'D') pontos.push({ nivel: 'alto', texto: 'Fornecedor com nota D de entrega (OTIF abaixo de 60%) — reavaliar.' })
+  else if (extras.classe === 'C') pontos.push({ nivel: 'medio', texto: 'Fornecedor com nota C de entrega (OTIF entre 60% e 75%) — plano de ação.' })
+  if (!c.fornecedorCnpj.replace(/\D/g, '')) pontos.push({ nivel: 'medio', texto: 'CNPJ do fornecedor não cadastrado.' })
+  if (!c.contatoEmail && !c.contatoWhatsapp) pontos.push({ nivel: 'medio', texto: 'Sem contato (e-mail ou WhatsApp) do fornecedor.' })
+  if (c.status === 'Ativo' && !extras.temPdfAssinado) pontos.push({ nivel: 'medio', texto: 'Contrato assinado (PDF) não anexado ao portal.' })
+  return pontos
+}

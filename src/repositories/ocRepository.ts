@@ -102,15 +102,17 @@ export async function listarOCs(hospitalId: HospitalId): Promise<OC[]> {
   return (data as OCRow[]).map(toOC)
 }
 
-export interface SalvarOCInput {
+/**
+ * Entrada do "Nova/Editar OC". Aceita a OC inteira de propósito: ao editar, o
+ * formulário manda `{ ...oc, ...alterações }`, e assim o upsert não zera os
+ * campos operacionais que não aparecem no formulário (entrega, parcial,
+ * motivo, cobrança, vínculo...) — risco registrado no item 60, corrigido no 110.
+ */
+export interface SalvarOCInput extends Partial<OC> {
   id: number
   dataSolic: string
   fornecedorNome: string
-  fornecedorId?: number | null
   sit: SituacaoOC
-  estoque?: string | null
-  previsaoForn?: string | null
-  previsaoForn2?: string | null
   hospitalId: HospitalId
 }
 
