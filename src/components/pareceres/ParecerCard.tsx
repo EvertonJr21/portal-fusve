@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { Produto } from '@/data/produtos'
 import { useAbrirPdfParecer } from '@/hooks/usePareceres'
 import { useAbrirAnexo, useAnexosParecer } from '@/hooks/useParecerAnexos'
@@ -23,16 +24,24 @@ export function ParecerCard({ produto, parecer, marcasSugeridas }: ParecerCardPr
         <span className="rounded bg-status-blue-bg px-2 py-1 font-mono text-xs font-bold text-status-blue">
           {produto.cod}
         </span>
-        <div>
+        <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-800">{produto.nome}</div>
           <div className="text-xs text-slate-400">{produto.cat}</div>
         </div>
+        {parecer && (
+          <Link
+            to={`/pareceres/base/${encodeURIComponent(parecer.cod)}`}
+            className="ml-auto shrink-0 rounded border border-slate-200 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-slate-50"
+          >
+            Abrir parecer →
+          </Link>
+        )}
         {parecer && (parecer.pdfPath || parecer.pdfDataUrl) && (
           <button
             type="button"
             onClick={() => abrirPdf.abrir(parecer)}
             title="PDF geral do parecer — não vinculado a uma marca específica; veja o 📎 ao lado de cada marca abaixo"
-            className="ml-auto rounded border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
+            className="shrink-0 rounded border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50"
           >
             📄 Parecer geral
           </button>

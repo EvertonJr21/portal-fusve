@@ -1,5 +1,6 @@
-import { Pencil } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
@@ -17,6 +18,7 @@ export default function Fornecedores() {
   const excluir = useExcluirFornecedor()
   const toast = useToast()
   const desfazer = useDesfazer()
+  const navigate = useNavigate()
 
   const [busca, setBusca] = useState('')
   const [pagina, setPagina] = useState(0)
@@ -87,14 +89,34 @@ export default function Fornecedores() {
                 </tr>
               )}
               {paginados.map((f) => (
-                <tr key={f.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr
+                  key={f.id}
+                  onClick={(e) => {
+                    // Clique na linha abre a ficha do fornecedor (desempenho, OCs e contratos).
+                    if ((e.target as HTMLElement).closest('button, a')) return
+                    navigate(`/ocs/ranking/${f.id}`)
+                  }}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                >
                   <td className="px-3 py-2 font-mono text-xs">{f.id}</td>
-                  <td className="px-3 py-2 text-xs font-medium text-slate-800">{f.nome}</td>
+                  <td className="px-3 py-2 text-xs font-medium text-slate-800">
+                    <Link to={`/ocs/ranking/${f.id}`} className="hover:text-blue-700 hover:underline">
+                      {f.nome}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs text-slate-500">{f.cnpj || '—'}</td>
                   <td className="px-3 py-2 text-xs text-slate-500">{f.email || '—'}</td>
                   <td className="px-3 py-2 text-xs text-slate-500">{f.wpp || '—'}</td>
                   <td className="px-3 py-2 text-xs">
                     <div className="flex gap-1">
+                      <button
+                        type="button"
+                        title="Abrir ficha do fornecedor"
+                        onClick={() => navigate(`/ocs/ranking/${f.id}`)}
+                        className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         title="Editar"

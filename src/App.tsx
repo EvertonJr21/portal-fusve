@@ -19,6 +19,7 @@ const Importar = lazy(() => import('@/pages/ocs/Importar'))
 const Metricas = lazy(() => import('@/pages/ocs/Metricas'))
 const OrdensDeCompra = lazy(() => import('@/pages/ocs/OrdensDeCompra'))
 const OCDetalhe = lazy(() => import('@/pages/ocs/OCDetalhe'))
+const SolicitacaoDetalhe = lazy(() => import('@/pages/ocs/SolicitacaoDetalhe'))
 const RankingFornecedores = lazy(() => import('@/pages/ocs/RankingFornecedores'))
 const Solicitacoes = lazy(() => import('@/pages/ocs/Solicitacoes'))
 const Modulos = lazy(() => import('@/pages/Modulos'))
@@ -27,6 +28,7 @@ const Gestao = lazy(() => import('@/pages/opmes/Gestao'))
 const OpmeDetalhe = lazy(() => import('@/pages/opmes/OpmeDetalhe'))
 const Cadastrar = lazy(() => import('@/pages/pareceres/Cadastrar'))
 const Base = lazy(() => import('@/pages/pareceres/Base'))
+const ParecerDetalhe = lazy(() => import('@/pages/pareceres/ParecerDetalhe'))
 const Consultar = lazy(() => import('@/pages/pareceres/Consultar'))
 const DashboardPareceres = lazy(() => import('@/pages/pareceres/Dashboard'))
 const MarcasSugeridas = lazy(() => import('@/pages/pareceres/MarcasSugeridas'))
@@ -96,6 +98,7 @@ export default function App() {
             <Route path="ordens" element={<OrdensDeCompra />} />
             <Route path="ordens/:ocId" element={<OCDetalhe />} />
             <Route path="solicitacoes" element={<Solicitacoes />} />
+            <Route path="solicitacoes/:solId" element={<SolicitacaoDetalhe />} />
             <Route path="fornecedores" element={<Navigate to="/ocs/ordens" replace />} />
             <Route path="ranking" element={<RankingFornecedores />} />
             <Route path="ranking/:fornecedorId" element={<FichaFornecedor />} />
@@ -111,6 +114,7 @@ export default function App() {
             <Route index element={<Consultar />} />
             <Route path="cadastrar" element={<Cadastrar />} />
             <Route path="base" element={<Base />} />
+            <Route path="base/:cod" element={<ParecerDetalhe />} />
             <Route path="marcas-sugeridas" element={<MarcasSugeridas />} />
             <Route path="dashboard" element={<DashboardPareceres />} />
           </Route>

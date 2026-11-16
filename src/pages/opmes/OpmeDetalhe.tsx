@@ -1,9 +1,10 @@
 import { AlertTriangle, ArrowLeft, CalendarDays, Check, Clock, FileSignature, Mail, MessageCircle, Pencil, RotateCcw, Trash2, User } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { OpmeForm } from '@/components/opmes/OpmeForm'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Destaque, Secao } from '@/components/ui/Detalhe'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { HOSPITAIS } from '@/constants'
 import { useContratos } from '@/hooks/useContratos'
@@ -34,31 +35,6 @@ function longa(iso: string) {
 }
 function semAcento(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase()
-}
-
-function Secao({ titulo, children, acao }: { titulo: string; children: ReactNode; acao?: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-soft-sm md:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">{titulo}</h3>
-        {acao}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Destaque({ icone, rotulo, valor, detalhe }: { icone: ReactNode; rotulo: string; valor: ReactNode; detalhe?: ReactNode }) {
-  return (
-    <div className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-soft-sm">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icone}</span>
-      <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</div>
-        <div className="truncate text-sm font-semibold text-slate-800">{valor}</div>
-        {detalhe && <div className="truncate text-xs text-slate-500">{detalhe}</div>}
-      </div>
-    </div>
-  )
 }
 
 /** Lista curta de outras cirurgias (mesmo paciente ou mesmo fornecedor), cada uma abrindo a sua página. */

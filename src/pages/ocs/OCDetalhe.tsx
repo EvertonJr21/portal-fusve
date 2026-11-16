@@ -1,5 +1,5 @@
 import { ArrowLeft, CalendarCheck, CalendarClock, Link2, Mail, MessageCircle, Package, Pencil, Stethoscope, Trash2, Truck } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ContratosDoFornecedor, LinhaDoTempoOC, RegistroOC } from '@/components/ocs/OCDetalhes'
 import { OCCobrar } from '@/components/ocs/OCCobrar'
@@ -7,6 +7,7 @@ import { OCForm } from '@/components/ocs/OCForm'
 import { OCVincular } from '@/components/ocs/OCVincular'
 import { BadgePrazo, BadgePrioridade } from '@/components/ocs/ocVisual'
 import { Button } from '@/components/ui/Button'
+import { Campo, Destaque, Secao } from '@/components/ui/Detalhe'
 import { HistoricoAlteracoes } from '@/components/ui/HistoricoAlteracoes'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { HOSPITAIS } from '@/constants'
@@ -24,46 +25,6 @@ import { montarLinhas, ORIGEM_ENTREGA } from '@/utils/ocLista'
 
 type Modal = null | 'mail' | 'wpp' | 'vincular' | 'editar'
 const SEM_CANCELAR = () => {}
-
-function Valor({ children }: { children: ReactNode }) {
-  const vazio = children === null || children === undefined || children === '' || children === '—'
-  return vazio ? <span className="text-slate-300">—</span> : <>{children}</>
-}
-
-function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</dt>
-      <dd className="break-words text-sm text-slate-800">
-        <Valor>{children}</Valor>
-      </dd>
-    </div>
-  )
-}
-
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-soft-sm md:p-5">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">{titulo}</h3>
-      {children}
-    </section>
-  )
-}
-
-function Destaque({ icone, rotulo, valor, detalhe }: { icone: ReactNode; rotulo: string; valor: ReactNode; detalhe?: ReactNode }) {
-  return (
-    <div className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-soft-sm">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icone}</span>
-      <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</div>
-        <div className="truncate text-sm font-semibold text-slate-800">
-          <Valor>{valor}</Valor>
-        </div>
-        {detalhe && <div className="truncate text-xs text-slate-500">{detalhe}</div>}
-      </div>
-    </div>
-  )
-}
 
 /**
  * Página da OC (item 104) — o painel lateral da lista continua sendo a
@@ -222,7 +183,9 @@ export default function OCDetalhe() {
             {sol ? (
               <div className="flex flex-col gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-800">#{sol.id}</div>
+                  <Link to={`/ocs/solicitacoes/${sol.id}`} className="text-sm font-semibold text-blue-700 hover:underline">
+                    Solicitação #{sol.id} →
+                  </Link>
                   <div className="text-sm text-slate-700">{sol.produto}</div>
                 </div>
                 <dl className="grid grid-cols-2 gap-3">

@@ -120,7 +120,10 @@ export function OCPainel({ linha, forn, hospitalId, onClose, onAcao }: OCPainelP
             <Info rotulo="Solicitação">
               {sol ? (
                 <>
-                  #{sol.id} — {sol.produto}
+                  <Link to={`/ocs/solicitacoes/${sol.id}`} className="font-medium text-blue-700 hover:underline">
+                    #{sol.id}
+                  </Link>{' '}
+                  — {sol.produto}
                   {sol.qtd ? ` (${sol.qtd})` : ''}
                 </>
               ) : oc.solicitacaoId ? (

@@ -1,6 +1,6 @@
-import { Pencil } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { SkeletonRows } from '@/components/ui/Skeleton'
@@ -31,6 +31,7 @@ export default function Solicitacoes() {
   const toast = useToast()
   const desfazer = useDesfazer()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [busca, setBusca] = useState(() => searchParams.get('q') ?? '')
 
@@ -160,12 +161,26 @@ export default function Solicitacoes() {
               const st = statusPrazo(dp, s.sit)
               const vinculadas = ocsPorSolicitacao(s.id)
               return (
-                <tr key={s.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-3 py-2 font-mono text-xs">{s.id}</td>
+                <tr
+                  key={s.id}
+                  onClick={(e) => {
+                    // Clique na linha abre a página da solicitação; campos, botões e links seguem com a própria ação.
+                    if ((e.target as HTMLElement).closest('button, a, select, input')) return
+                    navigate(`/ocs/solicitacoes/${s.id}`)
+                  }}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                >
+                  <td className="px-3 py-2 font-mono text-xs">
+                    <Link to={`/ocs/solicitacoes/${s.id}`} className="font-semibold text-blue-700 hover:underline">
+                      {s.id}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 text-xs">{fmt(dp)}</td>
                   <td className="px-3 py-2 text-xs">
                     <div className="font-medium text-slate-800">{s.motivo || '—'}</div>
-                    <div className="text-[11px] text-slate-400">{s.produto.slice(0, 40)}</div>
+                    <div className="max-w-xs truncate text-[11px] text-slate-400" title={s.produto}>
+                      {s.produto}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-xs">{s.solicitante || '—'}</td>
                   <td className="px-3 py-2 text-xs">{s.qtd}</td>
@@ -190,9 +205,14 @@ export default function Solicitacoes() {
                     {vinculadas.length ? (
                       <div className="flex flex-wrap gap-1">
                         {vinculadas.map((o) => (
-                          <span key={o.id} className="rounded-full bg-status-blue-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-blue">
+                          <Link
+                            key={o.id}
+                            to={`/ocs/ordens/${o.id}`}
+                            title={`${o.fornecedorNome} · ${o.sit}`}
+                            className="rounded-full bg-status-blue-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-blue hover:underline"
+                          >
                             {o.id}
-                          </span>
+                          </Link>
                         ))}
                       </div>
                     ) : (
@@ -201,6 +221,14 @@ export default function Solicitacoes() {
                   </td>
                   <td className="px-3 py-2 text-xs">
                     <div className="flex gap-1">
+                      <button
+                        type="button"
+                        title="Abrir solicitação"
+                        onClick={() => navigate(`/ocs/solicitacoes/${s.id}`)}
+                        className="rounded border border-slate-200 px-1.5 py-1 hover:bg-slate-100"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         title="Editar"

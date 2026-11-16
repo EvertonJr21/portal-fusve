@@ -16,12 +16,13 @@ import {
   Wallet,
   Wrench,
 } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 import { StatusContratoBadge, VigenciaBadge } from '@/components/contratos/ContratoStatusBadge'
 import { ClasseBadge } from '@/components/ocs/desempenho'
 import { Button } from '@/components/ui/Button'
+import { Campo, Destaque, Secao, Valor } from '@/components/ui/Detalhe'
 import { HistoricoAlteracoes } from '@/components/ui/HistoricoAlteracoes'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { StatusDot } from '@/components/ui/StatusDot'
@@ -59,45 +60,6 @@ function semAcento(s: string) {
 }
 
 /** Valor ou um traço discreto, pra campo vazio não parecer erro. */
-function Valor({ children }: { children: ReactNode }) {
-  const vazio = children === null || children === undefined || children === ''
-  return vazio ? <span className="text-slate-300">—</span> : <>{children}</>
-}
-
-function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</dt>
-      <dd className="text-sm text-slate-800">
-        <Valor>{children}</Valor>
-      </dd>
-    </div>
-  )
-}
-
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-soft-sm md:p-5">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">{titulo}</h3>
-      {children}
-    </section>
-  )
-}
-
-function Destaque({ icone, rotulo, valor, detalhe }: { icone: ReactNode; rotulo: string; valor: ReactNode; detalhe?: ReactNode }) {
-  return (
-    <div className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-soft-sm">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icone}</span>
-      <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</div>
-        <div className="truncate text-sm font-semibold text-slate-800">
-          <Valor>{valor}</Valor>
-        </div>
-        {detalhe && <div className="truncate text-xs text-slate-500">{detalhe}</div>}
-      </div>
-    </div>
-  )
-}
 
 /** Datas-chave no topo (os CLMs aprendem que vigência escondida no fim da ficha some de vista). */
 function DatasChave({ c }: { c: ContratoHeader }) {

@@ -166,7 +166,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'Solicitações',
           titulo: `Solicitação ${s.id}`,
           detalhe: s.produto,
-          executar: () => navigate(`/ocs/solicitacoes?q=${s.id}`),
+          executar: () => navigate(`/ocs/solicitacoes/${s.id}`),
         })),
     )
     juntar(
@@ -177,7 +177,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'Contratos',
           titulo: c.titulo || c.fornecedorNome,
           detalhe: c.titulo ? `${c.fornecedorNome} · ${c.status}` : c.status,
-          executar: () => navigate(`/contratos?q=${encodeURIComponent(c.titulo || c.fornecedorNome)}`),
+          executar: () => navigate(`/contratos/${c.id}`),
         })),
     )
     juntar(
@@ -188,7 +188,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'Pareceres',
           titulo: p.nome,
           detalhe: `Cód. ${p.cod}${p.cat ? ` · ${p.cat}` : ''}`,
-          executar: () => navigate(`/pareceres?produto=${encodeURIComponent(p.cod)}`),
+          executar: () => navigate(`/pareceres/base/${encodeURIComponent(p.cod)}`),
         })),
     )
     juntar(

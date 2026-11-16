@@ -1,4 +1,5 @@
 import type { MarcaCategoria, Parecer } from '@/types'
+import { getHoje, parseDMY } from '@/utils/date'
 
 export const CATEGORIAS_MARCA: { key: MarcaCategoria; label: string; descricao: string }[] = [
   { key: 'padrao', label: 'Padrão', descricao: 'comprar sempre' },
@@ -17,4 +18,23 @@ export function temAlgumaMarca(p: Pick<Parecer, MarcaCategoria>): boolean {
  */
 export function temConteudoParecer(p: Pick<Parecer, MarcaCategoria | 'requisitoTecnico'>): boolean {
   return temAlgumaMarca(p) || p.requisitoTecnico.trim().length > 0
+}
+
+export type NivelValidade = 'ok' | 'atencao' | 'revisar'
+
+/**
+ * Idade do parecer em meses e se precisa de revisão: até 11 meses ok, 12–17
+ * atenção, 18+ revisar. `dataParecer` vem em DD/MM/AAAA (antes era lida com
+ * `new Date()`, que não entende esse formato — a coluna Validade ficava vazia).
+ */
+export function validadeParecer(dataParecer: string, hoje: Date = getHoje()): { meses: number; nivel: NivelValidade } | null {
+  const d = parseDMY(dataParecer)
+  if (!d || Number.isNaN(d.getTime())) return null
+  const meses = Math.max(0, (hoje.getFullYear() - d.getFullYear()) * 12 + (hoje.getMonth() - d.getMonth()) - (hoje.getDate() < d.getDate() ? 1 : 0))
+  return { meses, nivel: meses < 12 ? 'ok' : meses < 18 ? 'atencao' : 'revisar' }
+}
+
+export function rotuloValidade(v: { meses: number; nivel: NivelValidade }): string {
+  const idade = v.meses === 0 ? 'menos de 1 mês' : v.meses === 1 ? '1 mês' : `${v.meses} meses`
+  return v.nivel === 'revisar' ? `${idade} — revisar` : idade
 }

@@ -1,9 +1,10 @@
 import type { Produto } from '@/data/produtos'
 
-/** Remove acentos e padroniza em maiúsculas — o catálogo do SoulMV vem sem acento. */
-function normalizar(texto: string): string {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+/** Remove acentos, padroniza em maiúsculas e junta espaços repetidos — o catálogo do SoulMV vem sem acento. */
+export function normalizarTexto(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
 }
+const normalizar = normalizarTexto
 
 /**
  * Busca no catálogo SoulMV, usada pelo autocomplete de Pareceres e de Contratos.

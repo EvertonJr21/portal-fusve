@@ -1,50 +1,25 @@
-import { Pencil, FileText, Trash2 } from 'lucide-react'
+import { Eye, FileText, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { MarcasBadge } from '@/components/pareceres/MarcasBadge'
-import { ParecerForm } from '@/components/pareceres/ParecerForm'
+import { ModalEditarParecer } from '@/components/pareceres/ModalEditarParecer'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
-import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 import { Table, TableHead } from '@/components/ui/Table'
 import { useConfirm } from '@/hooks/useConfirm'
-import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 import { useAbrirAnexo, useTodosAnexos } from '@/hooks/useParecerAnexos'
 import { useAbrirPdfParecer, useExcluirParecer, usePareceres } from '@/hooks/usePareceres'
 import { useToast } from '@/hooks/useToast'
 import type { Parecer, ParecerAnexo } from '@/types'
+import { rotuloValidade, validadeParecer } from '@/utils/marcas'
+
+const CLASSE_VALIDADE = { ok: 'text-status-green', atencao: 'text-status-amber', revisar: 'text-status-red' } as const
 
 const PG = 15
 
-function validadeInfo(dataISO: string): { texto: string; classe: string; revisar: boolean } | null {
-  if (!dataISO) return null
-  const dt = new Date(dataISO)
-  if (Number.isNaN(dt.getTime())) return null
-  const agora = new Date()
-  const meses = (agora.getFullYear() - dt.getFullYear()) * 12 + (agora.getMonth() - dt.getMonth())
-  if (meses < 12) return { texto: `✓ ${meses}m`, classe: 'text-status-green', revisar: false }
-  if (meses < 18) return { texto: `⚠ ${meses}m`, classe: 'text-status-amber', revisar: false }
-  return { texto: `⚠ ${meses}m — Rever`, classe: 'text-status-red', revisar: true }
-}
 
-function ModalEditarParecer({ parecer, onClose }: { parecer: Parecer; onClose: () => void }) {
-  const guarda = useGuardaSaida(onClose)
-  return (
-    <Modal
-      title={`Editar Parecer — ${parecer.cod}`}
-      onClose={guarda.fechar}
-      onInput={guarda.marcar}
-      closeOnBackdrop={false}
-    >
-      <ParecerForm
-        produto={{ cod: parecer.cod, nome: parecer.nome, cat: parecer.cat }}
-        parecerExistente={parecer}
-        onSalvo={onClose}
-      />
-    </Modal>
-  )
-}
 
 export default function Base() {
   const { data: pareceres = [], isLoading } = usePareceres()
@@ -54,6 +29,7 @@ export default function Base() {
   const abrirAnexo = useAbrirAnexo()
   const toast = useToast()
   const confirmar = useConfirm()
+  const navigate = useNavigate()
 
   const anexosPorCod = todosAnexos.reduce<Record<string, ParecerAnexo[]>>((acc, a) => {
     ;(acc[a.parecerCod] ??= []).push(a)
@@ -76,12 +52,12 @@ export default function Base() {
       const q = busca.toUpperCase()
       if (!p.cod.includes(q) && !p.nome.toUpperCase().includes(q) && !p.requisitoTecnico.toUpperCase().includes(q)) return false
     }
-    if (soRevisar && !validadeInfo(p.dataParecer)?.revisar) return false
+    if (soRevisar && validadeParecer(p.dataParecer)?.nivel !== 'revisar') return false
     if (soRequisito && !p.requisitoTecnico) return false
     return true
   })
 
-  const aRevisar = pareceres.filter((p) => validadeInfo(p.dataParecer)?.revisar).length
+  const aRevisar = pareceres.filter((p) => validadeParecer(p.dataParecer)?.nivel === 'revisar').length
   const comRequisito = pareceres.filter((p) => p.requisitoTecnico).length
 
   useEffect(() => {
@@ -196,12 +172,22 @@ export default function Base() {
               </tr>
             )}
             {paginados.map((p) => {
-              const validade = validadeInfo(p.dataParecer)
+              const validade = validadeParecer(p.dataParecer)
               return (
-                <tr key={p.cod} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr
+                  key={p.cod}
+                  onClick={(e) => {
+                    // Clique na linha abre a página do parecer; botões, links e anexos continuam com a própria ação.
+                    if ((e.target as HTMLElement).closest('button, a, [role="menu"]')) return
+                    navigate(`/pareceres/base/${encodeURIComponent(p.cod)}`)
+                  }}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                >
                   <td className="px-3 py-2 font-mono text-xs">{p.cod}</td>
                   <td className="max-w-[220px] px-3 py-2 text-xs">
-                    <div className="font-medium text-slate-800">{p.nome}</div>
+                    <Link to={`/pareceres/base/${encodeURIComponent(p.cod)}`} className="font-medium text-slate-800 hover:text-blue-700 hover:underline">
+                      {p.nome}
+                    </Link>
                     <div className="text-[11px] text-slate-400">{p.cat}</div>
                     {p.requisitoTecnico && (
                       <div
@@ -225,10 +211,19 @@ export default function Base() {
                     <MarcasBadge marcas={p.proibidas} categoria="proibidas" anexos={anexosPorCod[p.cod]} onAbrirAnexo={(a) => abrirAnexo.abrir(a.pdfPath)} />
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    {validade ? <span className={`font-semibold ${validade.classe}`}>{validade.texto}</span> : <span className="text-slate-300">—</span>}
+                    {validade ? (
+                      <span className={`font-semibold ${CLASSE_VALIDADE[validade.nivel]}`} title={`Parecer de ${p.dataParecer}`}>
+                        {validade.nivel === 'ok' ? '✓' : '⚠'} {rotuloValidade(validade)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">
                     <div className="flex gap-1">
+                      <IconButton title="Abrir parecer" onClick={() => navigate(`/pareceres/base/${encodeURIComponent(p.cod)}`)}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </IconButton>
                       <IconButton title="Editar" onClick={() => setEditando(p)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </IconButton>
