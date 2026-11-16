@@ -4,7 +4,7 @@ import { cabecalhoRenovacao } from '@/repositories/contratoRepository'
 import { iniciais } from './usuario'
 import { dataHora, descreverAlteracao } from './historico'
 import { ligarContratosFornecedores } from './kpis'
-import { construirSemana } from './opme'
+import { construirSemana, diasAteCirurgia, mensagemConfirmacaoOpme, rotuloPrazoCirurgia } from './opme'
 import { contadoresModulos } from './resumoDia'
 
 // Dados fictícios — nenhum fornecedor/contrato real.
@@ -92,5 +92,26 @@ describe('contadoresModulos', () => {
       null,
     )
     expect(c).toEqual({ ocs: 3, contratos: 3, opmes: 0, pareceres: 0 })
+  })
+})
+
+describe('página do OPME', () => {
+  const hoje = new Date(2026, 10, 16)
+  it('conta os dias até a cirurgia', () => {
+    expect(diasAteCirurgia('2026-11-16', hoje)).toBe(0)
+    expect(diasAteCirurgia('2026-11-19', hoje)).toBe(3)
+    expect(diasAteCirurgia('2026-11-14', hoje)).toBe(-2)
+  })
+  it('rótulo do prazo', () => {
+    expect(rotuloPrazoCirurgia(0)).toBe('Hoje')
+    expect(rotuloPrazoCirurgia(1)).toBe('Amanhã')
+    expect(rotuloPrazoCirurgia(5)).toBe('Em 5 dias')
+    expect(rotuloPrazoCirurgia(-1)).toBe('Ontem')
+    expect(rotuloPrazoCirurgia(-3)).toBe('Há 3 dias')
+  })
+  it('mensagem cita paciente e data', () => {
+    const m = mensagemConfirmacaoOpme({ paciente: 'Paciente Teste', dataCirurgia: '2026-11-20' }, 'HUV')
+    expect(m).toContain('Paciente Teste')
+    expect(m).toContain('20/11/2026')
   })
 })

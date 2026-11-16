@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { HospitalSwitch } from '@/components/ui/HospitalSwitch'
 import { useResumoDia } from '@/hooks/useResumoDia'
-import type { ModuloNav } from './navegacao'
+import { paginaDoCaminho, type ModuloNav } from './navegacao'
 
 /**
  * Menu do módulo (item 101): título, descrição, seletor de hospital (só nos
@@ -10,6 +10,8 @@ import type { ModuloNav } from './navegacao'
  */
 export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
   const { contadores } = useResumoDia()
+  // Página marcada vem do mesmo mapa do caminho no topo (inclui páginas internas, ex.: um contrato ou OPME).
+  const ativa = paginaDoCaminho(modulo, useLocation().pathname)?.to
   const contador = contadores[modulo.chave]
   return (
     <>
@@ -34,9 +36,9 @@ export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
                   key={p.to}
                   to={p.to}
                   end={p.exato}
-                  className={({ isActive }) =>
+                  className={() =>
                     `flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                      isActive ? 'bg-blue-50 font-semibold text-blue-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ativa === p.to ? 'bg-blue-50 font-semibold text-blue-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`
                   }
                 >
@@ -58,6 +60,7 @@ export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
 /** Páginas do módulo como abas, só no celular (o menu lateral some ali). */
 export function AbasModulo({ modulo }: { modulo: ModuloNav }) {
   const paginas = modulo.grupos.flatMap((g) => g.paginas)
+  const ativa = paginaDoCaminho(modulo, useLocation().pathname)?.to
   return (
     <>
       {paginas.length > 1 && (
@@ -70,9 +73,9 @@ export function AbasModulo({ modulo }: { modulo: ModuloNav }) {
               key={p.to}
               to={p.to}
               end={p.exato}
-              className={({ isActive }) =>
+              className={() =>
                 `shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-                  isActive ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
+                  ativa === p.to ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
                 }`
               }
             >

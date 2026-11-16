@@ -14,6 +14,8 @@ export interface PaginaModulo {
   exato?: boolean
   /** Mostra o número de pendências do módulo ao lado. */
   contador?: boolean
+  /** Também fica marcada em caminhos com este prefixo (ex.: a página de um OPME, dentro da Gestão). */
+  tambem?: string
 }
 
 export interface GrupoPaginas {
@@ -125,7 +127,7 @@ export const NAV_MODULOS: ModuloNav[] = [
       {
         paginas: [
           { to: '/opmes', rotulo: 'Calendário', exato: true },
-          { to: '/opmes/gestao', rotulo: 'Gestão', contador: true },
+          { to: '/opmes/gestao', rotulo: 'Gestão', contador: true, tambem: '/opmes/' },
         ],
       },
     ],
@@ -140,6 +142,10 @@ export function moduloDoCaminho(pathname: string): ModuloNav | undefined {
 export function paginaDoCaminho(modulo: ModuloNav, pathname: string): PaginaModulo | undefined {
   const todas = modulo.grupos.flatMap((g) => g.paginas)
   return todas
-    .filter((p) => (p.exato ? pathname === p.to : pathname === p.to || pathname.startsWith(`${p.to}/`)))
+    .filter(
+      (p) =>
+        (p.exato ? pathname === p.to : pathname === p.to || pathname.startsWith(`${p.to}/`)) ||
+        (!!p.tambem && pathname.startsWith(p.tambem)),
+    )
     .sort((a, b) => b.to.length - a.to.length)[0]
 }

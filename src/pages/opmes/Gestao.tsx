@@ -1,6 +1,6 @@
-import { Pencil } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
@@ -28,6 +28,7 @@ export default function Gestao() {
   const excluir = useExcluirOpme(hospitalId)
   const toast = useToast()
   const desfazer = useDesfazer()
+  const navigate = useNavigate()
 
   // `?q=` vem da busca global (Ctrl+K).
   const [params] = useSearchParams()
@@ -178,12 +179,23 @@ export default function Gestao() {
                 </tr>
               )}
               {paginados.map((o) => (
-                <tr key={o.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={o.id} onClick={() => navigate(`/opmes/${o.id}`)} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 text-xs font-medium text-slate-700">{fmt(parseDMY(o.dataCirurgia))}</td>
-                  <td className="px-3 py-2 text-xs font-medium text-slate-800">{o.paciente}</td>
+                  <td className="px-3 py-2 text-xs font-medium text-slate-800">
+                    <Link to={`/opmes/${o.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-blue-700 hover:underline">
+                      {o.paciente}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 text-xs text-slate-500">{nomeFornecedor(o.fornecedorId)}</td>
                   <td className="px-3 py-2 text-xs">
-                    <button type="button" onClick={() => handleAlternarStatus(o)} title="Clique pra alternar o status">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleAlternarStatus(o)
+                      }}
+                      title="Clique pra alternar o status"
+                    >
                       <Badge tone={STATUS_OPME_TONE[o.status]}>{STATUS_OPME_LABEL[o.status]}</Badge>
                     </button>
                   </td>
@@ -191,7 +203,8 @@ export default function Gestao() {
                     {o.observacao || '—'}
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <IconButton title="Abrir OPME" onClick={() => navigate(`/opmes/${o.id}`)}><Eye className="h-3.5 w-3.5" /></IconButton>
                       <IconButton title="Editar" onClick={() => setModal(o)}><Pencil className="h-3.5 w-3.5" /></IconButton>
                       <IconButton title="Excluir" tone="danger" onClick={() => handleExcluir(o)}>✕</IconButton>
                     </div>

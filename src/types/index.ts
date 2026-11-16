@@ -112,6 +112,9 @@ export interface Opme {
   hospitalId: HospitalId
   status: StatusOpme
   observacao: string
+  /** ISO — só leitura (página do OPME). */
+  criadoEm?: string | null
+  atualizadoEm?: string | null
 }
 
 export interface ContratoHeader {

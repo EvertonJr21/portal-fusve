@@ -23,6 +23,7 @@ const Solicitacoes = lazy(() => import('@/pages/ocs/Solicitacoes'))
 const Modulos = lazy(() => import('@/pages/Modulos'))
 const Calendario = lazy(() => import('@/pages/opmes/Calendario'))
 const Gestao = lazy(() => import('@/pages/opmes/Gestao'))
+const OpmeDetalhe = lazy(() => import('@/pages/opmes/OpmeDetalhe'))
 const Cadastrar = lazy(() => import('@/pages/pareceres/Cadastrar'))
 const Base = lazy(() => import('@/pages/pareceres/Base'))
 const Consultar = lazy(() => import('@/pages/pareceres/Consultar'))
@@ -120,6 +121,7 @@ export default function App() {
           <Route path="/opmes" element={<ModuloLayout modulo={NAV_OPMES} />}>
             <Route index element={<Calendario />} />
             <Route path="gestao" element={<Gestao />} />
+            <Route path=":opmeId" element={<OpmeDetalhe />} />
           </Route>
 
 

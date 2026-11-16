@@ -199,7 +199,7 @@ function Paleta({ onFechar }: { onFechar: () => void }) {
           grupo: 'OPME',
           titulo: o.paciente,
           detalhe: `Cirurgia em ${o.dataCirurgia.split('-').reverse().join('/')} · ${o.status}`,
-          executar: () => navigate(`/opmes/gestao?q=${encodeURIComponent(o.paciente)}`),
+          executar: () => navigate(`/opmes/${o.id}`),
         })),
     )
     juntar(

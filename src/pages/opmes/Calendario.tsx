@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, FileDown, Plus } from 'lucide-react'
 import { OpmeCalendario, type ModoCalendario } from '@/components/opmes/OpmeCalendario'
@@ -20,6 +21,7 @@ const MESES = [
 ]
 
 export default function Calendario() {
+  const navigate = useNavigate()
   const { hospitalId } = useHospital()
   const { data: opmes = [], isLoading, error } = useOpmes(hospitalId)
   const { data: fornecedores = [] } = useFornecedores()
@@ -212,7 +214,7 @@ export default function Calendario() {
           opmesPorDia={opmesPorDia}
           nomeFornecedor={(id) => nomeFornecedor(id)}
           onDiaClick={diaClicado}
-          onOpmeClick={(o) => setModal({ opme: o })}
+          onOpmeClick={(o) => navigate(`/opmes/${o.id}`)}
           onMover={mover}
         />
       )}
@@ -225,7 +227,7 @@ export default function Calendario() {
           <ul className="flex flex-col divide-y divide-slate-100">
             {proximasPendentes.map((o) => (
               <li key={o.id} className="flex items-center justify-between py-2 text-sm">
-                <button type="button" onClick={() => setModal({ opme: o })} className="text-left hover:underline">
+                <button type="button" onClick={() => navigate(`/opmes/${o.id}`)} className="text-left hover:underline">
                   <span className="font-medium text-slate-800">{o.paciente}</span>
                   <span className="ml-2 text-xs text-slate-400">
                     {fmt(parseDMY(o.dataCirurgia))} — {nomeFornecedor(o.fornecedorId)}

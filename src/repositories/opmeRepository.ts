@@ -16,6 +16,8 @@ export function toOpme(row: OpmeRow): Opme {
     hospitalId: row.hospital_id as HospitalId,
     status: row.status as StatusOpme,
     observacao: row.observacao ?? '',
+    criadoEm: row.created_at,
+    atualizadoEm: row.updated_at,
   }
 }
 

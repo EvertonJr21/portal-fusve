@@ -49,3 +49,33 @@ export const STATUS_OPME_LABEL: Record<StatusOpme, string> = {
   pendente: 'Pendente',
   finalizado: 'Finalizado',
 }
+
+/** Dias de hoje até a cirurgia (negativo = já passou). `dataCirurgia` em `YYYY-MM-DD`. */
+export function diasAteCirurgia(dataCirurgia: string, hoje: Date): number | null {
+  const [a, m, d] = dataCirurgia.split('-').map(Number)
+  if (!a || !m || !d) return null
+  return Math.round((new Date(a, m - 1, d).getTime() - hoje.getTime()) / 86_400_000)
+}
+
+/** "Hoje", "Amanhã", "Em 5 dias", "Ontem", "Há 3 dias". */
+export function rotuloPrazoCirurgia(dias: number | null): string {
+  if (dias === null) return 'Sem data'
+  if (dias === 0) return 'Hoje'
+  if (dias === 1) return 'Amanhã'
+  if (dias === -1) return 'Ontem'
+  return dias > 0 ? `Em ${dias} dias` : `Há ${-dias} dias`
+}
+
+/** Mensagem pra confirmar com o fornecedor a entrega do OPME de uma cirurgia (página do OPME). */
+export function mensagemConfirmacaoOpme(o: { paciente: string; dataCirurgia: string }, hospitalNome: string): string {
+  const [a, m, d] = o.dataCirurgia.split('-')
+  return [
+    'Prezados,',
+    '',
+    `Solicitamos a confirmação da entrega do material OPME para a cirurgia do(a) paciente ${o.paciente}, agendada para ${d}/${m}/${a}.`,
+    'Pedimos que o material chegue até o dia anterior à cirurgia e que nos informem a previsão de entrega.',
+    '',
+    'Atenciosamente,',
+    `Setor de Compras — ${hospitalNome}`,
+  ].join('\n')
+}

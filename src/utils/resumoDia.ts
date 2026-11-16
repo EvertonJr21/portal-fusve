@@ -169,7 +169,7 @@ export function montarAlertas(ocs: ResumoOCs | null, contratos: ResumoContratos 
         tom: 'red',
         titulo: `OPME pendente — cirurgia ${quando(o.dias)}`,
         detalhe: o.paciente,
-        to: '/opmes/gestao',
+        to: `/opmes/${o.id}`,
       })
     }
     const depois = opmes.proximos.filter((x) => x.dias > 1).length
