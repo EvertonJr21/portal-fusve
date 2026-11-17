@@ -1,7 +1,11 @@
-import { ArrowLeft, ArrowRightLeft, CalendarDays, Database, KeyRound, LayoutGrid, Pause, Play, Shield, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRightLeft, Clock, Database, KeyRound, LayoutGrid, Pause, Play, Shield, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Avatar, NivelAcessoControle, SeloPapel, SeloStatus } from '@/components/admin/AdminUi'
 import { ModalReatribuir, ModalResetarSenha } from '@/components/admin/ModaisUsuario'
+import { useAuditoria, useContasAuth } from '@/hooks/useAdmin'
+import { detalheAuditoria, ROTULO_ACAO, STATUS_CONTA, statusConta, tempoRelativo } from '@/utils/admin'
+import { dataHora } from '@/utils/historico'
 import { Button } from '@/components/ui/Button'
 import { Campo, Destaque, NaoEncontrado, Secao } from '@/components/ui/Detalhe'
 import { SkeletonRows } from '@/components/ui/Skeleton'
@@ -27,60 +31,53 @@ const REGISTROS: { chave: keyof RegistrosDoUsuario; rotulo: string }[] = [
 export default function UsuarioDetalhe() {
   const { userId = '' } = useParams<{ userId: string }>()
   const navigate = useNavigate()
-  const { data: meuPerfil, isLoading: carregandoEu } = useMeuPerfil()
+  const { data: meuPerfil } = useMeuPerfil()
+  const { data: contas } = useContasAuth()
+  const { data: historico = [], error: erroHistorico } = useAuditoria(userId)
   const { data: perfis = [], isLoading, error } = useTodosPerfis()
   const { isLoading: carregandoPermissoes } = useTodasPermissoes()
   const { data: registros, isLoading: carregandoRegistros, error: erroRegistros } = useRegistrosDoUsuario(userId)
   const acoes = useAcoesUsuario()
   const [modal, setModal] = useState<null | 'senha' | 'transferir'>(null)
 
-  if (carregandoEu) return <div className="mx-auto w-full max-w-5xl px-4 py-10"><SkeletonRows /></div>
-  if (meuPerfil?.role !== 'admin') {
-    return (
-      <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-14 text-center">
-        <h1 className="text-lg font-semibold text-slate-800">Área restrita</h1>
-        <p className="text-sm text-slate-500">Essa página é só pra administradores do Portal FUSVE.</p>
-        <Link to="/" className="text-sm text-blue-700 hover:underline">← Voltar pros módulos</Link>
-      </div>
-    )
-  }
-  if (isLoading || carregandoPermissoes) return <div className="mx-auto w-full max-w-5xl px-4 py-10"><SkeletonRows /></div>
+  if (isLoading || carregandoPermissoes) return <SkeletonRows />
   if (error) return <p className="p-6 text-sm text-status-red">Erro ao carregar usuários: {error.message}</p>
 
   const u = perfis.find((p) => p.id === userId)
   if (!u) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4">
-        <NaoEncontrado texto="Conta não encontrada. Ela pode ter sido excluída." voltarPara="/admin" voltarRotulo="Voltar para a Administração" />
-      </div>
+      <NaoEncontrado texto="Conta não encontrada. Ela pode ter sido excluída." voltarPara="/admin/usuarios" voltarRotulo="Voltar para Usuários" />
     )
   }
 
-  const souEu = u.id === meuPerfil.id
+  const souEu = u.id === meuPerfil?.id
+  const auth = contas?.find((c) => c.id === u.id)
+  const status = statusConta(u, auth)
   const isAdmin = u.role === 'admin'
   const total = registros ? Object.values(registros).reduce((a, b) => a + b, 0) : null
   const liberados = isAdmin ? MODULOS.length : MODULOS.filter((m) => acoes.permissaoDe(u.id, m.chave)?.podeVer).length
 
   const handleExcluir = async () => {
-    if (await acoes.excluir(u.id, u.email)) navigate('/admin')
+    if (await acoes.excluir(u.id, u.email)) navigate('/admin/usuarios')
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-8 md:py-10">
+    <div className="flex flex-col gap-5">
       {/* Cabeçalho */}
       <div className="flex flex-col gap-3">
-        <Link to="/admin" className="inline-flex w-fit items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800">
-          <ArrowLeft className="h-3.5 w-3.5" /> Administração
+        <Link to="/admin/usuarios" className="inline-flex w-fit items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800">
+          <ArrowLeft className="h-3.5 w-3.5" /> Usuários
         </Link>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="break-all text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{u.email}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded-full px-2 py-0.5 font-semibold ${isAdmin ? 'bg-status-purple-bg text-status-purple' : 'bg-slate-100 text-slate-600'}`}>
-                {isAdmin ? 'Admin' : 'Usuário'}
-              </span>
-              {u.suspensa && <span className="rounded-full bg-status-red-bg px-2 py-0.5 font-semibold text-status-red">Suspensa</span>}
-              {souEu && <span className="text-slate-400">esta é a sua conta</span>}
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar email={u.email} tamanho="lg" />
+            <div className="min-w-0">
+              <h1 className="break-all text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{u.email}</h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                <SeloPapel admin={isAdmin} />
+                <SeloStatus status={status} />
+                {souEu && <span className="text-slate-400">esta é a sua conta</span>}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -108,7 +105,12 @@ export default function UsuarioDetalhe() {
       {/* Números-chave */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Destaque icone={<Shield className="h-4 w-4" />} rotulo="Papel" valor={isAdmin ? 'Admin' : 'Usuário'} detalhe={isAdmin ? 'vê e edita tudo' : 'só os próprios registros'} />
-        <Destaque icone={<CalendarDays className="h-4 w-4" />} rotulo="Conta criada em" valor={u.criadoEm ? fmt(new Date(u.criadoEm)) : ''} />
+        <Destaque
+          icone={<Clock className="h-4 w-4" />}
+          rotulo="Último acesso"
+          valor={auth ? tempoRelativo(auth.ultimoAcesso) : '—'}
+          detalhe={auth?.ultimoAcesso ? dataHora(auth.ultimoAcesso) : u.criadoEm ? `conta criada em ${fmt(new Date(u.criadoEm))}` : undefined}
+        />
         <Destaque icone={<LayoutGrid className="h-4 w-4" />} rotulo="Módulos liberados" valor={`${liberados} de ${MODULOS.length}`} detalhe={u.suspensa ? 'conta suspensa — sem acesso' : undefined} />
         <Destaque
           icone={<Database className="h-4 w-4" />}
@@ -138,24 +140,12 @@ export default function UsuarioDetalhe() {
               <p className="text-sm text-slate-500">Admin vê e edita os dados de todos os usuários em todos os módulos — não precisa de permissão por módulo.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-slate-100">
-                {MODULOS.map((m) => {
-                  const perm = acoes.permissaoDe(u.id, m.chave)
-                  return (
-                    <li key={m.chave} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
-                      <span className="text-sm font-medium text-slate-800">{m.label}</span>
-                      <span className="flex items-center gap-4 text-xs text-slate-600">
-                        <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={perm?.podeVer ?? false} onChange={() => void acoes.alternarPermissao(u.id, m.chave, 'podeVer')} />
-                          Ver
-                        </label>
-                        <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={perm?.podeEditar ?? false} onChange={() => void acoes.alternarPermissao(u.id, m.chave, 'podeEditar')} />
-                          Criar e editar
-                        </label>
-                      </span>
-                    </li>
-                  )
-                })}
+                {MODULOS.map((m) => (
+                  <li key={m.chave} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                    <span className="text-sm font-medium text-slate-800">{m.label}</span>
+                    <NivelAcessoControle rotulo={m.label} valor={acoes.nivelDe(u.id, m.chave)} onChange={(n) => void acoes.definirNivel(u.id, m.chave, n)} />
+                  </li>
+                ))}
               </ul>
             )}
           </Secao>
@@ -177,6 +167,27 @@ export default function UsuarioDetalhe() {
               </>
             )}
           </Secao>
+          <Secao titulo="Histórico da conta">
+            {erroHistorico ? (
+              <p className="text-xs text-slate-500">Disponível depois de rodar a migration 202611170001 no Supabase.</p>
+            ) : !historico.length ? (
+              <p className="text-sm text-slate-500">Nenhuma ação registrada para esta conta.</p>
+            ) : (
+              <ol className="relative flex flex-col gap-3 border-l border-slate-200 pl-4">
+                {historico.map((e) => (
+                  <li key={e.id} className="relative">
+                    <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-700" />
+                    <p className="text-sm text-slate-800">
+                      <span className="font-medium">{ROTULO_ACAO[e.acao] ?? e.acao}</span> · {detalheAuditoria(e.detalhe)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {e.acao === 'conta_criada' ? 'pela própria pessoa' : `por ${e.atorEmail || 'sistema'}`} · <time dateTime={e.em} title={dataHora(e.em)}>{tempoRelativo(e.em)}</time>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Secao>
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
@@ -184,7 +195,9 @@ export default function UsuarioDetalhe() {
             <dl className="flex flex-col gap-3">
               <Campo rotulo="E-mail">{u.email}</Campo>
               <Campo rotulo="Nome">{u.nome}</Campo>
-              <Campo rotulo="Situação">{u.suspensa ? 'Suspensa' : 'Ativa'}</Campo>
+              <Campo rotulo="Situação">{status ? STATUS_CONTA[status].descricao : u.suspensa ? 'Suspensa' : 'Ativa'}</Campo>
+              <Campo rotulo="Conta criada em">{u.criadoEm ? fmt(new Date(u.criadoEm)) : ''}</Campo>
+              <Campo rotulo="E-mail confirmado">{auth ? (auth.emailConfirmado ? 'Sim' : 'Não') : ''}</Campo>
             </dl>
           </Secao>
           <Secao titulo="Afastamento ou saída">

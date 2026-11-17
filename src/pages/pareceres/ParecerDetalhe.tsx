@@ -1,4 +1,5 @@
 import { ArrowLeft, CalendarDays, FileDown, FileText, Paperclip, Pencil, Tags, Trash2, User } from 'lucide-react'
+import { abrirPdfGerado } from '@/utils/pdfDataUrl'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ModalEditarParecer } from '@/components/pareceres/ModalEditarParecer'
@@ -96,8 +97,10 @@ export default function ParecerDetalhe() {
   const exportar = async () => {
     setGerando(true)
     try {
-      const { gerarRelatorioPDF } = await import('@/utils/relatorioParecer')
-      gerarRelatorioPDF([p])
+      await abrirPdfGerado(async () => {
+        const { gerarParecerPDF } = await import('@/relatorios/pareceres')
+        return gerarParecerPDF(p)
+      }, `Parecer técnico — ${p.cod}`)
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao gerar PDF', 'error')
     } finally {

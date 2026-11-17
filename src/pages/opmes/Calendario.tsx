@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { abrirPdfGerado } from '@/utils/pdfDataUrl'
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, FileDown, Plus } from 'lucide-react'
 import { OpmeCalendario, type ModoCalendario } from '@/components/opmes/OpmeCalendario'
@@ -124,8 +125,10 @@ export default function Calendario() {
   const handleExportarPDF = async () => {
     setExportando(true)
     try {
-      const { gerarRelatorioOpmePDF } = await import('@/utils/relatorioOpme')
-      gerarRelatorioOpmePDF(mesReferencia.getMonth(), mesReferencia.getFullYear(), hospitalId, opmesDoMes, fornecedores)
+      await abrirPdfGerado(async () => {
+        const { gerarRelatorioOpmePDF } = await import('@/relatorios/opme')
+        return gerarRelatorioOpmePDF({ mes: mesReferencia.getMonth(), ano: mesReferencia.getFullYear(), hospitalId, opmes: opmesDoMes, fornecedores })
+      }, `OPME — ${String(mesReferencia.getMonth() + 1).padStart(2, '0')}/${mesReferencia.getFullYear()}`)
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao gerar PDF', 'error')
     } finally {

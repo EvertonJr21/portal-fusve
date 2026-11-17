@@ -16,6 +16,6 @@ export function useErrosApp(ativo: boolean) {
   return useQuery({
     queryKey: ['erros-app'],
     enabled: ativo,
-    queryFn: () => erroRepository.listarErros(),
+    queryFn: () => erroRepository.listarErros(500),
   })
 }

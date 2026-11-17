@@ -72,6 +72,7 @@ export function useSalvarPermissao() {
       permissaoRepository.salvarPermissao(userId, modulo, podeVer, podeEditar),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permissoes_modulo'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] })
     },
   })
 }
@@ -82,6 +83,8 @@ export function useSalvarRole() {
     mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'user' }) => permissaoRepository.salvarRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-contas'] })
     },
   })
 }
@@ -93,6 +96,7 @@ export function useExcluirUsuario() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
       queryClient.invalidateQueries({ queryKey: ['permissoes_modulo'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] })
     },
   })
 }
@@ -105,6 +109,7 @@ export function useReatribuirDados() {
       permissaoRepository.reatribuirDados(deUserId, paraUserId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['registros-usuario'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] })
     },
   })
 }
@@ -126,12 +131,16 @@ export function useAlternarSuspensao() {
       permissaoRepository.alternarSuspensao(userId, suspender),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-contas'] })
     },
   })
 }
 
 export function useResetarSenha() {
+  const queryClient = useQueryClient()
   return useMutation({
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-auditoria'] }),
     mutationFn: ({ userId, novaSenha }: { userId: string; novaSenha: string }) =>
       permissaoRepository.resetarSenha(userId, novaSenha),
   })

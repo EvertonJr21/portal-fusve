@@ -1,4 +1,4 @@
-import { Font, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import type { ReactNode } from 'react'
 import mulish300 from '@fontsource/mulish/files/mulish-latin-300-normal.woff?url'
 import mulish400 from '@fontsource/mulish/files/mulish-latin-400-normal.woff?url'
@@ -251,6 +251,151 @@ export function CaixaAtencao({ titulo, itens, cor, fundo }: { titulo: string; it
           <Text style={{ fontSize: 8.8 }}>{p.texto}</Text>
         </View>
       ))}
+    </View>
+  )
+}
+
+// ───────────── Páginas prontas (item 113: o mesmo padrão em todos os relatórios) ─────────────
+
+/**
+ * 1ª página no padrão FUSVE: faixa no topo, coluna azul com o título e os
+ * números principais, e o conteúdo à direita. O conteúdo da direita precisa
+ * caber nesta página — o que for longo vai para `PaginaCorrida`.
+ */
+export function PaginaCapa({
+  barra,
+  documento,
+  rotulo,
+  titulo,
+  subtitulo,
+  coluna,
+  children,
+  largura = 226,
+}: {
+  barra: string
+  documento: string
+  rotulo: string
+  titulo: string
+  subtitulo?: string
+  coluna?: ReactNode
+  children: ReactNode
+  largura?: number
+}) {
+  return (
+    <Page size="A4" orientation="landscape" style={[est.pagina, { flexDirection: 'row' }]}>
+      <Barra texto={barra} />
+      <View style={{ width: largura, backgroundColor: COR.azul, paddingHorizontal: 20, paddingTop: 24, marginBottom: -34 }}>
+        <Text style={{ color: COR.azulClaro, fontSize: 7, letterSpacing: 1, fontWeight: 700 }}>{rotulo.toUpperCase()}</Text>
+        <Text style={{ color: '#fff', fontSize: titulo.length > 30 ? 16 : 22, fontWeight: 300, marginTop: 6, lineHeight: 1.15 }}>{titulo}</Text>
+        {subtitulo ? <Text style={{ color: COR.azulClaro, fontSize: 8.5, marginTop: 4 }}>{subtitulo}</Text> : null}
+        <View style={{ marginTop: 14 }}>{coluna}</View>
+      </View>
+      <View style={{ flex: 1, paddingHorizontal: 26, paddingTop: 22 }}>{children}</View>
+      <Rodape documento={documento} esquerda={largura + 26} />
+    </Page>
+  )
+}
+
+/** Páginas seguintes: faixa, margens e rodapé. Com `tabela`, o cabeçalho dela repete no topo de cada página nova. */
+export function PaginaCorrida({ barra, documento, tabela, children }: { barra: string; documento: string; tabela?: ColunaTabela[]; children: ReactNode }) {
+  return (
+    <Page size="A4" orientation="landscape" style={[est.paginaCorrida, tabela ? { paddingTop: 62 } : {}]}>
+      <Barra texto={barra} />
+      {tabela ? (
+        <View
+          fixed
+          style={{ position: 'absolute', top: 40, left: 30, right: 30 }}
+          render={({ subPageNumber }) => (subPageNumber > 1 ? <CabecalhoTabela colunas={tabela} /> : null)}
+        />
+      ) : null}
+      {children}
+      <Rodape documento={documento} />
+    </Page>
+  )
+}
+
+/** Título de página corrida: leve, com contagem opcional em cinza. */
+export function TituloPagina({ texto, contagem }: { texto: string; contagem?: string }) {
+  return (
+    <Text style={est.tituloPagina}>
+      {texto}
+      {contagem ? <Text style={{ color: COR.suave }}>{` ${contagem}`}</Text> : null}
+    </Text>
+  )
+}
+
+/** Duas caixas de número lado a lado na coluna azul. */
+export function ParNumeros({ a, b }: { a: { rotulo: string; valor: string; detalhe?: string }; b: { rotulo: string; valor: string; detalhe?: string } }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flex: 1 }}>
+        <CaixaNumero {...a} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <CaixaNumero {...b} />
+      </View>
+    </View>
+  )
+}
+
+/** Barras horizontais de contagem (distribuições). */
+export function Barras({ titulo, itens, cor = COR.azul }: { titulo: string; itens: { nome: string; quantidade: number; pct: number }[]; cor?: string }) {
+  const max = Math.max(1, ...itens.map((i) => i.quantidade))
+  return (
+    <View wrap={false}>
+      <Text style={[est.rotulo, { marginBottom: 6 }]}>{titulo}</Text>
+      {itens.length ? (
+        itens.map((i) => (
+          <View key={i.nome} style={{ marginBottom: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+              <Text style={{ fontSize: 8, maxWidth: '75%' }}>{i.nome}</Text>
+              <Text style={{ fontSize: 8, color: COR.suave }}>{`${i.quantidade} · ${Math.round(i.pct * 100)}%`}</Text>
+            </View>
+            <View style={{ height: 5, backgroundColor: COR.claro }}>
+              <View style={{ height: 5, width: `${(i.quantidade / max) * 100}%`, backgroundColor: cor }} />
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={{ fontSize: 8, color: COR.suave }}>Sem dados.</Text>
+      )}
+    </View>
+  )
+}
+
+/** Conta ocorrências e devolve do maior ao menor, com percentual. */
+export function contarNomes(nomes: string[], limite = 8): { nome: string; quantidade: number; pct: number }[] {
+  const m = new Map<string, number>()
+  for (const n of nomes) m.set(n, (m.get(n) ?? 0) + 1)
+  const total = nomes.length || 1
+  return [...m.entries()]
+    .map(([nome, quantidade]) => ({ nome, quantidade, pct: quantidade / total }))
+    .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome))
+    .slice(0, limite)
+}
+
+/** Bloco de ciência/assinatura no fim dos relatórios. */
+export function Ciencia() {
+  return (
+    <View wrap={false} style={{ marginTop: 14 }}>
+      <Secao titulo="Ciência e aprovação">
+        <View style={{ flexDirection: 'row', gap: 40, marginTop: 6 }}>
+          {[
+            ['Elaborado por', 'Setor de Compras'],
+            ['Ciente', 'Coordenação / Gerência'],
+          ].map(([papel, area]) => (
+            <View key={papel} style={{ flex: 1 }}>
+              <Text style={est.rotulo}>{papel}</Text>
+              <Text style={{ color: COR.suave, marginTop: 2 }}>{area}</Text>
+              <View style={{ borderBottomWidth: 0.8, borderBottomColor: COR.tinta, marginTop: 34 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text style={{ fontSize: 7.5, color: COR.suave }}>Nome e assinatura</Text>
+                <Text style={{ fontSize: 7.5, color: COR.suave }}>Data: ____/____/________</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </Secao>
     </View>
   )
 }

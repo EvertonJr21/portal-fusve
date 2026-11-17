@@ -1,4 +1,5 @@
 import { Eye, FileText, Pencil, Trash2 } from 'lucide-react'
+import { abrirPdfGerado } from '@/utils/pdfDataUrl'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MarcasBadge } from '@/components/pareceres/MarcasBadge'
@@ -81,8 +82,10 @@ export default function Base() {
   const exportarPdf = async () => {
     setGerandoPdf(true)
     try {
-      const { gerarRelatorioPDF } = await import('@/utils/relatorioParecer')
-      gerarRelatorioPDF(filtrados, filtrados.length !== pareceres.length ? pareceres.length : undefined)
+      await abrirPdfGerado(async () => {
+        const { gerarBasePareceresPDF } = await import('@/relatorios/pareceres')
+        return gerarBasePareceresPDF(filtrados, filtrados.length !== pareceres.length ? pareceres.length : undefined)
+      }, 'Base de pareceres técnicos')
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao gerar PDF', 'error')
     } finally {

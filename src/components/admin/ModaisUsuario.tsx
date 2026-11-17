@@ -6,6 +6,7 @@ import { useGuardaSaida } from '@/hooks/useGuardaSaida'
 import { useReatribuirDados, useResetarSenha } from '@/hooks/usePermissoes'
 import { useToast } from '@/hooks/useToast'
 import type { Perfil } from '@/repositories/permissaoRepository'
+import { registrarAcao } from '@/repositories/adminRepository'
 
 /** Modais de ação sobre uma conta — usados na tabela do Admin e na página do usuário (item 107). */
 
@@ -28,6 +29,7 @@ export function ModalReatribuir({ usuario, outros, onClose }: { usuario: Perfil;
       return
     try {
       await reatribuir.mutateAsync({ deUserId: usuario.id, paraUserId: destino })
+      await registrarAcao('transferencia', usuario.id, usuario.email, `Registros transferidos para ${alvo?.email ?? ''}`)
       toast.show(`Dados de ${usuario.email} reatribuídos pra ${alvo?.email}`)
       onClose()
     } catch (err) {
@@ -86,6 +88,7 @@ export function ModalResetarSenha({ usuario, onClose }: { usuario: Perfil; onClo
     }
     try {
       await resetar.mutateAsync({ userId: usuario.id, novaSenha: senha })
+      await registrarAcao('senha', usuario.id, usuario.email, 'Senha redefinida pelo admin')
       toast.show(`Senha de ${usuario.email} redefinida`)
       onClose()
     } catch (err) {

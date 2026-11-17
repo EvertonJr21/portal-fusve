@@ -1,8 +1,9 @@
-import { House } from 'lucide-react'
+import { House, ShieldCheck } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { MenuUsuario } from '@/components/ui/MenuUsuario'
 import { Sino } from '@/components/ui/Sino'
 import { useModulosVisiveis } from '@/hooks/useModulosVisiveis'
+import { useMeuPerfil } from '@/hooks/usePermissoes'
 import { useResumoDia } from '@/hooks/useResumoDia'
 import { moduloDoCaminho } from './navegacao'
 
@@ -28,6 +29,8 @@ export function BarraModulos() {
   const { contadores } = useResumoDia()
   const ativo = moduloDoCaminho(pathname)
   const noInicio = pathname === '/'
+  const { data: perfil } = useMeuPerfil()
+  const noAdmin = pathname === '/admin' || pathname.startsWith('/admin/')
 
   const itemClasse = (selecionado: boolean) =>
     `relative flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10.5px] font-semibold transition-colors ${
@@ -76,6 +79,13 @@ export function BarraModulos() {
           )
         })}
         <div className="flex-1" />
+        {perfil?.role === 'admin' && (
+          <Link to="/admin" title="Administração" className={itemClasse(noAdmin)} aria-current={noAdmin ? 'page' : undefined}>
+            {noAdmin && <span className="absolute -left-[6px] top-2 bottom-2 w-[3px] rounded-r bg-claro" />}
+            <ShieldCheck className="h-5 w-5" strokeWidth={1.8} />
+            Admin
+          </Link>
+        )}
         <Sino variante="barra" />
         <div className="mt-2">
           <MenuUsuario variante="barra" />

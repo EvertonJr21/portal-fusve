@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react'
+import { lazy as lazyReact, Suspense, type ComponentType } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { AdminLayout } from '@/components/admin/AdminLayout'
 import { BarraModulos } from '@/components/layout/BarraModulos'
 import { ModuloLayout } from '@/components/layout/ModuloLayout'
 import { NAV_MODULOS } from '@/components/layout/navegacao'
@@ -10,9 +11,42 @@ import { PaletaComandos } from '@/components/ui/PaletaComandos'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { SkeletonRows } from '@/components/ui/Skeleton'
 
+/**
+ * Se o portal foi atualizado com a tela aberta, o navegador pede um arquivo
+ * da versão antiga que não existe mais ("Failed to fetch dynamically imported
+ * module"). Nesse caso recarrega a página uma vez, em vez de mostrar erro (item 113).
+ */
+function lazy<T extends ComponentType<unknown>>(carregar: () => Promise<{ default: T }>) {
+  return lazyReact(() =>
+    carregar().catch((err: unknown) => {
+      const chave = 'fusve:recarregouVersao'
+      let ultima = 0
+      try {
+        ultima = Number(sessionStorage.getItem(chave) ?? 0)
+      } catch {
+        /* sem storage */
+      }
+      if (Date.now() - ultima > 30_000) {
+        try {
+          sessionStorage.setItem(chave, String(Date.now()))
+        } catch {
+          /* sem storage */
+        }
+        window.location.reload()
+        return new Promise<{ default: T }>(() => {})
+      }
+      throw err
+    }),
+  )
+}
+
 // Cada tela é baixada só quando é aberta (item 9 da revisão) — a abertura do portal fica mais leve.
-const UsuarioDetalhe = lazy(() => import('@/pages/UsuarioDetalhe'))
-const Admin = lazy(() => import('@/pages/Admin'))
+const UsuarioDetalhe = lazy(() => import('@/pages/admin/UsuarioDetalhe'))
+const AdminVisaoGeral = lazy(() => import('@/pages/admin/VisaoGeral'))
+const AdminUsuarios = lazy(() => import('@/pages/admin/Usuarios'))
+const AdminPermissoes = lazy(() => import('@/pages/admin/Permissoes'))
+const AdminAtividade = lazy(() => import('@/pages/admin/Atividade'))
+const AdminErros = lazy(() => import('@/pages/admin/Erros'))
 const Exportar = lazy(() => import('@/pages/ocs/Exportar'))
 const FornecedorDetalhe = lazy(() => import('@/pages/ocs/FornecedorDetalhe'))
 const Fornecedores = lazy(() => import('@/pages/ocs/Fornecedores'))
@@ -95,19 +129,17 @@ export default function App() {
             path="/admin"
             element={
               <TelaSolta titulo="Administração">
-                <Admin />
+                <AdminLayout />
               </TelaSolta>
             }
-          />
-
-          <Route
-            path="/admin/usuarios/:userId"
-            element={
-              <TelaSolta titulo="Administração">
-                <UsuarioDetalhe />
-              </TelaSolta>
-            }
-          />
+          >
+            <Route index element={<AdminVisaoGeral />} />
+            <Route path="usuarios" element={<AdminUsuarios />} />
+            <Route path="usuarios/:userId" element={<UsuarioDetalhe />} />
+            <Route path="permissoes" element={<AdminPermissoes />} />
+            <Route path="atividade" element={<AdminAtividade />} />
+            <Route path="erros" element={<AdminErros />} />
+          </Route>
 
           <Route path="/ocs" element={<ModuloLayout modulo={NAV_OCS} />}>
             {/* Telas antigas (item 82) redirecionam pra onde o conteúdo foi parar. */}

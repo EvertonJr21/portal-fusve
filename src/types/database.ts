@@ -31,6 +31,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_auditoria: {
+        Row: {
+          acao: string
+          alvo_email: string
+          alvo_id: string | null
+          ator_email: string
+          ator_id: string | null
+          created_at: string
+          detalhe: string
+          id: number
+        }
+        Insert: {
+          acao: string
+          alvo_email?: string
+          alvo_id?: string | null
+          ator_email?: string
+          ator_id?: string | null
+          created_at?: string
+          detalhe?: string
+          id?: never
+        }
+        Update: {
+          acao?: string
+          alvo_email?: string
+          alvo_id?: string | null
+          ator_email?: string
+          ator_id?: string | null
+          created_at?: string
+          detalhe?: string
+          id?: never
+        }
+        Relationships: []
+      }
       contrato_comodatos: {
         Row: {
           contrato_id: string
@@ -760,7 +793,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_listar_contas: {
+        Args: never
+        Returns: {
+          bloqueada_ate: string | null
+          email_confirmado: boolean
+          id: string
+          ultimo_acesso: string | null
+        }[]
+      }
+      registrar_acao_admin: {
+        Args: { p_acao: string; p_alvo_email: string; p_alvo_id: string; p_detalhe: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

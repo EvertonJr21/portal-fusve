@@ -1,7 +1,10 @@
 import type { ModuloChave } from '@/constants'
+
+export type NivelAcesso = 'nenhum' | 'ver' | 'editar'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useAlternarSuspensao, useExcluirUsuario, useSalvarPermissao, useSalvarRole, useTodasPermissoes } from '@/hooks/usePermissoes'
 import { useToast } from '@/hooks/useToast'
+import { registrarAcao } from '@/repositories/adminRepository'
 
 /**
  * Ações de admin sobre uma conta (permissão por módulo, papel, suspensão e
@@ -32,6 +35,20 @@ export function useAcoesUsuario() {
     }
   }
 
+  /** Nível de acesso de um módulo: sem acesso, só ver, ver e editar. */
+  const definirNivel = async (userId: string, modulo: ModuloChave, nivel: NivelAcesso) => {
+    try {
+      await salvarPermissao.mutateAsync({ userId, modulo, podeVer: nivel !== 'nenhum', podeEditar: nivel === 'editar' })
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Erro ao salvar permissão', 'error')
+    }
+  }
+
+  const nivelDe = (userId: string, modulo: string): NivelAcesso => {
+    const p = permissaoDe(userId, modulo)
+    return p?.podeEditar ? 'editar' : p?.podeVer ? 'ver' : 'nenhum'
+  }
+
   const alternarRole = async (userId: string, roleAtual: 'admin' | 'user') => {
     const novo = roleAtual === 'admin' ? 'user' : 'admin'
     const msg =
@@ -60,6 +77,7 @@ export function useAcoesUsuario() {
       return false
     try {
       await excluirUsuario.mutateAsync(userId)
+      await registrarAcao('exclusao', userId, email, 'Conta excluída')
       toast.show(`Conta de ${email} excluída`)
       return true
     } catch (err) {
@@ -77,6 +95,7 @@ export function useAcoesUsuario() {
       return false
     try {
       await suspensao.mutateAsync({ userId, suspender })
+      await registrarAcao('suspensao', userId, email, suspender ? 'Conta suspensa' : 'Conta reativada')
       toast.show(suspender ? `Conta de ${email} suspensa` : `Conta de ${email} reativada`)
       return true
     } catch (err) {
@@ -85,5 +104,5 @@ export function useAcoesUsuario() {
     }
   }
 
-  return { permissaoDe, alternarPermissao, alternarRole, excluir, alternarSuspensao }
+  return { permissaoDe, nivelDe, definirNivel, alternarPermissao, alternarRole, excluir, alternarSuspensao }
 }

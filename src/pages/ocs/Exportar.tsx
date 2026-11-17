@@ -9,9 +9,8 @@ import { useSols } from '@/hooks/useSols'
 import { useToast } from '@/hooks/useToast'
 import { fmt, parseDMY } from '@/utils/date'
 import { exportarExcel } from '@/utils/exportar'
-import { exportarPDF } from '@/utils/exportarPdf'
+import { abrirPdfGerado } from '@/utils/pdfDataUrl'
 import { isPrevisaoDescumprida, ocsSemPrevisao } from '@/utils/oc'
-import { gerarRelatorioMensalPDF } from '@/utils/relatorioMensal'
 import { cicloInterno, desempenhoPorFornecedor, formatarDias, formatarPct, resumir } from '@/utils/kpis'
 
 const MESES = [
@@ -176,14 +175,27 @@ export default function Exportar() {
     if (formato === 'excel') {
       exportarExcel(c.arquivo, [{ nome: c.titulo.slice(0, 31), linhas }])
     } else {
-      exportarPDF(c.arquivo, c.titulo, linhas)
+      void abrirPdfGerado(async () => {
+        const { colunasAutomaticas, gerarRelatorioTabelaPDF } = await import('@/relatorios/tabela')
+        const chaves = Object.keys(linhas[0])
+        return gerarRelatorioTabelaPDF({
+          barra: 'Compras · Exportação',
+          rotulo: 'Compras · Ordens de compra',
+          titulo: c.titulo,
+          subtitulo: c.descricao,
+          colunas: colunasAutomaticas(chaves, linhas),
+          linhas: linhas.map((l) => chaves.map((k) => String(l[k] ?? ''))),
+        })
+      }, c.titulo).catch((err) => toast.show(err instanceof Error ? err.message : 'Erro ao gerar o PDF', 'error'))
     }
     toast.show(`${linhas.length} registro(s) exportado(s)`)
   }
 
   const handleRelatorioMensal = () => {
-    gerarRelatorioMensalPDF(mes, ano, ocs, sols, forns, avaliacoes)
-    toast.show('Relatório mensal gerado')
+    void abrirPdfGerado(async () => {
+      const { gerarRelatorioOcsPDF } = await import('@/relatorios/ocsMensal')
+      return gerarRelatorioOcsPDF({ mes, ano, ocs, sols, forns, avaliacoes })
+    }, `Relatório mensal de OCs — ${String(mes + 1).padStart(2, '0')}/${ano}`).catch((err) => toast.show(err instanceof Error ? err.message : 'Erro ao gerar o PDF', 'error'))
   }
 
   return (
