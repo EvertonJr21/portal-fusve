@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { HospitalSwitch } from '@/components/ui/HospitalSwitch'
 import { useResumoDia } from '@/hooks/useResumoDia'
-import { paginaDoCaminho, type ModuloNav } from './navegacao'
+import { comSeletorHospital, paginaDoCaminho, type ModuloNav } from './navegacao'
 
 /**
  * Menu do módulo (item 101): título, descrição, seletor de hospital (só nos
@@ -11,7 +11,8 @@ import { paginaDoCaminho, type ModuloNav } from './navegacao'
 export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
   const { contadores } = useResumoDia()
   // Página marcada vem do mesmo mapa do caminho no topo (inclui páginas internas, ex.: um contrato ou OPME).
-  const ativa = paginaDoCaminho(modulo, useLocation().pathname)?.to
+  const caminho = useLocation().pathname
+  const ativa = paginaDoCaminho(modulo, caminho)?.to
   const contador = contadores[modulo.chave]
   return (
     <>
@@ -19,7 +20,7 @@ export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
         <div className="flex flex-col gap-1 px-5 pt-5 pb-4">
           <h2 className="text-base font-bold tracking-tight text-slate-900">{modulo.titulo}</h2>
           <p className="text-xs leading-relaxed text-slate-500">{modulo.descricao}</p>
-          {modulo.porHospital && (
+          {comSeletorHospital(modulo, caminho) && (
             <div className="mt-3">
               <HospitalSwitch />
             </div>
@@ -60,7 +61,8 @@ export function MenuModulo({ modulo }: { modulo: ModuloNav }) {
 /** Páginas do módulo como abas, só no celular (o menu lateral some ali). */
 export function AbasModulo({ modulo }: { modulo: ModuloNav }) {
   const paginas = modulo.grupos.flatMap((g) => g.paginas)
-  const ativa = paginaDoCaminho(modulo, useLocation().pathname)?.to
+  const caminho = useLocation().pathname
+  const ativa = paginaDoCaminho(modulo, caminho)?.to
   return (
     <>
       {paginas.length > 1 && (

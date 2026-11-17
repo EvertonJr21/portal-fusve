@@ -1,3 +1,4 @@
+import { abrirPdfGerado } from '@/utils/pdfDataUrl'
 import {
   ArrowLeft,
   CalendarClock,
@@ -202,8 +203,10 @@ export default function ContratoDetalhe() {
   const handleImprimir = async () => {
     setGerandoResumo(true)
     try {
-      const { gerarResumoContratoPDF } = await import('@/utils/relatorioContrato')
-      gerarResumoContratoPDF({ contrato: c, produtos, comodatos })
+      await abrirPdfGerado(async () => {
+        const { gerarResumoContratoPDF } = await import('@/relatorios/contratos')
+        return gerarResumoContratoPDF({ contrato: c, produtos, comodatos })
+      }, `Resumo do contrato — ${c.titulo || c.fornecedorNome}`)
     } catch (err) {
       toast.show(err instanceof Error ? err.message : 'Erro ao gerar o resumo', 'error')
     } finally {

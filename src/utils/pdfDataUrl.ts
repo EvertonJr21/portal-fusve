@@ -37,3 +37,34 @@ export function abrirPdfDataUrl(dataUrl: string) {
     window.open(dataUrl, '_blank', 'noopener')
   }
 }
+
+/**
+ * Abre um PDF gerado de forma assíncrona (item 112). A janela é aberta já no
+ * clique — depois de um `await` o navegador trataria como pop-up e bloquearia
+ * — com um aviso "Gerando…", e recebe o PDF quando ele fica pronto. Se o
+ * navegador bloquear mesmo assim, baixa o arquivo.
+ */
+export async function abrirPdfGerado(gerar: () => Promise<Blob>, nomeArquivo: string) {
+  const janela = window.open('', '_blank')
+  if (janela) {
+    janela.document.title = nomeArquivo
+    janela.document.body.style.cssText = 'font-family:system-ui,sans-serif;color:#555;display:grid;place-items:center;height:100vh;margin:0'
+    janela.document.body.textContent = 'Gerando o relatório…'
+  }
+  try {
+    const blob = await gerar()
+    const url = URL.createObjectURL(blob)
+    if (janela && !janela.closed) {
+      janela.location.href = url
+    } else {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${nomeArquivo}.pdf`
+      a.click()
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 120_000)
+  } catch (err) {
+    janela?.close()
+    throw err
+  }
+}

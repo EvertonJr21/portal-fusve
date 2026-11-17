@@ -36,6 +36,7 @@ const DashboardPareceres = lazy(() => import('@/pages/pareceres/Dashboard'))
 const MarcasSugeridas = lazy(() => import('@/pages/pareceres/MarcasSugeridas'))
 const TabelaMestre = lazy(() => import('@/pages/contratos/TabelaMestre'))
 const ContratoDetalhe = lazy(() => import('@/pages/contratos/ContratoDetalhe'))
+const RelatorioGerencial = lazy(() => import('@/pages/contratos/RelatorioGerencial'))
 
 const [NAV_OCS, NAV_PARECERES, NAV_CONTRATOS, NAV_OPMES] = (['ocs', 'pareceres', 'contratos', 'opmes'] as const).map(
   (chave) => NAV_MODULOS.find((m) => m.chave === chave)!,
@@ -140,6 +141,7 @@ export default function App() {
 
           <Route path="/contratos" element={<ModuloLayout modulo={NAV_CONTRATOS} />}>
             <Route index element={<TabelaMestre />} />
+            <Route path="relatorio" element={<RelatorioGerencial />} />
             <Route path=":contratoId" element={<ContratoDetalhe />} />
           </Route>
 

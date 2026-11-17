@@ -16,6 +16,8 @@ export interface PaginaModulo {
   contador?: boolean
   /** Também fica marcada em caminhos com este prefixo (ex.: a página de um OPME, dentro da Gestão). */
   tambem?: string
+  /** A página tem o próprio filtro de unidade — esconde o seletor de hospital do módulo. */
+  semHospital?: boolean
 }
 
 export interface GrupoPaginas {
@@ -111,7 +113,14 @@ export const NAV_MODULOS: ModuloNav[] = [
     icone: FileSignature,
     cor: 'bg-status-green-bg text-status-green',
     porHospital: true,
-    grupos: [{ paginas: [{ to: '/contratos', rotulo: 'Tabela mestre', contador: true }] }],
+    grupos: [
+      {
+        paginas: [
+          { to: '/contratos', rotulo: 'Tabela mestre', contador: true },
+          { to: '/contratos/relatorio', rotulo: 'Relatório gerencial', semHospital: true },
+        ],
+      },
+    ],
   },
   {
     chave: 'opmes',
@@ -148,4 +157,9 @@ export function paginaDoCaminho(modulo: ModuloNav, pathname: string): PaginaModu
         (!!p.tambem && pathname.startsWith(p.tambem)),
     )
     .sort((a, b) => b.to.length - a.to.length)[0]
+}
+
+/** O seletor de hospital aparece nesta página? */
+export function comSeletorHospital(modulo: ModuloNav, caminho: string): boolean {
+  return modulo.porHospital && !paginaDoCaminho(modulo, caminho)?.semHospital
 }
