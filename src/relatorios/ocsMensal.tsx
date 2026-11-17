@@ -8,7 +8,6 @@ import {
   CabecalhoTabela,
   CaixaNumero,
   Campos,
-  Ciencia,
   contarNomes,
   COR,
   est,
@@ -158,7 +157,6 @@ function RelatorioOcs({ mes, ano, ocs, sols, forns, avaliacoes }: DadosOcsMensal
             </Text>
           </View>
         </View>
-        <Ciencia />
       </PaginaCorrida>
     </Document>
   )

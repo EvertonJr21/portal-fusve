@@ -374,7 +374,7 @@ export function contarNomes(nomes: string[], limite = 8): { nome: string; quanti
     .slice(0, limite)
 }
 
-/** Bloco de ciência/assinatura no fim dos relatórios. */
+/** Bloco de ciência/assinatura. Fora dos relatórios por enquanto (pedido do Everton, 17/11/2026) — basta voltar a usar. */
 export function Ciencia() {
   return (
     <View wrap={false} style={{ marginTop: 14 }}>

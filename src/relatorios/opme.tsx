@@ -8,7 +8,6 @@ import {
   CabecalhoTabela,
   CaixaAtencao,
   CaixaNumero,
-  Ciencia,
   contarNomes,
   COR,
   est,
@@ -133,7 +132,6 @@ function RelatorioOpme({ mes, ano, hospitalId, opmes, fornecedores }: DadosOpme)
         <Text style={[est.texto, { fontSize: 7.5, color: COR.suave, marginTop: 10 }]}>
           Dados de pacientes: uso interno, protegidos pela LGPD. Não compartilhar fora da instituição.
         </Text>
-        <Ciencia />
       </PaginaCorrida>
     </Document>
   )

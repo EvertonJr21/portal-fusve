@@ -258,7 +258,7 @@ function ResumoContrato({ contrato: c, produtos, comodatos }: DadosResumoContrat
         <Rodape documento={nome} />
       </Page>
 
-      {/* Comodatos, observações e ciência */}
+      {/* Comodatos e observações */}
       <Page size="A4" orientation="landscape" style={est.paginaCorrida}>
         <Barra texto={`${tipoDoc} · ${nome}`} />
         <Text style={est.tituloPagina}>
@@ -300,26 +300,6 @@ function ResumoContrato({ contrato: c, produtos, comodatos }: DadosResumoContrat
           </Secao>
         ) : null}
 
-        <View wrap={false} style={{ marginTop: 10 }}>
-          <Secao titulo="Ciência e aprovação">
-            <View style={{ flexDirection: 'row', gap: 40, marginTop: 6 }}>
-              {[
-                ['Elaborado por', 'Setor de Compras'],
-                ['Ciente', 'Coordenação / Gerência'],
-              ].map(([papel, area]) => (
-                <View key={papel} style={{ flex: 1 }}>
-                  <Text style={est.rotulo}>{papel}</Text>
-                  <Text style={{ color: COR.suave, marginTop: 2 }}>{area}</Text>
-                  <View style={{ borderBottomWidth: 0.8, borderBottomColor: COR.tinta, marginTop: 34 }} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ fontSize: 7.5, color: COR.suave }}>Nome e assinatura</Text>
-                    <Text style={{ fontSize: 7.5, color: COR.suave }}>Data: ____/____/________</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </Secao>
-        </View>
         <Rodape documento={nome} />
       </Page>
     </Document>
